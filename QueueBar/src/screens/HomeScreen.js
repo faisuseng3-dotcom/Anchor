@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import QueueBarMap from '../components/Map';
 import MapVenueCard from '../components/MapVenueCard';
 import { loadReports, subscribeToReports } from '../lib/supabase';
 import VENUES, { computeStatus, getStatusLabel, getStatusColor } from '../lib/venues';
@@ -31,7 +30,15 @@ export default function HomeScreen({ navigation, route }) {
         </View>
 
         <View style={styles.mapContainer}>
-          <QueueBarMap reports={reports} onVenuePress={setSelectedVenue} />
+          <View style={[styles.mapContainer, {
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }]}>
+            <Text style={{ color: 'white', fontSize: 14 }}>
+              🗺️ Karta
+            </Text>
+          </View>
           <MapVenueCard
             venue={selectedVenue}
             reports={reports}
