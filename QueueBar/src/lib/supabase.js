@@ -40,13 +40,21 @@ export async function submitReport({ venueId, venueName, queueStatus, userId }) 
 
   const { data: recent, error: recentError } = await supabase
     .from('reports')
-    .select('id')
+    .select('created_at')
     .eq('user_id', userId)
     .gt('created_at', new Date(now - SPAM_WINDOW_MS).toISOString())
+    .order('created_at', { ascending: false })
     .limit(1);
   if (recentError) throw recentError;
   if (recent?.length) {
-    throw new Error('Du har redan rapporterat nyligen. Vänta 20 minuter.');
+    const waitMinutes = Math.max(
+      1,
+      Math.ceil((new Date(recent[0].created_at).getTime() + SPAM_WINDOW_MS - now) / 60000)
+    );
+    const err = new Error(`Vänta ${waitMinutes} minuter innan nästa rapport`);
+    err.code = 'SPAM';
+    err.waitMinutes = waitMinutes;
+    throw err;
   }
 
   const { error } = await supabase.from('reports').insert({
