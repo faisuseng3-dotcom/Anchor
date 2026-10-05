@@ -7,7 +7,7 @@ export default ({ config }) => ({
       '@rnmapbox/maps',
       {
         RNMapboxMapsVersion: '11.0.0',
-        RNMapboxMapsDownloadToken: process.env.EXPO_PUBLIC_MAPBOX_TOKEN,
+        RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOAD_TOKEN,
       },
     ],
   ],
