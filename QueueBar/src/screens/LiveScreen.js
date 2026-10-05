@@ -89,7 +89,7 @@ export default function LiveScreen() {
               );
             })
           )}
-          <View style={{ height: 24 }} />
+          <View style={{ height: 110 }} />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

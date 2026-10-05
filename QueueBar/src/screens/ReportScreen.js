@@ -9,7 +9,7 @@ import { getUserId } from '../lib/userId';
 const OPTIONS = ['none', 'short', 'medium', 'long'];
 const RESET_MS = 2000;
 
-export default function ReportScreen({ initialVenue = null }) {
+export default function ReportScreen({ initialVenue = null, route }) {
   const [step, setStep] = useState(initialVenue ? 2 : 1);
   const [venue, setVenue] = useState(initialVenue);
   const [query, setQuery] = useState('');
@@ -18,6 +18,17 @@ export default function ReportScreen({ initialVenue = null }) {
   const resetTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(resetTimer.current), []);
+
+  // Venue sent from the map card jumps straight to step 2
+  const routeVenue = route?.params?.venue;
+  useEffect(() => {
+    if (routeVenue) {
+      clearTimeout(resetTimer.current);
+      setVenue(routeVenue);
+      setError(null);
+      setStep(2);
+    }
+  }, [routeVenue]);
 
   const venues = VENUES.filter(v => {
     const q = query.trim().toLowerCase();
@@ -89,7 +100,7 @@ export default function ReportScreen({ initialVenue = null }) {
                   <Text style={styles.cardArea}>{v.area}</Text>
                 </TouchableOpacity>
               ))}
-              <View style={{ height: 24 }} />
+              <View style={{ height: 110 }} />
             </ScrollView>
           </View>
         )}

@@ -169,7 +169,7 @@ export default function ProfileScreen({ onDataDeleted }) {
               <Text style={styles.deleteText}>Radera min data</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ height: 24 }} />
+          <View style={{ height: 110 }} />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

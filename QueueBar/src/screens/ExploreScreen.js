@@ -13,7 +13,7 @@ const FILTERS = [
   { key: 'happy', label: 'Happy Hour' },
 ];
 
-export default function ExploreScreen({ onVenuePress }) {
+export default function ExploreScreen({ navigation, onVenuePress }) {
   const [reports, setReports] = useState([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
@@ -81,7 +81,7 @@ export default function ExploreScreen({ onVenuePress }) {
               <TouchableOpacity
                 key={venue.id}
                 style={styles.card}
-                onPress={() => onVenuePress && onVenuePress(venue)}
+                onPress={() => (onVenuePress ? onVenuePress(venue) : navigation?.navigate('Karta', { venue }))}
               >
                 <View style={styles.cardTop}>
                   <Text style={styles.venueName}>{venue.name}</Text>
@@ -105,7 +105,7 @@ export default function ExploreScreen({ onVenuePress }) {
               </TouchableOpacity>
             );
           })}
-          <View style={{ height: 24 }} />
+          <View style={{ height: 110 }} />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

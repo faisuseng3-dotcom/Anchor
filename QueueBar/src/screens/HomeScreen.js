@@ -7,9 +7,14 @@ import MapVenueCard from '../components/MapVenueCard';
 import { loadReports, subscribeToReports } from '../lib/supabase';
 import VENUES, { computeStatus, getStatusLabel, getStatusColor } from '../lib/venues';
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation, route }) {
   const [reports, setReports] = useState([]);
   const [selectedVenue, setSelectedVenue] = useState(null);
+
+  // Venue chosen on another tab (e.g. Utforska) opens its card on the map
+  useEffect(() => {
+    if (route?.params?.venue) setSelectedVenue(route.params.venue);
+  }, [route?.params?.venue]);
 
   useEffect(() => {
     const refresh = () => loadReports().then(setReports);
@@ -19,7 +24,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <LinearGradient colors={['#4F9CF9', '#1E5FD8', '#0B2F7A']} style={styles.container}>
+    <LinearGradient colors={['#C4D8F8', '#4878C8', '#040C28']} style={styles.container}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <Text style={styles.logo}>QueueBar</Text>
@@ -31,7 +36,7 @@ export default function HomeScreen() {
             venue={selectedVenue}
             reports={reports}
             onClose={() => setSelectedVenue(null)}
-            onReport={() => {}}
+            onReport={v => navigation?.navigate('Rapportera', { venue: v })}
             onDetails={() => {}}
           />
         </View>
@@ -64,7 +69,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             );
           })}
-          <View style={{ height: 24 }} />
+          <View style={{ height: 110 }} />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

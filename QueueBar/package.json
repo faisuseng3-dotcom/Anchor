@@ -6,6 +6,8 @@
     "@expo-google-fonts/space-grotesk": "^0.4.1",
     "@expo/ui": "~57.0.21",
     "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-navigation/bottom-tabs": "^7.20.0",
+    "@react-navigation/native": "^7.5.0",
     "@rnmapbox/maps": "^10.3.6",
     "@supabase/supabase-js": "^2.117.2",
     "expo": "~57.0.26",
@@ -17,7 +19,6 @@
     "expo-linear-gradient": "^57.0.2",
     "expo-linking": "~57.0.11",
     "expo-location": "^57.0.20",
-    "expo-router": "~57.0.24",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
@@ -40,11 +41,11 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "android": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start --android",
+    "ios": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start --ios",
+    "web": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start --web",
     "lint": "expo lint"
   },
   "private": true
