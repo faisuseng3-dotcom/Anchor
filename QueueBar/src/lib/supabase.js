@@ -119,3 +119,31 @@ export async function deleteAllUserData(userId) {
     if (error) throw error;
   }
 }
+
+// Profile row for stats: { points, created_at } (or null).
+export async function loadProfile(userId) {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    console.warn('loadProfile failed', error.message);
+    return null;
+  }
+  return data;
+}
+
+// The user's own reports (including expired ones), newest first.
+export async function loadUserReports(userId) {
+  const { data, error } = await supabase
+    .from('reports')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('loadUserReports failed', error.message);
+    return [];
+  }
+  return data ?? [];
+}
