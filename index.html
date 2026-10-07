@@ -167,11 +167,27 @@
     .pf-row small { display: block; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
     .pf-row .arrow { color: rgba(255,255,255,0.5); }
     .pf-row.danger { color: #FF5A5A; font-weight: 600; }
+
+    @keyframes bgFlow {
+      0%   { background-position: 50% 0%; }
+      50%  { background-position: 50% 100%; }
+      100% { background-position: 50% 0%; }
+    }
+    #screen-home    { background-size: 100% 150% !important; animation: bgFlow 14s ease infinite; }
+    #screen-explore { background-size: 100% 150% !important; animation: bgFlow 12s ease infinite; }
+    #screen-live    { background-size: 100% 150% !important; animation: bgFlow 8s ease infinite; }
+    #screen-report  { background-size: 100% 150% !important; animation: bgFlow 11s ease infinite; }
+    #screen-profile { background-size: 100% 150% !important; animation: bgFlow 15s ease infinite; }
+
+    .screen { z-index: 0; overflow-x: hidden; }
+    .glow { position: absolute; top: -90px; right: -90px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.28), rgba(255,255,255,0) 70%); pointer-events: none; z-index: -1; }
+    .vcard { transition: transform 0.2s ease, border-color 0.2s ease; }
   </style>
 </head>
 <body>
   <div id="app">
     <section id="screen-home" class="screen active">
+      <div class="glow"></div>
       <h1>QueueBar</h1>
       <div class="map-box">🗺️ Karta</div>
       <div class="section-title">NÄRA DIG</div>
@@ -179,6 +195,7 @@
     </section>
 
     <section id="screen-explore" class="screen">
+      <div class="glow"></div>
       <h1>Utforska</h1>
       <div class="search-box">
         <span>🔍</span>
@@ -194,6 +211,7 @@
     </section>
 
     <section id="screen-live" class="screen">
+      <div class="glow"></div>
       <div class="live-header">
         <h1>Live</h1>
         <span id="live-dot"></span>
@@ -202,6 +220,7 @@
     </section>
 
     <section id="screen-report" class="screen">
+      <div class="glow"></div>
       <div class="rp-wrap">
         <h1>Rapportera</h1>
         <p class="rp-sub">Hjälp andra — tar 5 sekunder</p>
@@ -241,6 +260,7 @@
     </section>
 
     <section id="screen-profile" class="screen">
+      <div class="glow"></div>
       <div class="pf-head">
         <div class="pf-avatar">👤</div>
         <div class="pf-name">Anonym Användare</div>
@@ -405,6 +425,14 @@
       return Math.floor(mins / 60) + ' tim sedan';
     }
 
+    function showToast(msg) {
+      var t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111;color:white;border-radius:12px;padding:12px 20px;font-family:Syne;font-size:13px;font-weight:500;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,0.3);white-space:nowrap;';
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 3000);
+    }
+
     var favorites = JSON.parse(localStorage.getItem('qb_favorites') || '[]');
 
     function isFavorite(venueId) { return favorites.indexOf(venueId) > -1; }
@@ -451,7 +479,7 @@
       var color = getStatusColor(status);
       var reports = allReports.filter(function(r) { return r.venue_id === venue.id; });
       return '' +
-        '<div class="vcard" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'))">' +
+        '<div class="vcard" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'))" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.borderColor=\'rgba(255,255,255,0.35)\';" onmouseout="this.style.transform=\'\';this.style.borderColor=\'rgba(255,255,255,0.18)\';">' +
         '<div class="vcard-top"><span class="vcard-name">' + venue.name + '</span>' +
         '<span class="badge">' + (venue.type === 'bar' ? BAR_SVG : CLUB_SVG) + '</span></div>' +
         '<button class="heart-btn' + (isFavorite(venue.id) ? ' fav' : '') + '" onclick="toggleFavorite(event, \'' + venue.id + '\')" aria-label="Favorit">' +
@@ -541,6 +569,7 @@
         await supabase.from('favorites').insert({ venue_id: venueId, user_id: getUserId() });
       }
       localStorage.setItem('qb_favorites', JSON.stringify(favorites));
+      showToast(favorites.includes(venueId) ? '❤️ Sparad som favorit' : '💔 Borttagen från favoriter');
       renderHomeVenues();
       if (typeof renderExploreVenues === 'function') renderExploreVenues();
     }
@@ -675,6 +704,7 @@
       if (!selectedRV) return;
       try {
         await submitReport(selectedRV.id, selectedRV.name, status);
+        showToast('✅ Rapport skickad! +10 poäng');
         document.getElementById('rs2').style.display = 'none';
         document.getElementById('rs3').style.display = 'flex';
         document.getElementById('rp3').style.cssText = 'width:32px;height:32px;border-radius:50%;background:#111;color:white;display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;';
