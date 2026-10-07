@@ -271,6 +271,63 @@
 
     renderHomeVenues();
 
+    // Set by the map code once it exists; null until then
+    var map = null;
+    var venueGeoJSON = null;
+
+    function getUserId() {
+      var id = localStorage.getItem('qb_user_id');
+      if (!id) {
+        id = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('qb_user_id', id);
+      }
+      return id;
+    }
+
+    async function loadReports() {
+      var now = new Date().toISOString();
+      var result = await supabase.from('reports').select('*').gte('expires_at', now).order('created_at', { ascending: false });
+      if (result.data) {
+        allReports = result.data;
+        updateMapStatuses();
+        renderHomeVenues();
+        if (typeof renderExploreVenues === 'function') renderExploreVenues();
+        if (typeof renderLiveFeed === 'function') renderLiveFeed();
+        if (typeof updateProfileStats === 'function') updateProfileStats();
+      }
+    }
+
+    function updateMapStatuses() {
+      if (!map || !venueGeoJSON || !map.getSource('venues')) return;
+      var updated = venueGeoJSON.features.map(function(f) {
+        return Object.assign({}, f, { properties: Object.assign({}, f.properties, { status: computeStatus(f.properties.id, allReports) }) });
+      });
+      map.getSource('venues').setData({ type: 'FeatureCollection', features: updated });
+    }
+
+    function subscribeToReports() {
+      supabase.channel('reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, function() { loadReports(); }).subscribe();
+    }
+
+    async function submitReport(venueId, venueName, queueStatus) {
+      var userId = getUserId();
+      var now = new Date();
+      var recent = allReports.filter(function(r) { return r.user_id === userId && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
+      if (recent.length > 0) {
+        var wait = Math.ceil(20 - (now - new Date(recent[0].created_at)) / 60000);
+        throw new Error('Vänta ' + wait + ' minuter innan nästa rapport');
+      }
+      var result = await supabase.from('reports').insert({ venue_id: venueId, venue_name: venueName, queue_status: queueStatus, user_id: userId, expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString() });
+      if (result.error) throw result.error;
+      await supabase.rpc('increment_points', { p_user_id: userId, p_points: 10 });
+      await loadReports();
+      return true;
+    }
+
+    loadReports();
+    subscribeToReports();
+    setInterval(loadReports, 30000);
+
     function showScreen(name) {
       document.querySelectorAll('.screen').forEach(function (el) {
         el.classList.toggle('active', el.id === 'screen-' + name);
