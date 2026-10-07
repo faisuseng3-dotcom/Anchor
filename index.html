@@ -374,6 +374,8 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3d21mc2pzcmprdGVrbWJnYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjMwNzIsImV4cCI6MjEwNTY5OTA3Mn0.i5kS3ipzQ0mSzvVnjPbMiotVVUDYcpdTzQ5_HdCQCqI';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    var userHistory = [];
+
     const VENUES = [
       { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.3349, lng: 18.0735, closing: '03:00' },
       { id: 'akkurat', name: 'Akkurat Bar & Restaurang', address: 'Hornsgatan 18', area: 'Slussen', type: 'bar', lat: 59.3190, lng: 18.0640, closing: '01:00' },
@@ -927,9 +929,11 @@
 
     function updateProfileStats() {
       var userId = getUserId();
-      var mine = allReports.filter(function(r) {
-        return r.user_id === userId;
-      });
+      var mine = userHistory.length > 0
+        ? userHistory
+        : allReports.filter(function(r) {
+            return r.user_id === userId;
+          });
       var pts = mine.length * 10;
 
       var sr = document.getElementById('stat-r');
@@ -997,6 +1001,20 @@
       }
     }
 
+    async function loadUserHistory() {
+      var userId = getUserId();
+      var result = await supabase
+        .from('reports')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (result.data && result.data.length > 0) {
+        userHistory = result.data;
+        updateProfileStats();
+      }
+    }
+
     function showPrivacyPolicy() {
       alert('Integritetspolicy\n\nQueueBar sparar ett anonymt ID, körapporter och favoriter.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
     }
@@ -1015,6 +1033,9 @@
         el.classList.toggle('active', el.dataset.screen === name);
       });
       if (name === 'home' && map) map.resize();
+      if (name === 'profile') {
+        loadUserHistory();
+      }
     }
 
     checkConsent();
