@@ -106,6 +106,15 @@
     #ob-skip { background: none; border: 0; margin-top: 14px; font: inherit; font-size: 14px; color: rgba(255,255,255,0.45); cursor: pointer; }
 
     .delete-btn { margin-top: 24px; background: none; border: 0; color: #FFB4B4; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+    .fbtn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:999px; padding:8px 16px; color:rgba(255,255,255,0.7); font-family:Syne; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .fbtn.active { background:#111111; color:white; border-color:#111111; }
+    .search-box { flex-shrink: 0; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); border-radius: 14px; padding: 0 14px; margin-bottom: 12px; }
+    .search-box input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; padding: 12px 0; }
+    .search-box input::placeholder { color: rgba(255,255,255,0.55); }
+    .filter-row { flex-shrink: 0; display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 2px; scrollbar-width: none; }
+    .filter-row::-webkit-scrollbar { display: none; }
+    .empty { color: rgba(255,255,255,0.6); text-align: center; margin-top: 32px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -119,7 +128,17 @@
 
     <section id="screen-explore" class="screen">
       <h1>Utforska</h1>
-      <p class="placeholder">Sök och filtrera barer och klubbar</p>
+      <div class="search-box">
+        <span>🔍</span>
+        <input id="explore-search" type="search" placeholder="Sök bar, klubb eller område" autocomplete="off" oninput="filterExplore()">
+      </div>
+      <div class="filter-row">
+        <button class="fbtn active" onclick="setFilter('all', this)">Alla</button>
+        <button class="fbtn" onclick="setFilter('bar', this)">Barer</button>
+        <button class="fbtn" onclick="setFilter('klubb', this)">Klubbar</button>
+        <button class="fbtn" onclick="setFilter('happy', this)">Happy Hour</button>
+      </div>
+      <div id="explore-list"></div>
     </section>
 
     <section id="screen-live" class="screen">
@@ -455,6 +474,32 @@
       localStorage.clear();
       location.reload();
     }
+
+    var exploreFilter = 'all';
+
+    function setFilter(f, btn) {
+      exploreFilter = f;
+      document.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      renderExploreVenues();
+    }
+
+    function filterExplore() { renderExploreVenues(); }
+
+    function renderExploreVenues() {
+      var q = (document.getElementById('explore-search') || {}).value || '';
+      q = q.toLowerCase();
+      var el = document.getElementById('explore-list');
+      if (!el) return;
+      var list = VENUES.filter(function(v) {
+        var ms = !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q);
+        var mf = exploreFilter === 'all' || v.type === exploreFilter || exploreFilter === 'happy';
+        return ms && mf;
+      });
+      el.innerHTML = list.length ? list.map(renderVenueCard).join('') : '<div class="empty">Inga ställen hittades</div>';
+    }
+
+    renderExploreVenues();
 
     function showScreen(name) {
       document.querySelectorAll('.screen').forEach(function (el) {
