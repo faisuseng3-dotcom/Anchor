@@ -78,6 +78,34 @@
     .vc-primary { background: #111; color: #fff; margin-bottom: 8px; }
     .vc-actions { display: flex; gap: 8px; }
     .vc-secondary { background: #F0F2F5; color: #111; font-weight: 600; }
+
+    @keyframes heartBounce { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 60% { transform: scale(0.9); } 100% { transform: scale(1); } }
+    .heart-btn { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: 0; cursor: pointer; z-index: 1; }
+    .heart-btn svg { width: 22px; height: 22px; stroke: rgba(255,255,255,0.55); stroke-width: 1.8; stroke-linejoin: round; fill: none; }
+    .heart-btn.fav svg { fill: #E8001C; stroke: #E8001C; }
+    .vcard-top { padding-right: 36px; }
+
+    #consent-modal { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 24px; }
+    .consent-card { width: min(342px, 100%); background: #fff; color: #111; border-radius: 20px; padding: 24px; text-align: center; }
+    .consent-icon { font-size: 36px; margin-bottom: 8px; }
+    .consent-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; margin-bottom: 8px; }
+    .consent-text { font-size: 14px; color: #4B5563; margin-bottom: 14px; }
+    .consent-list { text-align: left; font-size: 14px; margin: 0 auto 20px; display: inline-block; }
+    .consent-list div { margin-bottom: 6px; }
+    .consent-accept { width: 100%; background: #111; color: #fff; border: 0; border-radius: 12px; padding: 14px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .consent-decline { width: 100%; background: none; border: 0; padding: 14px 14px 0; font: inherit; font-size: 14px; color: #9CA3AF; cursor: pointer; }
+
+    #onboarding { display: none; position: fixed; inset: 0; z-index: 60; background: #000; flex-direction: column; align-items: center; justify-content: center; padding: 32px 32px 48px; text-align: center; }
+    #ob-emoji { font-size: 72px; margin-bottom: 24px; }
+    #ob-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 30px; margin-bottom: 12px; }
+    #ob-body { font-size: 16px; line-height: 24px; color: rgba(255,255,255,0.65); max-width: 320px; margin-bottom: 40px; }
+    #ob-dots { display: flex; gap: 8px; margin-bottom: 24px; }
+    .ob-dot { width: 8px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.25); transition: width 0.2s; }
+    .ob-dot.active { width: 24px; background: #fff; }
+    #ob-btn { width: min(326px, 100%); background: #fff; color: #000; border: 0; border-radius: 14px; padding: 16px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+    #ob-skip { background: none; border: 0; margin-top: 14px; font: inherit; font-size: 14px; color: rgba(255,255,255,0.45); cursor: pointer; }
+
+    .delete-btn { margin-top: 24px; background: none; border: 0; color: #FFB4B4; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -107,6 +135,7 @@
     <section id="screen-profile" class="screen">
       <h1>Profil</h1>
       <p class="placeholder">Anonym Användare</p>
+      <button class="delete-btn" onclick="if (confirm('Radera all din data? Det går inte att ångra.')) deleteAllUserData()">Radera min data</button>
     </section>
 
     <nav id="bottom-nav">
@@ -151,6 +180,30 @@
       <button class="vc-btn vc-secondary" onclick="openDirections()">📍 Vägbeskrivning</button>
       <button class="vc-btn vc-secondary" onclick="closeVenueCard()">← Tillbaka</button>
     </div>
+  </div>
+
+  <div id="consent-modal">
+    <div class="consent-card">
+      <div class="consent-icon">🔒</div>
+      <div class="consent-title">Innan du börjar</div>
+      <div class="consent-text">Vi sparar ett anonymt ID på din enhet. Inget namn eller email.</div>
+      <div class="consent-list">
+        <div>✓ Anonymt ID</div>
+        <div>✓ Dina körapporter</div>
+        <div>✓ Din position (bara om du tillåter)</div>
+      </div>
+      <button class="consent-accept" onclick="acceptConsent()">Jag förstår och godkänner</button>
+      <button class="consent-decline" onclick="declineConsent()">Använd utan att spara data</button>
+    </div>
+  </div>
+
+  <div id="onboarding">
+    <div id="ob-emoji"></div>
+    <div id="ob-title"></div>
+    <div id="ob-body"></div>
+    <div id="ob-dots"></div>
+    <button id="ob-btn" onclick="obNext()"></button>
+    <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
   </div>
 
   <script>
@@ -212,6 +265,10 @@
       return Math.floor(mins / 60) + ' tim sedan';
     }
 
+    var favorites = JSON.parse(localStorage.getItem('qb_favorites') || '[]');
+
+    function isFavorite(venueId) { return favorites.indexOf(venueId) > -1; }
+
     var activeVenue = null;
     var allReports = [];
 
@@ -257,6 +314,8 @@
         '<div class="vcard" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'))">' +
         '<div class="vcard-top"><span class="vcard-name">' + venue.name + '</span>' +
         '<span class="badge">' + (venue.type === 'bar' ? BAR_SVG : CLUB_SVG) + '</span></div>' +
+        '<button class="heart-btn' + (isFavorite(venue.id) ? ' fav' : '') + '" onclick="toggleFavorite(event, \'' + venue.id + '\')" aria-label="Favorit">' +
+        '<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>' +
         (label ? '<div class="vcard-status" style="color:' + color + '">' + label + '</div>' : '<div class="vcard-none">Ingen rapport</div>') +
         (reports.length > 0 ? '<div class="vcard-count">' + reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + '</div>' : '') +
         '<div class="vcard-sep"></div>' +
@@ -328,6 +387,75 @@
     subscribeToReports();
     setInterval(loadReports, 30000);
 
+    async function toggleFavorite(event, venueId) {
+      event.stopPropagation();
+      var btn = event.currentTarget;
+      btn.style.animation = 'none';
+      setTimeout(function() { btn.style.animation = 'heartBounce 0.4s ease'; }, 10);
+      var idx = favorites.indexOf(venueId);
+      if (idx > -1) {
+        favorites.splice(idx, 1);
+        await supabase.from('favorites').delete().eq('venue_id', venueId).eq('user_id', getUserId());
+      } else {
+        favorites.push(venueId);
+        await supabase.from('favorites').insert({ venue_id: venueId, user_id: getUserId() });
+      }
+      localStorage.setItem('qb_favorites', JSON.stringify(favorites));
+      renderHomeVenues();
+      if (typeof renderExploreVenues === 'function') renderExploreVenues();
+    }
+
+    function checkConsent() {
+      if (!localStorage.getItem('qb_consent')) {
+        document.getElementById('consent-modal').style.display = 'flex';
+      } else if (!localStorage.getItem('qb_onboarding_done')) {
+        showOnboarding();
+      }
+    }
+    function acceptConsent() {
+      localStorage.setItem('qb_consent', 'true');
+      document.getElementById('consent-modal').style.display = 'none';
+      showOnboarding();
+    }
+    function declineConsent() {
+      localStorage.setItem('qb_consent', 'declined');
+      document.getElementById('consent-modal').style.display = 'none';
+    }
+
+    var OB = [
+      { emoji: '🗺️', title: 'Se kön i realtid', body: 'Kartan visar köläget utanför alla barer och klubbar just nu.' },
+      { emoji: '📢', title: 'Rapportera på 5 sek', body: 'Är du utanför en bar? Tryck rapportera och välj kölängd.' },
+      { emoji: '📡', title: 'Vad händer just nu', body: 'Live-feeden visar de senaste rapporterna från folk som är ute.' },
+      { emoji: '❤️', title: 'Följ dina favoriter', body: 'Spara dina favoritbarer för snabbare koll på köläget.' }
+    ];
+    var obStep = 0;
+
+    function showOnboarding() {
+      document.getElementById('onboarding').style.display = 'flex';
+      obStep = 0; obRender();
+    }
+    function obRender() {
+      var s = OB[obStep];
+      document.getElementById('ob-emoji').textContent = s.emoji;
+      document.getElementById('ob-title').textContent = s.title;
+      document.getElementById('ob-body').textContent = s.body;
+      document.getElementById('ob-btn').textContent = obStep === OB.length - 1 ? '🚀 Börja!' : 'Nästa →';
+      document.getElementById('ob-dots').innerHTML = OB.map(function(_, i) { return '<span class="ob-dot' + (i === obStep ? ' active' : '') + '"></span>'; }).join('');
+    }
+    function obNext() { if (obStep < OB.length - 1) { obStep++; obRender(); } else obSkip(); }
+    function obSkip() { localStorage.setItem('qb_onboarding_done', 'true'); document.getElementById('onboarding').style.display = 'none'; }
+
+    async function deleteAllUserData() {
+      var userId = getUserId();
+      await Promise.all([
+        supabase.from('reports').delete().eq('user_id', userId),
+        supabase.from('favorites').delete().eq('user_id', userId),
+        supabase.from('user_profiles').delete().eq('user_id', userId)
+      ]);
+      localStorage.clear();
+      location.reload();
+    }
+
     function showScreen(name) {
       document.querySelectorAll('.screen').forEach(function (el) {
         el.classList.toggle('active', el.id === 'screen-' + name);
@@ -336,6 +464,8 @@
         el.classList.toggle('active', el.dataset.screen === name);
       });
     }
+
+    checkConsent();
   </script>
 </body>
 </html>
