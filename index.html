@@ -51,6 +51,7 @@
       to { transform: translateX(-50%) translateY(0); }
     }
 
+    #map { width: 100%; height: 260px; border-radius: 16px; overflow: hidden; flex-shrink: 0; margin-bottom: 16px; }
     .map-box { height: 280px; flex-shrink: 0; border-radius: 16px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; margin-bottom: 16px; }
     .section-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 1.5px; margin-bottom: 12px; }
 
@@ -189,7 +190,7 @@
     <section id="screen-home" class="screen active">
       <div class="glow"></div>
       <h1>QueueBar</h1>
-      <div class="map-box">🗺️ Karta</div>
+      <div id="map"></div>
       <div class="section-title">NÄRA DIG</div>
       <div id="home-venue-list"></div>
     </section>
@@ -264,13 +265,13 @@
       <div class="pf-head">
         <div class="pf-avatar">👤</div>
         <div class="pf-name">Anonym Användare</div>
-        <span class="pf-level">Ny</span>
+        <span class="pf-level level-badge">Ny</span>
       </div>
 
       <div class="pf-stats">
         <div class="pf-stat"><b id="stat-r">0</b><span>RAPPORTER</span></div>
         <div class="pf-stat"><b id="stat-p">0</b><span>POÄNG</span></div>
-        <div class="pf-stat"><b id="stat-d">1</b><span>DAGAR</span></div>
+        <div class="pf-stat"><b id="stat-d" class="days-count">1</b><span>DAGAR</span></div>
       </div>
 
       <div class="pf-card">
@@ -280,7 +281,7 @@
 
       <div class="pf-section">
         <div class="rs-label">DINA BADGES</div>
-        <div class="pf-badges">
+        <div class="pf-badges badges-row">
           <div class="pf-badge"><i>🔒</i>Första rapport</div>
           <div class="pf-badge"><i>🔒</i>10 rapporter</div>
           <div class="pf-badge"><i>🔒</i>Stamgäst</div>
@@ -367,11 +368,13 @@
   </div>
 
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
+    if (window.mapboxgl) mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
 
     const SUPABASE_URL = 'https://awwmfsjsrjktekmbgadx.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3d21mc2pzcmprdGVrbWJnYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjMwNzIsImV4cCI6MjEwNTY5OTA3Mn0.i5kS3ipzQ0mSzvVnjPbMiotVVUDYcpdTzQ5_HdCQCqI';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var userHistory = [];
 
     const VENUES = [
       { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.3349, lng: 18.0735, closing: '03:00' },
@@ -498,9 +501,199 @@
 
     renderHomeVenues();
 
-    // Set by the map code once it exists; null until then
     var map = null;
-    var venueGeoJSON = null;
+
+    var venueGeoJSON = {
+      type: 'FeatureCollection',
+      features: VENUES.map(function(v) {
+        return {
+          type: 'Feature',
+          id: v.id,
+          geometry: {
+            type: 'Point',
+            coordinates: [v.lng, v.lat]
+          },
+          properties: {
+            id: v.id,
+            name: v.name,
+            type: v.type,
+            status: 'unknown'
+          }
+        };
+      })
+    };
+
+    // If Mapbox can't start (blocked CDN, no WebGL) the rest of the app must still work
+    try {
+      map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [18.0686, 59.3350],
+        zoom: 12,
+        pitchWithRotate: false,
+        dragRotate: false
+      });
+      map.touchZoomRotate.disableRotation();
+    } catch (err) {
+      console.warn('Mapbox kunde inte startas', err);
+      map = null;
+    }
+
+    if (map) map.on('load', function() {
+      // Lägg till source
+      map.addSource('venues', {
+        type: 'geojson',
+        data: venueGeoJSON,
+        cluster: true,
+        clusterMaxZoom: 13,
+        clusterRadius: 40
+      });
+
+      // Cluster-cirklar
+      map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'venues',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#111111',
+          'circle-radius': [
+            'step', ['get', 'point_count'],
+            20, 10, 26, 30, 32
+          ],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': 'white'
+        }
+      });
+
+      // Cluster-siffror
+      map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'venues',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-size': 13
+        },
+        paint: { 'text-color': 'white' }
+      });
+
+      // Venue-cirklar
+      map.addLayer({
+        id: 'venues-circle',
+        type: 'circle',
+        source: 'venues',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': '#111111',
+          'circle-radius': 16,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': 'white'
+        }
+      });
+
+      // Venue-label (B=bar, K=klubb)
+      map.addLayer({
+        id: 'venues-label',
+        type: 'symbol',
+        source: 'venues',
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'text-field': [
+            'match', ['get', 'type'],
+            'bar', 'B', 'K'
+          ],
+          'text-size': 11,
+          'text-font': [
+            'DIN Offc Pro Bold',
+            'Arial Unicode MS Bold'
+          ],
+          'text-allow-overlap': true
+        },
+        paint: { 'text-color': 'white' }
+      });
+
+      // Status-text under markör
+      map.addLayer({
+        id: 'venues-status',
+        type: 'symbol',
+        source: 'venues',
+        filter: [
+          'all',
+          ['!', ['has', 'point_count']],
+          ['!=', ['get', 'status'], 'unknown']
+        ],
+        layout: {
+          'text-field': [
+            'match', ['get', 'status'],
+            'none', 'Ingen kö',
+            'short', '15 min',
+            'medium', '25 min',
+            'long', '30+ min',
+            ''
+          ],
+          'text-size': 10,
+          'text-offset': [0, 2.2],
+          'text-anchor': 'top',
+          'text-allow-overlap': true,
+          'text-font': [
+            'DIN Offc Pro Medium',
+            'Arial Unicode MS Regular'
+          ]
+        },
+        paint: {
+          'text-color': [
+            'match', ['get', 'status'],
+            'none', '#00875A',
+            'short', '#D97706',
+            'medium', '#C05500',
+            'long', '#E8001C',
+            '#9CA3AF'
+          ],
+          'text-halo-color': 'rgba(255,255,255,0.9)',
+          'text-halo-width': 1.5
+        }
+      });
+
+      // Klick på cluster
+      map.on('click', 'clusters', function(e) {
+        var id = e.features[0].properties.cluster_id;
+        var coords = e.features[0].geometry.coordinates;
+        map.getSource('venues').getClusterExpansionZoom(
+          id, function(err, zoom) {
+            if (!err) map.easeTo({
+              center: coords,
+              zoom: Math.min(zoom + 1, 15),
+              duration: 500
+            });
+          }
+        );
+      });
+
+      // Klick på venue
+      map.on('click', 'venues-circle', function(e) {
+        var venue = getVenueById(
+          e.features[0].properties.id
+        );
+        if (venue) openVenueCard(venue);
+      });
+
+      // Cursor
+      ['venues-circle', 'clusters'].forEach(
+        function(l) {
+          map.on('mouseenter', l, function() {
+            map.getCanvas().style.cursor = 'pointer';
+          });
+          map.on('mouseleave', l, function() {
+            map.getCanvas().style.cursor = '';
+          });
+        }
+      );
+
+      // Ladda rapporter efter kartan är klar
+      loadReports();
+    });
 
     function getUserId() {
       var id = localStorage.getItem('qb_user_id');
@@ -525,11 +718,25 @@
     }
 
     function updateMapStatuses() {
-      if (!map || !venueGeoJSON || !map.getSource('venues')) return;
-      var updated = venueGeoJSON.features.map(function(f) {
-        return Object.assign({}, f, { properties: Object.assign({}, f.properties, { status: computeStatus(f.properties.id, allReports) }) });
+      if (!map || !venueGeoJSON) return;
+      if (!map.getSource('venues')) return;
+      var updated = venueGeoJSON.features.map(
+        function(f) {
+          return Object.assign({}, f, {
+            properties: Object.assign(
+              {}, f.properties, {
+                status: computeStatus(
+                  f.properties.id, allReports
+                )
+              }
+            )
+          });
+        }
+      );
+      map.getSource('venues').setData({
+        type: 'FeatureCollection',
+        features: updated
       });
-      map.getSource('venues').setData({ type: 'FeatureCollection', features: updated });
     }
 
     function subscribeToReports() {
@@ -551,7 +758,7 @@
       return true;
     }
 
-    loadReports();
+    if (!map) loadReports(); // otherwise map.on('load') does it
     subscribeToReports();
     setInterval(loadReports, 30000);
 
@@ -722,16 +929,90 @@
 
     function updateProfileStats() {
       var userId = getUserId();
-      var mine = allReports.filter(function(r) { return r.user_id === userId; });
+      var mine = userHistory.length > 0
+        ? userHistory
+        : allReports.filter(function(r) {
+            return r.user_id === userId;
+          });
       var pts = mine.length * 10;
+
       var sr = document.getElementById('stat-r');
       var sp = document.getElementById('stat-p');
-      var pl = document.getElementById('plabel');
-      var pb = document.getElementById('pbar');
       if (sr) sr.textContent = mine.length;
       if (sp) sp.textContent = pts;
-      if (pl) pl.textContent = pts + ' / 50 poäng till nästa nivå';
-      if (pb) pb.style.width = Math.min(100, pts / 50 * 100) + '%';
+
+      // Nivåsystem
+      var levels = [
+        { name: 'Ny', min: 0, next: 50 },
+        { name: 'Aktiv', min: 50, next: 150 },
+        { name: 'Stamgäst', min: 150, next: 400 },
+        { name: 'Insider', min: 400, next: 1000 },
+        { name: 'Legend', min: 1000, next: 9999 }
+      ];
+      var lvl = levels[0];
+      for (var i = 0; i < levels.length; i++) {
+        if (pts >= levels[i].min) lvl = levels[i];
+      }
+
+      // Nivå-badge
+      var badge = document.querySelector(
+        '#screen-profile .level-badge'
+      );
+      if (badge) badge.textContent = lvl.name;
+
+      // Progressbar
+      var pct = Math.min(100,
+        ((pts - lvl.min) / (lvl.next - lvl.min)) * 100
+      );
+      var pl = document.getElementById('plabel');
+      var pb = document.getElementById('pbar');
+      if (pl) pl.textContent = pts + ' / ' + lvl.next + ' poäng till nästa nivå';
+      if (pb) pb.style.width = pct + '%';
+
+      // Dagar aktiv
+      var daysEl = document.querySelector(
+        '#screen-profile .days-count'
+      );
+      if (daysEl && mine.length > 0) {
+        var first = new Date(mine[mine.length - 1].created_at);
+        var days = Math.max(1, Math.ceil(
+          (new Date() - first) / 86400000
+        ));
+        daysEl.textContent = days;
+      }
+
+      // Badges
+      var badgeRow = document.querySelector(
+        '#screen-profile .badges-row'
+      );
+      if (badgeRow) {
+        var defs = [
+          { emoji: '🏅', name: 'Första rapport', req: 1 },
+          { emoji: '🔥', name: '10 rapporter', req: 10 },
+          { emoji: '⭐', name: 'Stamgäst', req: 25 },
+          { emoji: '👑', name: 'Legend', req: 100 }
+        ];
+        badgeRow.innerHTML = defs.map(function(b) {
+          var on = mine.length >= b.req;
+          return '<div style="background:rgba(255,255,255,' + (on?'0.15':'0.08') + ');border:1px solid rgba(255,255,255,' + (on?'0.4':'0.15') + ');border-radius:14px;padding:16px;text-align:center;min-width:80px;">' +
+            '<div style="font-size:24px;margin-bottom:8px;">' + (on?b.emoji:'🔒') + '</div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,' + (on?'0.8':'0.4') + ');font-family:Syne;">' + b.name + '</div></div>';
+        }).join('');
+      }
+    }
+
+    async function loadUserHistory() {
+      var userId = getUserId();
+      var result = await supabase
+        .from('reports')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (result.data && result.data.length > 0) {
+        userHistory = result.data;
+        updateProfileStats();
+      }
     }
 
     function showPrivacyPolicy() {
@@ -751,6 +1032,10 @@
       document.querySelectorAll('.tab').forEach(function (el) {
         el.classList.toggle('active', el.dataset.screen === name);
       });
+      if (name === 'home' && map) map.resize();
+      if (name === 'profile') {
+        loadUserHistory();
+      }
     }
 
     checkConsent();
