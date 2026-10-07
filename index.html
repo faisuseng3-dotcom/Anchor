@@ -105,7 +105,6 @@
     #ob-btn { width: min(326px, 100%); background: #fff; color: #000; border: 0; border-radius: 14px; padding: 16px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
     #ob-skip { background: none; border: 0; margin-top: 14px; font: inherit; font-size: 14px; color: rgba(255,255,255,0.45); cursor: pointer; }
 
-    .delete-btn { margin-top: 24px; background: none; border: 0; color: #FFB4B4; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
     .fbtn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:999px; padding:8px 16px; color:rgba(255,255,255,0.7); font-family:Syne; font-size:13px; cursor:pointer; white-space:nowrap; }
     .fbtn.active { background:#111111; color:white; border-color:#111111; }
@@ -145,6 +144,29 @@
     .rs-check { font-size: 64px; margin-bottom: 12px; }
     .rs-thanks { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; margin-bottom: 8px; }
     .rs-points { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px; color: #FACC15; }
+
+    .pf-head { flex-shrink: 0; text-align: center; margin-bottom: 20px; }
+    .pf-avatar { width: 88px; height: 88px; border-radius: 50%; background: #9CA3AF; display: flex; align-items: center; justify-content: center; font-size: 42px; margin: 8px auto 12px; }
+    .pf-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; }
+    .pf-level { display: inline-block; background: #000; color: #fff; border-radius: 12px; padding: 4px 12px; font-size: 12px; font-weight: 700; margin-top: 8px; }
+    .pf-stats { flex-shrink: 0; display: flex; gap: 8px; margin-bottom: 12px; }
+    .pf-stat, .pf-card { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-radius: 16px; }
+    .pf-stat { flex: 1; padding: 14px; text-align: center; }
+    .pf-stat b { display: block; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 24px; }
+    .pf-stat span { font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.6); }
+    .pf-card { flex-shrink: 0; padding: 16px; margin-bottom: 8px; }
+    #plabel { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+    .pf-track { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
+    #pbar { height: 100%; width: 0; border-radius: 4px; background: #fff; transition: width 0.4s; }
+    .pf-section { flex-shrink: 0; margin-top: 12px; }
+    .pf-badges { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pf-badge { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18); border-radius: 16px; padding: 14px; text-align: center; font-size: 12px; font-weight: 600; opacity: 0.55; }
+    .pf-badge i { display: block; font-style: normal; font-size: 26px; margin-bottom: 4px; }
+    .pf-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 15px; color: #fff; text-decoration: none; cursor: pointer; background: none; border-left: 0; border-right: 0; border-top: 0; width: 100%; font-family: inherit; text-align: left; }
+    .pf-row:last-child { border-bottom: 0; }
+    .pf-row small { display: block; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .pf-row .arrow { color: rgba(255,255,255,0.5); }
+    .pf-row.danger { color: #FF5A5A; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -219,9 +241,41 @@
     </section>
 
     <section id="screen-profile" class="screen">
-      <h1>Profil</h1>
-      <p class="placeholder">Anonym Användare</p>
-      <button class="delete-btn" onclick="if (confirm('Radera all din data? Det går inte att ångra.')) deleteAllUserData()">Radera min data</button>
+      <div class="pf-head">
+        <div class="pf-avatar">👤</div>
+        <div class="pf-name">Anonym Användare</div>
+        <span class="pf-level">Ny</span>
+      </div>
+
+      <div class="pf-stats">
+        <div class="pf-stat"><b id="stat-r">0</b><span>RAPPORTER</span></div>
+        <div class="pf-stat"><b id="stat-p">0</b><span>POÄNG</span></div>
+        <div class="pf-stat"><b id="stat-d">1</b><span>DAGAR</span></div>
+      </div>
+
+      <div class="pf-card">
+        <div id="plabel">0 / 50 poäng till nästa nivå</div>
+        <div class="pf-track"><div id="pbar"></div></div>
+      </div>
+
+      <div class="pf-section">
+        <div class="rs-label">DINA BADGES</div>
+        <div class="pf-badges">
+          <div class="pf-badge"><i>🔒</i>Första rapport</div>
+          <div class="pf-badge"><i>🔒</i>10 rapporter</div>
+          <div class="pf-badge"><i>🔒</i>Stamgäst</div>
+          <div class="pf-badge"><i>🔒</i>Legend</div>
+        </div>
+      </div>
+
+      <div class="pf-section">
+        <div class="rs-label">INSTÄLLNINGAR</div>
+        <div class="pf-card" style="padding-top:2px;padding-bottom:2px">
+          <a class="pf-row" href="mailto:support@queuebar.se"><span>Kontakta oss<small>support@queuebar.se</small></span><span class="arrow">→</span></a>
+          <button class="pf-row" onclick="showPrivacyPolicy()"><span>Integritetspolicy</span><span class="arrow">→</span></button>
+          <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span><span class="arrow">→</span></button>
+        </div>
+      </div>
     </section>
 
     <nav id="bottom-nav">
@@ -635,6 +689,30 @@
     }
 
     filterReportList();
+
+    function updateProfileStats() {
+      var userId = getUserId();
+      var mine = allReports.filter(function(r) { return r.user_id === userId; });
+      var pts = mine.length * 10;
+      var sr = document.getElementById('stat-r');
+      var sp = document.getElementById('stat-p');
+      var pl = document.getElementById('plabel');
+      var pb = document.getElementById('pbar');
+      if (sr) sr.textContent = mine.length;
+      if (sp) sp.textContent = pts;
+      if (pl) pl.textContent = pts + ' / 50 poäng till nästa nivå';
+      if (pb) pb.style.width = Math.min(100, pts / 50 * 100) + '%';
+    }
+
+    function showPrivacyPolicy() {
+      alert('Integritetspolicy\n\nQueueBar sparar ett anonymt ID, körapporter och favoriter.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
+    }
+
+    function confirmDelete() {
+      if (confirm('Är du säker? All din data raderas permanent.')) deleteAllUserData();
+    }
+
+    updateProfileStats();
 
     function showScreen(name) {
       document.querySelectorAll('.screen').forEach(function (el) {
