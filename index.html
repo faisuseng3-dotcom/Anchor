@@ -125,6 +125,26 @@
     .live-name { font-size: 15px; font-weight: 500; color: #fff; }
     .live-status { font-size: 14px; font-weight: 700; margin-top: 2px; }
     .live-time { font-size: 11px; color: #9CA3AF; white-space: nowrap; }
+
+    .rp-wrap { flex-shrink: 0; margin-bottom: 20px; }
+    .rp-sub { font-size: 14px; color: rgba(255,255,255,0.75); margin: -8px 0 16px; }
+    .rp-steps { display: flex; align-items: center; gap: 8px; }
+    .rp-line { flex: 1; height: 2px; background: rgba(255,255,255,0.25); }
+    .rs-label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 1.5px; margin-bottom: 12px; }
+    .rs-item { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-radius: 16px; padding: 14px 16px; margin-bottom: 8px; cursor: pointer; }
+    .rs-name { font-size: 15px; font-weight: 600; color: #fff; }
+    .rs-area { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .rs-arrow { color: rgba(255,255,255,0.5); }
+    #rs1 { flex-shrink: 0; }
+    #rs2, #rs3 { flex-direction: column; flex-shrink: 0; }
+    #rs3 { align-items: center; text-align: center; margin-top: 40px; }
+    #rs-vname { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+    .rs-question { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 24px; margin-bottom: 16px; }
+    .q-btn { width: 100%; border: 0; border-radius: 16px; padding: 20px; margin-bottom: 10px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; color: #fff; cursor: pointer; }
+    .rs-back { background: none; border: 0; margin-top: 6px; font: inherit; font-size: 14px; color: rgba(255,255,255,0.8); cursor: pointer; align-self: flex-start; }
+    .rs-check { font-size: 64px; margin-bottom: 12px; }
+    .rs-thanks { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; margin-bottom: 8px; }
+    .rs-points { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px; color: #FACC15; }
   </style>
 </head>
 <body>
@@ -160,8 +180,42 @@
     </section>
 
     <section id="screen-report" class="screen">
-      <h1>Rapportera</h1>
-      <p class="placeholder">Rapportera köläget på ditt ställe</p>
+      <div class="rp-wrap">
+        <h1>Rapportera</h1>
+        <p class="rp-sub">Hjälp andra — tar 5 sekunder</p>
+        <div class="rp-steps">
+          <div id="rp1" style="width:32px;height:32px;border-radius:50%;background:#111;color:white;display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;">1</div>
+          <div class="rp-line"></div>
+          <div id="rp2" style="width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;">2</div>
+          <div class="rp-line"></div>
+          <div id="rp3" style="width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;">3</div>
+        </div>
+      </div>
+
+      <div id="rs1">
+        <div class="rs-label">VAR ÄR DU NU?</div>
+        <div class="search-box">
+          <span>🔍</span>
+          <input id="rs-search" type="search" placeholder="Sök bar eller klubb" autocomplete="off" oninput="filterReportList()">
+        </div>
+        <div id="rs-list"></div>
+      </div>
+
+      <div id="rs2" style="display:none">
+        <div id="rs-vname"></div>
+        <div class="rs-question">Hur lång är kön nu?</div>
+        <button class="q-btn" style="background:#00875A" onclick="pickQueue('none')">✓ Ingen kö</button>
+        <button class="q-btn" style="background:#D97706" onclick="pickQueue('short')">~15 min</button>
+        <button class="q-btn" style="background:#C05500" onclick="pickQueue('medium')">~25 min</button>
+        <button class="q-btn" style="background:#E8001C" onclick="pickQueue('long')">30+ min</button>
+        <button class="rs-back" onclick="backToRs1()">← Byt ställe</button>
+      </div>
+
+      <div id="rs3" style="display:none">
+        <div class="rs-check">✅</div>
+        <div class="rs-thanks">Tack för din rapport!</div>
+        <div class="rs-points">+10 poäng</div>
+      </div>
     </section>
 
     <section id="screen-profile" class="screen">
@@ -535,6 +589,52 @@
 
     renderLiveFeed();
     setInterval(function() { if (typeof renderLiveFeed === 'function') renderLiveFeed(); }, 30000);
+
+    var selectedRV = null;
+
+    function filterReportList() {
+      var q = (document.getElementById('rs-search').value || '').toLowerCase();
+      var el = document.getElementById('rs-list');
+      var list = VENUES.filter(function(v) { return !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q); });
+      el.innerHTML = list.map(function(v) {
+        return '<div class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
+          '<div><div class="rs-name">' + v.name + '</div><div class="rs-area">' + v.area + '</div></div>' +
+          '<span class="rs-arrow">→</span></div>';
+      }).join('');
+    }
+
+    function pickRV(id) {
+      selectedRV = getVenueById(id);
+      document.getElementById('rs-vname').textContent = selectedRV.name;
+      document.getElementById('rs1').style.display = 'none';
+      document.getElementById('rs2').style.display = 'flex';
+      document.getElementById('rp2').style.cssText = 'width:32px;height:32px;border-radius:50%;background:#111;color:white;display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;';
+    }
+
+    function backToRs1() {
+      document.getElementById('rs1').style.display = 'block';
+      document.getElementById('rs2').style.display = 'none';
+      document.getElementById('rp2').style.cssText = 'width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;';
+    }
+
+    async function pickQueue(status) {
+      if (!selectedRV) return;
+      try {
+        await submitReport(selectedRV.id, selectedRV.name, status);
+        document.getElementById('rs2').style.display = 'none';
+        document.getElementById('rs3').style.display = 'flex';
+        document.getElementById('rp3').style.cssText = 'width:32px;height:32px;border-radius:50%;background:#111;color:white;display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;';
+        setTimeout(function() {
+          document.getElementById('rs3').style.display = 'none';
+          document.getElementById('rs1').style.display = 'block';
+          document.getElementById('rp2').style.cssText = 'width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;';
+          document.getElementById('rp3').style.cssText = 'width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:700;';
+          selectedRV = null;
+        }, 2000);
+      } catch(err) { alert(err.message || 'Något gick fel.'); }
+    }
+
+    filterReportList();
 
     function showScreen(name) {
       document.querySelectorAll('.screen').forEach(function (el) {
