@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <style>
     :root {
       --bg-primary: #0A0A0F;
@@ -413,6 +413,28 @@
       from { opacity: 0; transform: translateX(-50%) translateY(8px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
+
+    /* ERROR STATES */
+    .conn-banner {
+      flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+      gap: var(--space-md); background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.20); border-radius: var(--radius-md);
+      padding: 10px var(--space-md); margin-bottom: var(--space-md);
+      font-size: 13px; color: var(--danger);
+    }
+    .conn-banner-btn {
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: var(--radius-sm); padding: 4px 10px;
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--danger);
+      cursor: pointer; white-space: nowrap; transition: opacity 150ms ease;
+    }
+    .conn-banner-btn:hover { opacity: 0.75; }
+    .map-error-inner {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: var(--space-sm); pointer-events: none;
+    }
+    .map-error-inner span { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+    .map-error-inner small { font-size: 12px; color: var(--text-tertiary); }
   </style>
 </head>
 <body>
@@ -599,12 +621,86 @@
   </div>
 
   <script>
-    if (window.mapboxgl) mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
+    console.log('[QueueBar] Script startar');
 
+    // ── Navigation initieras ALLRA FÖRST — fungerar oavsett CDN ─────────────
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(function(el) {
+        el.classList.toggle('active', el.id === 'screen-' + name);
+      });
+      document.querySelectorAll('.tab').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.screen === name);
+      });
+      if (name === 'home' && map) setTimeout(function() { map.resize(); }, 50);
+      if (name === 'profile') loadUserHistory();
+      console.log('[QueueBar] Byter till skärm:', name);
+    }
+
+    // ── Mapbox token (med guard) ─────────────────────────────────────────────
+    if (window.mapboxgl) {
+      mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
+      console.log('[QueueBar] Mapbox token satt');
+    } else {
+      console.warn('[QueueBar] Mapbox GL JS laddades inte — kartan hoppar över');
+    }
+
+    // ── Supabase (med guard — kraschar INTE om CDN saknas) ───────────────────
     const SUPABASE_URL = 'https://awwmfsjsrjktekmbgadx.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3d21mc2pzcmprdGVrbWJnYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjMwNzIsImV4cCI6MjEwNTY5OTA3Mn0.i5kS3ipzQ0mSzvVnjPbMiotVVUDYcpdTzQ5_HdCQCqI';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    var supabase = null;
+    if (window.supabase) {
+      try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('[QueueBar] Supabase klient skapad');
+      } catch(err) {
+        console.error('[QueueBar] Supabase init misslyckades:', err);
+      }
+    } else {
+      console.warn('[QueueBar] Supabase CDN laddades inte — supabase är null');
+    }
+
+    // ── Supabase-felläge och retry ───────────────────────────────────────────
+    function showConnectionBanner() {
+      var home = document.getElementById('screen-home');
+      if (!home || document.getElementById('conn-banner')) return;
+      var banner = document.createElement('div');
+      banner.id = 'conn-banner';
+      banner.className = 'conn-banner';
+      banner.innerHTML = 'Livedata kunde inte laddas ' +
+        '<button class="conn-banner-btn" onclick="retrySupabase()">Försök igen</button>';
+      var map_el = document.getElementById('map');
+      if (map_el && map_el.nextSibling) home.insertBefore(banner, map_el.nextSibling);
+      else home.appendChild(banner);
+    }
+
+    function retrySupabase() {
+      console.log('[QueueBar] Försöker ladda om Supabase CDN...');
+      document.querySelectorAll('script[src*="supabase-js"]').forEach(function(s) { s.remove(); });
+      var script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4';
+      script.onload = function() {
+        console.log('[QueueBar] Supabase CDN omladdad');
+        if (window.supabase) {
+          try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('[QueueBar] Supabase klient skapad vid retry');
+            var banner = document.getElementById('conn-banner');
+            if (banner) banner.remove();
+            loadReports();
+            subscribeToReports();
+          } catch(err) {
+            console.error('[QueueBar] Supabase retry misslyckades:', err);
+          }
+        }
+      };
+      script.onerror = function() {
+        console.error('[QueueBar] Supabase CDN kunde inte nås vid retry');
+      };
+      document.head.appendChild(script);
+    }
+
+    // ── Data och hjälpfunktioner ─────────────────────────────────────────────
     var userHistory = [];
 
     const VENUES = [
@@ -733,8 +829,10 @@
       if (el) el.innerHTML = VENUES.slice(0, 8).map(renderVenueCard).join('');
     }
 
+    console.log('[QueueBar] Renderar venues');
     renderHomeVenues();
 
+    // ── Karta ────────────────────────────────────────────────────────────────
     var map = null;
 
     var venueGeoJSON = {
@@ -748,110 +846,138 @@
       })
     };
 
-    try {
-      map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/dark-v11',
-        center: [18.0686, 59.3350],
-        zoom: 12,
-        pitchWithRotate: false,
-        dragRotate: false
-      });
-      map.touchZoomRotate.disableRotation();
-    } catch(err) {
-      console.warn('Mapbox kunde inte startas', err);
-      map = null;
+    function showMapError(msg) {
+      var mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      mapEl.style.display = 'flex';
+      mapEl.style.alignItems = 'center';
+      mapEl.style.justifyContent = 'center';
+      mapEl.style.background = 'var(--surface)';
+      mapEl.innerHTML = '<div class="map-error-inner"><span>' + (msg || 'Kartan kunde inte laddas') + '</span><small>Övriga funktioner fungerar normalt</small></div>';
     }
 
-    if (map) map.on('load', function() {
-      map.addSource('venues', {
-        type: 'geojson', data: venueGeoJSON,
-        cluster: true, clusterMaxZoom: 13, clusterRadius: 40
-      });
-
-      map.addLayer({
-        id: 'clusters', type: 'circle', source: 'venues',
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': '#1C1C28',
-          'circle-radius': ['step', ['get', 'point_count'], 20, 10, 26, 30, 32],
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': 'rgba(0,212,170,0.5)'
-        }
-      });
-
-      map.addLayer({
-        id: 'cluster-count', type: 'symbol', source: 'venues',
-        filter: ['has', 'point_count'],
-        layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
-        paint: { 'text-color': '#00D4AA' }
-      });
-
-      map.addLayer({
-        id: 'venues-circle', type: 'circle', source: 'venues',
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-color': '#1C1C28',
-          'circle-radius': 15,
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': [
-            'match', ['get', 'status'],
-            'none',   '#10B981',
-            'short',  '#F59E0B',
-            'medium', '#EA7300',
-            'long',   '#EF4444',
-            'rgba(255,255,255,0.2)'
-          ]
-        }
-      });
-
-      map.addLayer({
-        id: 'venues-label', type: 'symbol', source: 'venues',
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          'text-field': ['match', ['get', 'type'], 'bar', 'B', 'K'],
-          'text-size': 11,
-          'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
-          'text-allow-overlap': true
-        },
-        paint: { 'text-color': '#F0F0F5' }
-      });
-
-      map.addLayer({
-        id: 'venues-status', type: 'symbol', source: 'venues',
-        filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
-        layout: {
-          'text-field': ['match', ['get', 'status'], 'none', 'Ingen kö', 'short', '15 min', 'medium', '25 min', 'long', '30+ min', ''],
-          'text-size': 10, 'text-offset': [0, 2.2], 'text-anchor': 'top', 'text-allow-overlap': true,
-          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
-        },
-        paint: {
-          'text-color': ['match', ['get', 'status'], 'none', '#10B981', 'short', '#F59E0B', 'medium', '#EA7300', 'long', '#EF4444', '#8A8A9A'],
-          'text-halo-color': 'rgba(10,10,15,0.9)', 'text-halo-width': 1.5
-        }
-      });
-
-      map.on('click', 'clusters', function(e) {
-        var id = e.features[0].properties.cluster_id;
-        var coords = e.features[0].geometry.coordinates;
-        map.getSource('venues').getClusterExpansionZoom(id, function(err, zoom) {
-          if (!err) map.easeTo({ center: coords, zoom: Math.min(zoom + 1, 15), duration: 500 });
+    if (window.mapboxgl) {
+      console.log('[QueueBar] Initierar Mapbox-karta');
+      try {
+        map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/mapbox/dark-v11',
+          center: [18.0686, 59.3350],
+          zoom: 12,
+          pitchWithRotate: false,
+          dragRotate: false
         });
-      });
+        map.touchZoomRotate.disableRotation();
 
-      map.on('click', 'venues-circle', function(e) {
-        var venue = getVenueById(e.features[0].properties.id);
-        if (venue) openVenueCard(venue);
-      });
+        map.on('load', function() {
+          console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
 
-      ['venues-circle', 'clusters'].forEach(function(l) {
-        map.on('mouseenter', l, function() { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', l, function() { map.getCanvas().style.cursor = ''; });
-      });
+          map.addSource('venues', {
+            type: 'geojson', data: venueGeoJSON,
+            cluster: true, clusterMaxZoom: 13, clusterRadius: 40
+          });
 
-      loadReports();
-    });
+          map.addLayer({
+            id: 'clusters', type: 'circle', source: 'venues',
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': '#1C1C28',
+              'circle-radius': ['step', ['get', 'point_count'], 20, 10, 26, 30, 32],
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': 'rgba(0,212,170,0.5)'
+            }
+          });
 
+          map.addLayer({
+            id: 'cluster-count', type: 'symbol', source: 'venues',
+            filter: ['has', 'point_count'],
+            layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
+            paint: { 'text-color': '#00D4AA' }
+          });
+
+          map.addLayer({
+            id: 'venues-circle', type: 'circle', source: 'venues',
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+              'circle-color': '#1C1C28',
+              'circle-radius': 15,
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': [
+                'match', ['get', 'status'],
+                'none',   '#10B981',
+                'short',  '#F59E0B',
+                'medium', '#EA7300',
+                'long',   '#EF4444',
+                'rgba(255,255,255,0.2)'
+              ]
+            }
+          });
+
+          map.addLayer({
+            id: 'venues-label', type: 'symbol', source: 'venues',
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'text-field': ['match', ['get', 'type'], 'bar', 'B', 'K'],
+              'text-size': 11, 'text-allow-overlap': true,
+              'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
+            },
+            paint: { 'text-color': '#F0F0F5' }
+          });
+
+          map.addLayer({
+            id: 'venues-status', type: 'symbol', source: 'venues',
+            filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
+            layout: {
+              'text-field': ['match', ['get', 'status'], 'none', 'Ingen kö', 'short', '15 min', 'medium', '25 min', 'long', '30+ min', ''],
+              'text-size': 10, 'text-offset': [0, 2.2], 'text-anchor': 'top', 'text-allow-overlap': true,
+              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
+            },
+            paint: {
+              'text-color': ['match', ['get', 'status'], 'none', '#10B981', 'short', '#F59E0B', 'medium', '#EA7300', 'long', '#EF4444', '#8A8A9A'],
+              'text-halo-color': 'rgba(10,10,15,0.9)', 'text-halo-width': 1.5
+            }
+          });
+
+          map.on('click', 'clusters', function(e) {
+            var id = e.features[0].properties.cluster_id;
+            var coords = e.features[0].geometry.coordinates;
+            map.getSource('venues').getClusterExpansionZoom(id, function(err, zoom) {
+              if (!err) map.easeTo({ center: coords, zoom: Math.min(zoom + 1, 15), duration: 500 });
+            });
+          });
+
+          map.on('click', 'venues-circle', function(e) {
+            var venue = getVenueById(e.features[0].properties.id);
+            if (venue) openVenueCard(venue);
+          });
+
+          ['venues-circle', 'clusters'].forEach(function(l) {
+            map.on('mouseenter', l, function() { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', l, function() { map.getCanvas().style.cursor = ''; });
+          });
+
+          // Uppdatera markörerna med ev. redan inladdad data
+          if (allReports.length > 0) updateMapStatuses();
+          console.log('[QueueBar] Kartlager klara');
+        });
+
+        // Fix 4 — map.on('error'): logga, visa felläge, låt resten leva
+        map.on('error', function(e) {
+          console.error('[QueueBar] Mapbox-fel:', e.error ? e.error.message : e);
+          map = null;
+          showMapError('Kartan kunde inte laddas');
+        });
+
+      } catch(err) {
+        console.error('[QueueBar] Mapbox init kastade:', err);
+        map = null;
+        showMapError('Kartan kunde inte startas');
+      }
+    } else {
+      showMapError('Mapbox GL JS laddades inte');
+    }
+
+    // ── Supabase-funktioner ──────────────────────────────────────────────────
     function getUserId() {
       var id = localStorage.getItem('qb_user_id');
       if (!id) {
@@ -862,15 +988,23 @@
     }
 
     async function loadReports() {
+      if (!supabase) { console.warn('[QueueBar] loadReports: supabase är null, hoppar'); return; }
+      console.log('[QueueBar] loadReports startar');
       var now = new Date().toISOString();
-      var result = await supabase.from('reports').select('*').gte('expires_at', now).order('created_at', { ascending: false });
-      if (result.data) {
-        allReports = result.data;
-        updateMapStatuses();
-        renderHomeVenues();
-        if (typeof renderExploreVenues === 'function') renderExploreVenues();
-        if (typeof renderLiveFeed === 'function') renderLiveFeed();
-        if (typeof updateProfileStats === 'function') updateProfileStats();
+      try {
+        var result = await supabase.from('reports').select('*').gte('expires_at', now).order('created_at', { ascending: false });
+        if (result.data) {
+          allReports = result.data;
+          console.log('[QueueBar] loadReports: ' + allReports.length + ' rapporter inladdade');
+          updateMapStatuses();
+          renderHomeVenues();
+          if (typeof renderExploreVenues === 'function') renderExploreVenues();
+          if (typeof renderLiveFeed === 'function') renderLiveFeed();
+          if (typeof updateProfileStats === 'function') updateProfileStats();
+        }
+        if (result.error) console.error('[QueueBar] loadReports Supabase-fel:', result.error);
+      } catch(err) {
+        console.error('[QueueBar] loadReports kastade:', err);
       }
     }
 
@@ -886,10 +1020,16 @@
     }
 
     function subscribeToReports() {
-      supabase.channel('reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, function() { loadReports(); }).subscribe();
+      if (!supabase) return;
+      supabase.channel('reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, function() {
+        console.log('[QueueBar] Realtime: ny händelse i reports');
+        loadReports();
+      }).subscribe();
+      console.log('[QueueBar] Prenumererar på realtidsuppdateringar');
     }
 
     async function submitReport(venueId, venueName, queueStatus) {
+      if (!supabase) throw new Error('Supabase är inte tillgänglig');
       var userId = getUserId();
       var now = new Date();
       var recent = allReports.filter(function(r) { return r.user_id === userId && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
@@ -904,10 +1044,17 @@
       return true;
     }
 
-    if (!map) loadReports();
+    // Fix 4 — loadReports alltid, oavsett karta
+    console.log('[QueueBar] Startar initial datainläsning');
+    loadReports();
     subscribeToReports();
-    setInterval(loadReports, 30000);
+    if (supabase) {
+      setInterval(loadReports, 30000);
+    } else {
+      showConnectionBanner();
+    }
 
+    // ── Favoriter ────────────────────────────────────────────────────────────
     async function toggleFavorite(event, venueId) {
       event.stopPropagation();
       var btn = event.currentTarget;
@@ -916,10 +1063,10 @@
       var idx = favorites.indexOf(venueId);
       if (idx > -1) {
         favorites.splice(idx, 1);
-        await supabase.from('favorites').delete().eq('venue_id', venueId).eq('user_id', getUserId());
+        if (supabase) await supabase.from('favorites').delete().eq('venue_id', venueId).eq('user_id', getUserId());
       } else {
         favorites.push(venueId);
-        await supabase.from('favorites').insert({ venue_id: venueId, user_id: getUserId() });
+        if (supabase) await supabase.from('favorites').insert({ venue_id: venueId, user_id: getUserId() });
       }
       localStorage.setItem('qb_favorites', JSON.stringify(favorites));
       showToast(favorites.includes(venueId) ? 'Sparad som favorit' : 'Borttagen från favoriter');
@@ -927,6 +1074,7 @@
       if (typeof renderExploreVenues === 'function') renderExploreVenues();
     }
 
+    // ── Consent ──────────────────────────────────────────────────────────────
     function checkConsent() {
       if (!localStorage.getItem('qb_consent')) {
         document.getElementById('consent-modal').style.display = 'flex';
@@ -944,6 +1092,7 @@
       document.getElementById('consent-modal').style.display = 'none';
     }
 
+    // ── Onboarding ───────────────────────────────────────────────────────────
     var OB = [
       { emoji: '🗺️', title: 'Se kön i realtid', body: 'Kartan visar köläget utanför alla barer och klubbar just nu.' },
       { emoji: '✏️', title: 'Rapportera på 5 sek', body: 'Är du utanför en bar? Tryck rapportera och välj kölängd.' },
@@ -966,7 +1115,9 @@
     function obNext() { if (obStep < OB.length - 1) { obStep++; obRender(); } else obSkip(); }
     function obSkip() { localStorage.setItem('qb_onboarding_done', 'true'); document.getElementById('onboarding').style.display = 'none'; }
 
+    // ── Dataradering ─────────────────────────────────────────────────────────
     async function deleteAllUserData() {
+      if (!supabase) { localStorage.clear(); location.reload(); return; }
       var userId = getUserId();
       await Promise.all([
         supabase.from('reports').delete().eq('user_id', userId),
@@ -977,6 +1128,7 @@
       location.reload();
     }
 
+    // ── Utforska ─────────────────────────────────────────────────────────────
     var exploreFilter = 'all';
     function setFilter(f, btn) {
       exploreFilter = f;
@@ -1001,9 +1153,14 @@
 
     renderExploreVenues();
 
+    // ── Live-feed ─────────────────────────────────────────────────────────────
     function renderLiveFeed() {
       var el = document.getElementById('live-feed');
       if (!el) return;
+      if (!supabase) {
+        el.innerHTML = '<div class="empty">Livedata är inte tillgänglig.<br><button class="conn-banner-btn" style="margin-top:8px" onclick="retrySupabase()">Försök igen</button></div>';
+        return;
+      }
       var now = new Date();
       var recent = allReports.filter(function(r) { return (now - new Date(r.created_at)) < 45 * 60 * 1000; }).slice(0, 20);
       if (!recent.length) { el.innerHTML = '<div class="empty">Inga rapporter ännu.<br>Gå ut och rapportera!</div>'; return; }
@@ -1020,6 +1177,7 @@
     renderLiveFeed();
     setInterval(function() { if (typeof renderLiveFeed === 'function') renderLiveFeed(); }, 30000);
 
+    // ── Rapportera ────────────────────────────────────────────────────────────
     var selectedRV = null;
 
     function filterReportList() {
@@ -1067,6 +1225,7 @@
 
     filterReportList();
 
+    // ── Profil ────────────────────────────────────────────────────────────────
     function updateProfileStats() {
       var userId = getUserId();
       var mine = userHistory.length > 0
@@ -1130,11 +1289,16 @@
     }
 
     async function loadUserHistory() {
+      if (!supabase) return;
       var userId = getUserId();
-      var result = await supabase.from('reports').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-      if (result.data && result.data.length > 0) {
-        userHistory = result.data;
-        updateProfileStats();
+      try {
+        var result = await supabase.from('reports').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+        if (result.data && result.data.length > 0) {
+          userHistory = result.data;
+          updateProfileStats();
+        }
+      } catch(err) {
+        console.error('[QueueBar] loadUserHistory kastade:', err);
       }
     }
 
@@ -1148,17 +1312,7 @@
 
     updateProfileStats();
 
-    function showScreen(name) {
-      document.querySelectorAll('.screen').forEach(function(el) {
-        el.classList.toggle('active', el.id === 'screen-' + name);
-      });
-      document.querySelectorAll('.tab').forEach(function(el) {
-        el.classList.toggle('active', el.dataset.screen === name);
-      });
-      if (name === 'home' && map) map.resize();
-      if (name === 'profile') loadUserHistory();
-    }
-
+    console.log('[QueueBar] Initiering klar');
     checkConsent();
   </script>
 </body>
