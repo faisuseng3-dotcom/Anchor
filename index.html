@@ -651,7 +651,9 @@
     var supabase = null;
     if (window.supabase) {
       try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
         console.log('[QueueBar] Supabase klient skapad');
       } catch(err) {
         console.error('[QueueBar] Supabase init misslyckades:', err);
@@ -683,7 +685,9 @@
         console.log('[QueueBar] Supabase CDN omladdad');
         if (window.supabase) {
           try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+              auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+            });
             console.log('[QueueBar] Supabase klient skapad vid retry');
             var banner = document.getElementById('conn-banner');
             if (banner) banner.remove();
@@ -772,7 +776,8 @@
     var BAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary)"><path d="M4 5h16l-8 9z"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="8" y1="20" x2="16" y2="20"/></svg>';
     var CLUB_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary)"><circle cx="12" cy="12" r="9"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><ellipse cx="12" cy="12" rx="4" ry="9"/></svg>';
 
-    function openVenueCard(venue) {
+    function openVenueCard(venue, source) {
+      console.log('[QueueBar] openVenueCard:', venue.id, '| källa:', source || 'lista');
       activeVenue = venue;
       var status = computeStatus(venue.id, allReports);
       var reports = allReports.filter(function(r) { return r.venue_id === venue.id; })
@@ -817,7 +822,7 @@
         '<button class="heart-btn' + (isFavorite(venue.id) ? ' fav' : '') + '" onclick="toggleFavorite(event, \'' + venue.id + '\')" aria-label="Favorit">' +
           '<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
         '</button>' +
-        (label ? '<div class="vcard-status" style="color:' + color + '">' + label + '</div>' : '<div class="vcard-none">Ingen rapport</div>') +
+        (label ? '<div class="vcard-status" style="color:' + color + '">' + label + '</div>' : '<div class="vcard-none">' + (allReports.length === 0 ? 'Inga rapporter ännu – bli först' : 'Ingen rapport') + '</div>') +
         (reports.length > 0 ? '<div class="vcard-count">' + reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + '</div>' : '') +
         '<div class="vcard-sep"></div>' +
         '<div class="vcard-row"><span>Stänger ' + venue.closing + '</span><span>' + venue.area + '</span></div>' +
@@ -948,7 +953,8 @@
 
           map.on('click', 'venues-circle', function(e) {
             var venue = getVenueById(e.features[0].properties.id);
-            if (venue) openVenueCard(venue);
+            console.log('[QueueBar] Kartmarkörsklick:', e.features[0].properties.id);
+            if (venue) openVenueCard(venue, 'karta');
           });
 
           ['venues-circle', 'clusters'].forEach(function(l) {
@@ -992,7 +998,13 @@
       console.log('[QueueBar] loadReports startar');
       var now = new Date().toISOString();
       try {
-        var result = await supabase.from('reports').select('*').gte('expires_at', now).order('created_at', { ascending: false });
+        var result = await supabase.from('reports').select('*', { count: 'exact' }).gte('expires_at', now).order('created_at', { ascending: false }).limit(100);
+        console.log('[QueueBar] loadReports råsvar — status:', result.status, result.statusText,
+          '| count:', result.count, '| rader:', result.data ? result.data.length : 'null',
+          '| error:', result.error || 'ingen');
+        if (result.error) {
+          console.error('[QueueBar] loadReports Supabase-fel (fullt objekt):', JSON.stringify(result.error));
+        }
         if (result.data) {
           allReports = result.data;
           console.log('[QueueBar] loadReports: ' + allReports.length + ' rapporter inladdade');
@@ -1002,7 +1014,6 @@
           if (typeof renderLiveFeed === 'function') renderLiveFeed();
           if (typeof updateProfileStats === 'function') updateProfileStats();
         }
-        if (result.error) console.error('[QueueBar] loadReports Supabase-fel:', result.error);
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
       }
