@@ -640,6 +640,11 @@
     .erow-badge.long   { background: rgba(239,68,68,0.12);  color: #DC2626; }
     .erow-badge.unknown{ background: #F3F4F6; color: #9CA3AF; }
     .erow-badge.stale  { background: #F3F4F6; color: #9CA3AF; }
+    .erow-trend { font-size: 11px; line-height: 1; white-space: nowrap; }
+    .erow-trend--up     { font-weight: 700; }
+    .erow-trend--down   { font-weight: 700; color: #22C55E; }
+    .erow-trend--stable { font-weight: 700; color: #6B7280; }
+    .erow-trend--single { font-weight: 400; color: #6B7280; }
 
     /* ── Explore empty state ───────────────────────────────────────────── */
     .explore-empty {
@@ -1963,15 +1968,23 @@
         heroColor = color;
       }
 
-      // Badge
-      var badgeText, badgeCls;
-      if (!hasData) {
-        badgeText = 'Inga rapporter'; badgeCls = 'unknown';
-      } else if (isStale) {
-        var staleMin = Math.round((now - new Date(latestReport.created_at)) / 60000);
-        badgeText = '~' + staleMin + ' min sedan'; badgeCls = 'stale';
-      } else {
-        badgeText = getStatusLabel(status) || 'Ingen kö'; badgeCls = cls;
+      // Trend (replaces badge — new information, not redundant with hero)
+      var trendHtml = '';
+      var STATUS_RANK = { free: 0, none: 0, short: 1, medium: 2, long: 3 };
+      if (hasData && venueReports.length === 1) {
+        trendHtml = '<span class="erow-trend erow-trend--single">· 1 rapport</span>';
+      } else if (hasData && venueReports.length >= 2) {
+        var r1 = venueReports[0].queue_status; // newest
+        var r2 = venueReports[1].queue_status; // previous
+        var rank1 = STATUS_RANK[r1] !== undefined ? STATUS_RANK[r1] : 1;
+        var rank2 = STATUS_RANK[r2] !== undefined ? STATUS_RANK[r2] : 1;
+        if (rank1 > rank2) {
+          trendHtml = '<span class="erow-trend erow-trend--up" style="color:' + color + '">↑ Ökar</span>';
+        } else if (rank1 < rank2) {
+          trendHtml = '<span class="erow-trend erow-trend--down">↓ Minskar</span>';
+        } else {
+          trendHtml = '<span class="erow-trend erow-trend--stable">→ Stabil</span>';
+        }
       }
 
       // Tertiary row
@@ -2006,7 +2019,7 @@
           '</div>' +
           '<div class="erow-right">' +
             '<span class="erow-hero" style="color:' + heroColor + '">' + heroText + '</span>' +
-            '<span class="erow-badge ' + badgeCls + '">' + badgeText + '</span>' +
+            trendHtml +
           '</div>' +
         '</div>' +
         '</div>';
