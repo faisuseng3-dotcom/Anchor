@@ -193,9 +193,9 @@
     .map-pill {
       position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 16px; z-index: 5;
       background: #FFFFFF; border-radius: var(--radius-full);
-      padding: 6px 14px;
+      padding: 8px 16px;
       font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
       pointer-events: none;
     }
     .map-search-float {
@@ -203,12 +203,12 @@
       top: calc(16px + env(safe-area-inset-top));
       left: 50%; transform: translateX(-50%);
       z-index: 5; width: 90%;
-      background: #FFFFFF; border-radius: var(--radius-md);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-      height: 40px; display: flex; align-items: center; gap: 8px;
-      padding: 0 12px; cursor: pointer; border: 1px solid var(--border);
+      background: #FFFFFF; border-radius: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+      height: 44px; display: flex; align-items: center; gap: 8px;
+      padding: 0 14px; cursor: pointer; border: 1px solid rgba(0,0,0,0.08);
     }
-    .map-search-float svg { width: 16px; height: 16px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .map-search-float svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
     .map-search-float span { font-size: 14px; font-weight: 400; letter-spacing: -0.01em; color: var(--text-muted); font-family: var(--font-base); }
 
     /* ── Error toast (replaces conn-banner) ────────────────────────────── */
@@ -234,7 +234,7 @@
       left: 0; right: 0; z-index: 5;
       background: #FFFFFF;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      box-shadow: 0 -2px 16px rgba(0,0,0,0.06);
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
       transition: transform var(--dur-slow) var(--ease-out);
       will-change: transform;
       touch-action: none;
@@ -361,7 +361,7 @@
     .heart-btn.fav svg { fill: var(--danger); stroke: var(--danger); }
 
     /* ── Bottom Sheet (Venue Card) ─────────────────────────────────────── */
-    #vc-overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.20); }
+    #vc-overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.15); }
     @keyframes overlayIn { from{opacity:0} to{opacity:1} }
 
     #venue-card {
@@ -370,7 +370,7 @@
       width: min(430px, 100vw);
       background: var(--bg-primary);
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      box-shadow: var(--shadow-sheet);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
       padding: 12px var(--space-2) var(--space-2);
       padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
     }
@@ -858,7 +858,7 @@
       <div class="map-pill">QueueBar</div>
       <div class="map-search-float" onclick="focusExploreSearch()">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span>Sök bar eller klubb</span>
+        <span>Sök bar, klubb eller adress...</span>
       </div>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
@@ -1498,9 +1498,13 @@
       try {
         map = new mapboxgl.Map({
           container: 'map',
-          style: 'mapbox://styles/mapbox/navigation-night-v1',
-          center: [18.0686, 59.3350],
-          zoom: 12,
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [18.0686, 59.3293],
+          zoom: 12.5,
+          minZoom: 11,
+          maxZoom: 17,
+          pitch: 0,
+          bearing: 0,
           pitchWithRotate: false,
           dragRotate: false
         });
@@ -1518,18 +1522,18 @@
             id: 'clusters', type: 'circle', source: 'venues',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': 'rgba(255,255,255,0.9)',
-              'circle-radius': ['step', ['get', 'point_count'], 20, 10, 26, 30, 32],
+              'circle-color': '#FFFFFF',
+              'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
               'circle-stroke-width': 2,
-              'circle-stroke-color': 'rgba(255,255,255,0.3)'
+              'circle-stroke-color': '#E5E7EB'
             }
           });
 
           map.addLayer({
             id: 'cluster-count', type: 'symbol', source: 'venues',
             filter: ['has', 'point_count'],
-            layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
-            paint: { 'text-color': '#1A1F36', 'text-halo-color': 'rgba(255,255,255,0)', 'text-halo-width': 0 }
+            layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 14, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
+            paint: { 'text-color': '#1A1F36', 'text-halo-color': '#FFFFFF', 'text-halo-width': 1 }
           });
 
           map.addLayer({
@@ -1544,7 +1548,7 @@
                 'long',   '#EF4444',
                 '#D1D5DB'
               ],
-              'circle-radius': 7,
+              'circle-radius': 8,
               'circle-stroke-width': 3,
               'circle-stroke-color': '#FFFFFF'
             }
@@ -1558,19 +1562,19 @@
             filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'status'], 'none']],
             paint: {
               'circle-color': 'rgba(34,197,94,0)',
-              'circle-radius': 7,
+              'circle-radius': 8,
               'circle-stroke-width': 2,
               'circle-stroke-color': 'rgba(34,197,94,0.4)'
             }
           });
 
           // animate pulse ring
-          var pulseSize = 7, pulseDir = 1;
+          var pulseSize = 8, pulseDir = 1;
           function animatePulse() {
             pulseSize += pulseDir * 0.2;
-            if (pulseSize >= 13) pulseDir = -1;
-            if (pulseSize <= 7) pulseDir = 1;
-            var opacity = (13 - pulseSize) / 6 * 0.35;
+            if (pulseSize >= 14) pulseDir = -1;
+            if (pulseSize <= 8) pulseDir = 1;
+            var opacity = (14 - pulseSize) / 6 * 0.4;
             if (map.getLayer('venues-pulse')) {
               map.setPaintProperty('venues-pulse', 'circle-radius', pulseSize);
               map.setPaintProperty('venues-pulse', 'circle-stroke-color', 'rgba(34,197,94,' + opacity + ')');
