@@ -1941,10 +1941,12 @@
     }
 
     function renderExploreVenues() {
+      console.log('[QueueBar] renderExploreVenues anropad | VENUES:', VENUES.length, '| exploreFilter:', exploreFilter, '| allReports:', allReports.length);
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
-      if (!el) return;
+      console.log('[QueueBar] #explore-list existerar:', !!el, '| id:', el ? el.id : 'N/A');
+      if (!el) { console.warn('[QueueBar] renderExploreVenues: #explore-list saknas — returnerar tidigt'); return; }
       var FILTER_MAP = { all: null, bar: 'bar', klubb: 'klubb', happy: 'happy' };
       var list = VENUES.filter(function(v, i) {
         var ms = !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q);
@@ -1983,7 +1985,16 @@
         var bHas = allReports.some(function(r) { return r.venue_id === b.id; }) ? 0 : 1;
         return aHas - bHas;
       });
-      el.innerHTML = '<div class="venue-group">' + list.map(renderExploreVenueRow).join('') + '</div>';
+      var html = '<div class="venue-group">' + list.map(renderExploreVenueRow).join('') + '</div>';
+      el.innerHTML = html;
+      var rendered = el.querySelectorAll('.erow');
+      var emptyCount = el.querySelectorAll('.erow--empty').length;
+      console.log('[QueueBar] Renderade rader:', rendered.length, '| erow--empty:', emptyCount, '| DOM barn i #explore-list:', el.children.length);
+      if (rendered.length > 0) {
+        var first = rendered[0];
+        var cs = getComputedStyle(first);
+        console.log('[QueueBar] Första erow — opacity:', cs.opacity, '| animation:', cs.animationName, '| classes:', first.className);
+      }
     }
 
     renderExploreVenues();
