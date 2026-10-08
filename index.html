@@ -1078,6 +1078,7 @@
       }
     } else {
       console.warn('[QueueBar] Supabase CDN laddades inte — supabase är null');
+      autoRetrySupabase(1);
     }
 
     // ── Feltoast (ersätter conn-banner) ─────────────────────────────────────
@@ -1090,6 +1091,58 @@
       errToastTimer = setTimeout(function() {
         toast.classList.remove('visible');
       }, 8000);
+    }
+
+    function autoRetrySupabase(attempt) {
+      if (attempt > 3) {
+        console.warn('[QueueBar] Supabase: alla 3 retry-försök misslyckades — kör i offline-läge');
+        showOfflineBanner();
+        showConnectionBanner();
+        return;
+      }
+      console.log('[QueueBar] Supabase retry ' + attempt + '/3...');
+      setTimeout(function() {
+        if (supabase) { console.log('[QueueBar] Supabase redan tillgänglig, avbryter retry'); return; }
+        document.querySelectorAll('script[src*="supabase-js"]').forEach(function(s) { s.remove(); });
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4';
+        script.onload = function() {
+          if (window.supabase) {
+            try {
+              supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+              });
+              console.log('[QueueBar] Supabase klient skapad vid auto-retry ' + attempt);
+              var toast = document.getElementById('err-toast');
+              if (toast) toast.classList.remove('visible');
+              loadReports();
+              subscribeToReports();
+            } catch(err) {
+              console.error('[QueueBar] Supabase auto-retry ' + attempt + ' init-fel:', err);
+              autoRetrySupabase(attempt + 1);
+            }
+          } else {
+            autoRetrySupabase(attempt + 1);
+          }
+        };
+        script.onerror = function() {
+          console.error('[QueueBar] Supabase CDN nådd inte vid auto-retry ' + attempt);
+          autoRetrySupabase(attempt + 1);
+        };
+        document.head.appendChild(script);
+      }, 1000 * attempt);
+    }
+
+    function showOfflineBanner() {
+      var el = document.getElementById('explore-offline-banner');
+      if (el) return;
+      var sticky = document.getElementById('explore-sticky');
+      if (!sticky) return;
+      var banner = document.createElement('div');
+      banner.id = 'explore-offline-banner';
+      banner.style.cssText = 'background:#EFF6FF;border-bottom:1px solid #BFDBFE;padding:8px 16px;font-size:13px;color:#1D4ED8;font-family:var(--font-base);';
+      banner.textContent = 'Offline-läge — visar sparad data';
+      sticky.parentNode.insertBefore(banner, sticky.nextSibling);
     }
 
     function retrySupabase() {
@@ -1892,17 +1945,35 @@
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
       if (!el) return;
-      var list = VENUES.filter(function(v) {
+      var FILTER_MAP = { all: null, bar: 'bar', klubb: 'klubb', happy: 'happy' };
+      var list = VENUES.filter(function(v, i) {
         var ms = !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q);
-        var mf = exploreFilter === 'all' || v.type === exploreFilter || exploreFilter === 'happy';
+        var mf;
+        if (exploreFilter === 'all') {
+          mf = true;
+        } else if (exploreFilter === 'happy') {
+          mf = !!v.happyHour;
+          if (i < 3) console.log('[QueueBar] Filter happy:', v.name, '| happyHour:', v.happyHour);
+        } else {
+          mf = v.type === exploreFilter;
+          if (i < 3) console.log('[QueueBar] Filter:', exploreFilter, '| venue.type:', v.type, '| match:', mf);
+        }
         return ms && mf;
       });
       if (!list.length) {
         var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
-        var term = rawQ ? '”' + rawQ + '”' : '';
+        var emptyTitle, emptySub;
+        if (exploreFilter === 'happy' && !rawQ) {
+          emptyTitle = 'Inga Happy Hour-ställen just nu';
+          emptySub = 'Kolla tillbaka på eftermiddagen';
+        } else {
+          var term = rawQ ? '”' + rawQ + '”' : '';
+          emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
+          emptySub = 'Prova ett annat namn eller område';
+        }
         el.innerHTML = '<div class="explore-empty">' +
-          '<div class="explore-empty-title">Inga resultat' + (term ? ' för ' + term : '') + '</div>' +
-          '<div class="explore-empty-sub">Prova ett annat namn eller område</div>' +
+          '<div class="explore-empty-title">' + emptyTitle + '</div>' +
+          '<div class="explore-empty-sub">' + emptySub + '</div>' +
           '</div>';
         return;
       }
