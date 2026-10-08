@@ -195,7 +195,7 @@
       background: #FFFFFF; border-radius: var(--radius-full);
       padding: 6px 14px;
       font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
       pointer-events: none;
     }
     .map-search-float {
@@ -204,7 +204,7 @@
       left: 50%; transform: translateX(-50%);
       z-index: 5; width: 90%;
       background: #FFFFFF; border-radius: var(--radius-md);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
       height: 40px; display: flex; align-items: center; gap: 8px;
       padding: 0 12px; cursor: pointer; border: 1px solid var(--border);
     }
@@ -1498,7 +1498,7 @@
       try {
         map = new mapboxgl.Map({
           container: 'map',
-          style: 'mapbox://styles/mapbox/light-v11',
+          style: 'mapbox://styles/mapbox/navigation-night-v1',
           center: [18.0686, 59.3350],
           zoom: 12,
           pitchWithRotate: false,
@@ -1518,10 +1518,10 @@
             id: 'clusters', type: 'circle', source: 'venues',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': '#FFFFFF',
+              'circle-color': 'rgba(255,255,255,0.9)',
               'circle-radius': ['step', ['get', 'point_count'], 20, 10, 26, 30, 32],
-              'circle-stroke-width': 1.5,
-              'circle-stroke-color': '#6B7280'
+              'circle-stroke-width': 2,
+              'circle-stroke-color': 'rgba(255,255,255,0.3)'
             }
           });
 
@@ -1529,7 +1529,7 @@
             id: 'cluster-count', type: 'symbol', source: 'venues',
             filter: ['has', 'point_count'],
             layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
-            paint: { 'text-color': '#FFFFFF', 'text-halo-color': '#6B7280', 'text-halo-width': 1 }
+            paint: { 'text-color': '#1A1F36', 'text-halo-color': 'rgba(255,255,255,0)', 'text-halo-width': 0 }
           });
 
           map.addLayer({
@@ -1545,7 +1545,7 @@
                 '#D1D5DB'
               ],
               'circle-radius': 7,
-              'circle-stroke-width': 2.5,
+              'circle-stroke-width': 3,
               'circle-stroke-color': '#FFFFFF'
             }
           });
