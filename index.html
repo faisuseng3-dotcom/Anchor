@@ -1213,7 +1213,12 @@
       { id: 'end-nightclub', name: 'END Nightclub', address: 'Jakobsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.3320, lng: 18.0640, closing: '05:00' },
       { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.3360, lng: 18.0640, closing: '03:00' },
       { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00' },
-      { id: 'patricia', name: 'Patricia', address: 'Stadsgårdskajen 152', area: 'Södermalm', type: 'klubb', lat: 59.3190, lng: 18.0650, closing: '05:00' }
+      { id: 'patricia', name: 'Patricia', address: 'Stadsgårdskajen 152', area: 'Södermalm', type: 'klubb', lat: 59.3190, lng: 18.0650, closing: '05:00' },
+      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Hornstull', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00' },
+      { id: 'gro', name: 'Gro', address: 'Folkungagatan 84', area: 'Södermalm', type: 'bar', lat: 59.3135, lng: 18.0760, closing: '01:00' },
+      { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00' },
+      { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.3342, lng: 18.0656, closing: '02:00' },
+      { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00' }
     ];
 
     function computeStatus(venueId, reports) {
@@ -1651,7 +1656,16 @@
     }
 
     async function loadReports() {
-      if (!supabase) { console.warn('[QueueBar] loadReports: supabase är null, hoppar'); return; }
+      if (!supabase) {
+        console.warn('[QueueBar] loadReports: supabase är null — kör testdata-only');
+        injectTestData();
+        updateMapStatuses();
+        renderHomeVenues();
+        if (typeof renderExploreVenues === 'function') renderExploreVenues();
+        if (typeof renderLiveFeed === 'function') renderLiveFeed();
+        if (typeof updateProfileStats === 'function') updateProfileStats();
+        return;
+      }
       showSkeletons();
       console.log('[QueueBar] loadReports startar');
       var now = new Date().toISOString();
@@ -1665,7 +1679,8 @@
         }
         if (result.data) {
           allReports = result.data;
-          console.log('[QueueBar] loadReports: ' + allReports.length + ' rapporter inladdade');
+          console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
+          injectTestData();
           updateMapStatuses();
           renderHomeVenues();
           if (typeof renderExploreVenues === 'function') renderExploreVenues();
@@ -1695,6 +1710,55 @@
         loadReports();
       }).subscribe();
       console.log('[QueueBar] Prenumererar på realtidsuppdateringar');
+    }
+
+    function injectTestData() {
+      var now = Date.now();
+      function ago(mins) { return new Date(now - mins * 60 * 1000).toISOString(); }
+      function r(venueId, minsAgo, status) {
+        return { id: 'test-' + venueId + '-' + minsAgo, venue_id: venueId, queue_status: status,
+                 created_at: ago(minsAgo), expires_at: ago(-45), user_id: 'test-user' };
+      }
+      var testReports = [
+        // spy-bar
+        r('spy-bar', 45, 'short'), r('spy-bar', 20, 'medium'), r('spy-bar', 5, 'long'),
+        // sturehof
+        r('sturehof', 50, 'free'), r('sturehof', 30, 'short'), r('sturehof', 10, 'medium'),
+        // soap-bar
+        r('soap-bar', 40, 'short'), r('soap-bar', 15, 'short'), r('soap-bar', 3, 'medium'),
+        // tjoget
+        r('tjoget', 55, 'free'), r('tjoget', 25, 'free'), r('tjoget', 8, 'short'),
+        // pelikan
+        r('pelikan', 60, 'medium'), r('pelikan', 35, 'long'), r('pelikan', 12, 'long'),
+        // morfar-ginko
+        r('morfar-ginko', 30, 'free'), r('morfar-ginko', 10, 'free'),
+        // akkurat
+        r('akkurat', 45, 'short'), r('akkurat', 20, 'medium'), r('akkurat', 6, 'long'),
+        // berns
+        r('berns', 50, 'short'), r('berns', 30, 'medium'), r('berns', 15, 'long'), r('berns', 3, 'long'),
+        // sturecompagniet
+        r('sturecompagniet', 40, 'medium'), r('sturecompagniet', 20, 'long'), r('sturecompagniet', 5, 'long'),
+        // tradgarden
+        r('tradgarden', 55, 'free'), r('tradgarden', 35, 'short'), r('tradgarden', 18, 'medium'), r('tradgarden', 4, 'medium'),
+        // under-bron
+        r('under-bron', 45, 'free'), r('under-bron', 25, 'free'), r('under-bron', 8, 'short'),
+        // cafe-opera
+        r('cafe-opera', 60, 'medium'), r('cafe-opera', 35, 'long'), r('cafe-opera', 10, 'long'), r('cafe-opera', 2, 'long'),
+        // solidaritet
+        r('solidaritet', 30, 'free'), r('solidaritet', 10, 'free'),
+        // gro
+        r('gro', 50, 'short'), r('gro', 28, 'short'), r('gro', 7, 'free'),
+        // pharmarium
+        r('pharmarium', 40, 'short'), r('pharmarium', 15, 'medium'), r('pharmarium', 1, 'short'),
+        // tak
+        r('tak', 55, 'medium'), r('tak', 30, 'long'), r('tak', 12, 'long'), r('tak', 4, 'medium'),
+        // drama
+        r('drama', 35, 'long'), r('drama', 18, 'long'), r('drama', 6, 'long')
+      ];
+      // Remove old test entries, then prepend fresh ones
+      allReports = allReports.filter(function(r) { return !r.id || !String(r.id).startsWith('test-'); });
+      allReports = testReports.concat(allReports);
+      console.log('[QueueBar] injectTestData: ' + testReports.length + ' testrap injicerade, totalt ' + allReports.length + ' rapporter för ' + VENUES.length + ' venues');
     }
 
     async function submitReport(venueId, venueName, queueStatus) {
