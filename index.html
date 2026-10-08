@@ -530,43 +530,101 @@
     .fbtn.active { background: var(--accent); color: #FFFFFF; font-weight: 600; }
     .fbtn:focus-visible { box-shadow: 0 0 0 3px rgba(59,130,246,0.20); }
 
-    /* ── Grouped venue list (iOS Settings style) ───────────────────────── */
+    /* ── Venue data widget ─────────────────────────────────────────────── */
     @keyframes rowIn {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .erow { animation: none !important; opacity: 1 !important; }
     }
     .venue-group {
       background: #FFFFFF; border-radius: var(--radius-md);
       overflow: hidden; margin-top: 12px;
     }
     .erow {
-      display: flex; align-items: center; gap: 12px;
-      min-height: 72px; padding: 10px 16px;
-      border-bottom: 1px solid #F3F4F6;
+      position: relative;
+      display: flex; align-items: stretch;
+      min-height: 80px;
+      border-bottom: 1px solid transparent;
       cursor: pointer; background: #FFFFFF;
-      transition: background var(--dur-fast) ease;
-      opacity: 0; animation: rowIn 150ms ease-out forwards;
+      transition: background 150ms cubic-bezier(0.16,1,0.3,1),
+                  box-shadow 150ms cubic-bezier(0.16,1,0.3,1),
+                  transform 150ms cubic-bezier(0.16,1,0.3,1);
+      opacity: 0;
+      animation: rowIn 180ms ease-out forwards;
     }
-    .erow:last-child { border-bottom: 0; }
-    .erow:active { background: var(--surface-hover); }
-    .erow-dot {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    .erow:not(:last-child)::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 19px; right: 0; height: 1px;
+      background: #F3F4F6;
     }
-    .erow-left { flex: 1; min-width: 0; }
-    .erow-name { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .erow-area { font-size: 12px; color: #9CA3AF; margin-top: 1px; }
-    .erow-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .erow:hover {
+      background: #F7F8FA;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      z-index: 1;
+    }
+    .erow:active { transform: scale(0.99); transition-duration: 80ms; }
+
+    /* State modifiers */
+    .erow--empty { opacity: 0 !important; animation: rowIn 180ms ease-out forwards !important; }
+    .erow--empty .erow-inner { opacity: 0.7; }
+    .erow--stale .erow-left-bar { opacity: 0.4; }
+    .erow--stale .erow-hero { opacity: 0.5; }
+
+    /* Left color bar */
+    .erow-left-bar {
+      width: 3px; flex-shrink: 0; border-radius: 0;
+      transition: opacity 150ms ease;
+    }
+
+    /* Inner content */
+    .erow-inner {
+      flex: 1; display: flex; align-items: center;
+      padding: 12px 16px 12px 12px; gap: 12px;
+      min-width: 0;
+    }
+    .erow-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+    /* Layer 1 — primary */
+    .erow-name {
+      font-size: 15px; font-weight: 600; color: #1A1F36;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+    /* Layer 2 — secondary */
+    .erow-meta {
+      font-size: 13px; color: #9CA3AF; font-weight: 400;
+    }
+    /* Layer 3 — tertiary */
+    .erow-tertiary {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #9CA3AF; font-weight: 400;
+      font-variant-numeric: tabular-nums; margin-top: 2px;
+    }
+    .erow-tertiary-sep { color: #D1D5DB; }
+
+    /* Right column */
+    .erow-right {
+      display: flex; flex-direction: column; align-items: flex-end;
+      justify-content: center; gap: 4px; flex-shrink: 0;
+    }
+    .erow-hero {
+      font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums; line-height: 1;
+      transition: opacity 150ms ease;
+    }
     .erow-badge {
       border-radius: var(--radius-full); padding: 2px 8px;
       font-size: 11px; font-weight: 500; white-space: nowrap;
     }
-    .erow-badge.free   { background: rgba(34,197,94,0.10);  color: #16A34A; }
-    .erow-badge.short  { background: rgba(245,158,11,0.10); color: #D97706; }
-    .erow-badge.medium { background: rgba(234,115,0,0.10);  color: #C2410C; }
-    .erow-badge.long   { background: rgba(239,68,68,0.10);  color: #DC2626; }
+    .erow-badge.free   { background: rgba(34,197,94,0.12);  color: #16A34A; }
+    .erow-badge.short  { background: rgba(245,158,11,0.12); color: #D97706; }
+    .erow-badge.medium { background: rgba(234,115,0,0.12);  color: #C2410C; }
+    .erow-badge.long   { background: rgba(239,68,68,0.12);  color: #DC2626; }
     .erow-badge.unknown{ background: #F3F4F6; color: #9CA3AF; }
-    .erow-closing { font-size: 12px; color: #9CA3AF; }
+    .erow-badge.stale  { background: #F3F4F6; color: #9CA3AF; }
 
     /* ── Explore empty state ───────────────────────────────────────────── */
     .explore-empty {
@@ -1587,6 +1645,15 @@
       return true;
     }
 
+    // Geolocation (passiv, en gång — för avstånd i explore-rader)
+    window._userPos = null;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        window._userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (typeof renderExploreVenues === 'function') renderExploreVenues();
+      }, function() {}, { timeout: 8000, maximumAge: 300000 });
+    }
+
     // Fix 4 — loadReports alltid, oavsett karta
     console.log('[QueueBar] Startar initial datainläsning');
     loadReports();
@@ -1706,24 +1773,118 @@
       exploreDebounceTimer = setTimeout(renderExploreVenues, 200);
     }
 
+    var STATUS_COLORS = {
+      free: '#22C55E', short: '#F59E0B', medium: '#EA7300', long: '#EF4444', unknown: '#D1D5DB'
+    };
+    var STATUS_Y = { none: 0, free: 0, short: 1, medium: 2, long: 2 };
+
+    function renderSparkline(venueReports, statusColor) {
+      if (!venueReports || venueReports.length < 2) {
+        return '<svg width="40" height="14" viewBox="0 0 40 14" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+          '<polyline points="0,7 40,7" stroke="#E5E7EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '</svg>';
+      }
+      var pts = venueReports.slice(-5).sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+      var yVals = pts.map(function(r) { return STATUS_Y[r.queue_status] !== undefined ? STATUS_Y[r.queue_status] : 1; });
+      var n = yVals.length;
+      var coords = yVals.map(function(y, i) {
+        var x = n === 1 ? 20 : (i / (n - 1)) * 40;
+        var svgY = 2 + (y / 2) * 10;
+        return x.toFixed(1) + ',' + svgY.toFixed(1);
+      }).join(' ');
+      return '<svg width="40" height="14" viewBox="0 0 40 14" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<polyline points="' + coords + '" stroke="' + statusColor + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg>';
+    }
+
+    function formatAbsTime(dateStr) {
+      var d = new Date(dateStr);
+      return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+    }
+
     function renderExploreVenueRow(venue, index) {
+      var now = new Date();
+      var venueReports = allReports.filter(function(r) { return r.venue_id === venue.id; })
+        .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+      var latestReport = venueReports[0] || null;
       var status = computeStatus(venue.id, allReports);
-      var label = getStatusLabel(status);
       var cls = getStatusClass(status);
-      var dotColor = { free: '#22C55E', short: '#F59E0B', medium: '#EA7300', long: '#EF4444', unknown: '#D1D5DB' }[cls] || '#D1D5DB';
-      var badgeText = label || 'Okänd';
-      var delay = (index * 25) + 'ms';
-      return '<div class="erow" style="animation-delay:' + delay + '" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')">' +
-        '<span class="erow-dot" style="background:' + dotColor + '"></span>' +
-        '<div class="erow-left">' +
-          '<div class="erow-name">' + venue.name + '</div>' +
-          '<div class="erow-area">' + venue.area + '</div>' +
-        '</div>' +
-        '<div class="erow-right">' +
-          '<span class="erow-badge ' + cls + '">' + badgeText + '</span>' +
-          '<span class="erow-closing">Stänger ' + venue.closing + '</span>' +
+      var color = STATUS_COLORS[cls] || '#D1D5DB';
+      var hasData = venueReports.length > 0;
+      var isStale = hasData && latestReport && (now - new Date(latestReport.created_at)) > 30 * 60 * 1000;
+      var isEmpty = !hasData;
+
+      var stateClass = isEmpty ? ' erow--empty' : (isStale ? ' erow--stale' : '');
+      var barColor = isEmpty ? '#F3F4F6' : color;
+
+      // Hero number
+      var heroText, heroColor;
+      if (!hasData) {
+        heroText = '–'; heroColor = '#D1D5DB';
+      } else {
+        var mins = { none: 0, free: 0, short: 15, medium: 25, long: 30 }[status];
+        heroText = mins === 0 ? '~0 min' : (mins === 30 ? '30+ min' : '~' + mins + ' min');
+        heroColor = color;
+      }
+
+      // Badge
+      var badgeText, badgeCls;
+      if (!hasData) {
+        badgeText = 'Inga rapporter'; badgeCls = 'unknown';
+      } else if (isStale) {
+        var staleMin = Math.round((now - new Date(latestReport.created_at)) / 60000);
+        badgeText = '~' + staleMin + ' min sedan'; badgeCls = 'stale';
+      } else {
+        badgeText = getStatusLabel(status) || 'Ingen kö'; badgeCls = cls;
+      }
+
+      // Tertiary row
+      var reportCount = venueReports.length;
+      var lastTime = latestReport ? formatAbsTime(latestReport.created_at) : '–';
+      var spark = renderSparkline(venueReports, color);
+
+      // Distance (if available)
+      var metaText = venue.area;
+      if (window._userPos && venue.lat && venue.lng) {
+        var dlat = (venue.lat - window._userPos.lat) * 111000;
+        var dlng = (venue.lng - window._userPos.lng) * 111000 * Math.cos(venue.lat * Math.PI / 180);
+        var dist = Math.round(Math.sqrt(dlat * dlat + dlng * dlng) / 100) * 100;
+        metaText = venue.area + ' · ' + (dist >= 1000 ? (dist / 1000).toFixed(1) + ' km' : dist + 'm');
+      }
+
+      var delay = (index * 30) + 'ms';
+
+      return '<div class="erow' + stateClass + '" style="animation-delay:' + delay + '" onclick="goToVenueOnMap(getVenueById(\'' + venue.id + '\'))">' +
+        '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
+        '<div class="erow-inner">' +
+          '<div class="erow-body">' +
+            '<div class="erow-name">' + venue.name + '</div>' +
+            '<div class="erow-meta">' + metaText + '</div>' +
+            '<div class="erow-tertiary">' +
+              '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
+              '<span class="erow-tertiary-sep">·</span>' +
+              '<span>senast ' + lastTime + '</span>' +
+              '<span class="erow-tertiary-sep">·</span>' +
+              spark +
+            '</div>' +
+          '</div>' +
+          '<div class="erow-right">' +
+            '<span class="erow-hero" style="color:' + heroColor + '">' + heroText + '</span>' +
+            '<span class="erow-badge ' + badgeCls + '">' + badgeText + '</span>' +
+          '</div>' +
         '</div>' +
         '</div>';
+    }
+
+    function goToVenueOnMap(venue) {
+      if (!venue) return;
+      showScreen('home');
+      if (map && venue.lat && venue.lng) {
+        setTimeout(function() {
+          map.flyTo({ center: [venue.lng, venue.lat], zoom: 16, duration: 800 });
+        }, 80);
+      }
+      setTimeout(function() { openVenueCard(venue, 'explore'); }, 200);
     }
 
     function renderExploreVenues() {
@@ -1737,13 +1898,20 @@
         return ms && mf;
       });
       if (!list.length) {
-        var term = q ? '”' + (document.getElementById('explore-search').value) + '”' : '';
+        var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
+        var term = rawQ ? '”' + rawQ + '”' : '';
         el.innerHTML = '<div class="explore-empty">' +
           '<div class="explore-empty-title">Inga resultat' + (term ? ' för ' + term : '') + '</div>' +
           '<div class="explore-empty-sub">Prova ett annat namn eller område</div>' +
           '</div>';
         return;
       }
+      // Sort: venues with reports first
+      list = list.slice().sort(function(a, b) {
+        var aHas = allReports.some(function(r) { return r.venue_id === a.id; }) ? 0 : 1;
+        var bHas = allReports.some(function(r) { return r.venue_id === b.id; }) ? 0 : 1;
+        return aHas - bHas;
+      });
       el.innerHTML = '<div class="venue-group">' + list.map(renderExploreVenueRow).join('') + '</div>';
     }
 
