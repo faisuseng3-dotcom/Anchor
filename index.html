@@ -535,25 +535,38 @@
       from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    @keyframes rowInEmpty {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 0.55; transform: translateY(0); }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .erow { animation: none !important; opacity: 1 !important; }
+      .erow        { animation: none !important; opacity: 1   !important; }
+      .erow--empty { animation: none !important; opacity: 0.55 !important; }
     }
+
+    /* 7 — grouped container: outer border, inner separators */
     .venue-group {
-      background: #FFFFFF; border-radius: var(--radius-md);
-      overflow: hidden; margin-top: 12px;
+      background: #FFFFFF;
+      border-radius: var(--radius-md);
+      border: 1px solid #E5E7EB;
+      overflow: hidden;
+      margin-top: 12px;
     }
+
+    /* Base card */
     .erow {
       position: relative;
       display: flex; align-items: stretch;
       min-height: 80px;
-      border-bottom: 1px solid transparent;
       cursor: pointer; background: #FFFFFF;
-      transition: background 150ms cubic-bezier(0.16,1,0.3,1),
-                  box-shadow 150ms cubic-bezier(0.16,1,0.3,1),
-                  transform 150ms cubic-bezier(0.16,1,0.3,1);
       opacity: 0;
       animation: rowIn 180ms ease-out forwards;
+      transition: background 150ms cubic-bezier(0.16,1,0.3,1),
+                  opacity    200ms ease,
+                  box-shadow 150ms cubic-bezier(0.16,1,0.3,1),
+                  transform  150ms cubic-bezier(0.16,1,0.3,1);
     }
+    /* 4 — 1px separator, indented past the 3px left bar (19px) */
     .erow:not(:last-child)::after {
       content: ''; position: absolute;
       bottom: 0; left: 19px; right: 0; height: 1px;
@@ -567,57 +580,56 @@
     }
     .erow:active { transform: scale(0.99); transition-duration: 80ms; }
 
-    /* State modifiers — never set opacity on .erow itself after rowIn */
-    @keyframes rowInEmpty {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 0.65; transform: translateY(0); }
-    }
+    /* State — empty: fade in at 0.55 opacity */
     .erow--empty { animation: rowInEmpty 180ms ease-out forwards !important; }
+    /* State — stale: partial opacity on bar + hero only */
     .erow--stale .erow-left-bar { opacity: 0.4; }
-    .erow--stale .erow-hero { opacity: 0.5; }
+    .erow--stale .erow-hero     { opacity: 0.5; }
 
-    /* Left color bar */
+    /* 1 — 3px left color bar */
     .erow-left-bar {
-      width: 3px; flex-shrink: 0; border-radius: 0;
+      width: 3px; flex-shrink: 0;
       transition: opacity 150ms ease;
     }
 
-    /* Inner content */
+    /* Inner layout: 4 — 12px padding */
     .erow-inner {
       flex: 1; display: flex; align-items: center;
-      padding: 12px 16px 12px 12px; gap: 12px;
+      padding: 12px 12px 12px 10px; gap: 10px;
       min-width: 0;
     }
     .erow-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
-    /* Layer 1 — primary */
+    /* Layer 1 — name */
     .erow-name {
       font-size: 15px; font-weight: 600; color: #1A1F36;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      line-height: 1.3;
+      line-height: 1.3; padding-right: 8px;
     }
-    /* Layer 2 — secondary */
-    .erow-meta {
-      font-size: 13px; color: #9CA3AF; font-weight: 400;
-    }
-    /* Layer 3 — tertiary */
-    .erow-tertiary {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 12px; color: #9CA3AF; font-weight: 400;
-      font-variant-numeric: tabular-nums; margin-top: 2px;
-    }
-    .erow-tertiary-sep { color: #D1D5DB; }
+    /* Layer 2 — area + distance */
+    .erow-meta { font-size: 13px; color: #9CA3AF; font-weight: 400; }
 
-    /* Right column */
+    /* Layer 3 — report count · last time · sparkline */
+    .erow-tertiary {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: #9CA3AF; font-weight: 400;
+      font-variant-numeric: tabular-nums; margin-top: 1px;
+      flex-wrap: nowrap; overflow: hidden;
+    }
+    .erow-tertiary-sep { color: #D1D5DB; flex-shrink: 0; }
+
+    /* 2+3 — right column: hero number top, badge below */
     .erow-right {
       display: flex; flex-direction: column; align-items: flex-end;
-      justify-content: center; gap: 4px; flex-shrink: 0;
+      justify-content: center; gap: 5px; flex-shrink: 0; min-width: 72px;
     }
+    /* 2 — hero number */
     .erow-hero {
       font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums; line-height: 1;
-      transition: opacity 150ms ease;
+      transition: opacity 150ms ease; white-space: nowrap;
     }
+    /* 3 — badge under hero */
     .erow-badge {
       border-radius: var(--radius-full); padding: 2px 8px;
       font-size: 11px; font-weight: 500; white-space: nowrap;
