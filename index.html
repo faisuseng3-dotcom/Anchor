@@ -653,6 +653,32 @@
     .erow-trend--stable { font-weight: 700; color: #6B7280; }
     .erow-trend--single { font-weight: 400; color: #6B7280; }
 
+    /* ── Explore summary widget ─────────────────────────────────────────── */
+    #explore-summary { margin: 16px 0 12px; }
+    .exsum { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 16px; }
+    .exsum-stats { display: flex; align-items: center; }
+    .exsum-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .exsum-num {
+      font-family: var(--font-base); font-size: 22px; font-weight: 700;
+      line-height: 1; letter-spacing: -0.02em;
+    }
+    .exsum-label {
+      font-family: var(--font-base); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em; color: #6B7280; line-height: 1;
+    }
+    .exsum-sep { width: 1px; height: 32px; background: #E5E7EB; flex-shrink: 0; }
+    .exsum-footer {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid #F3F4F6;
+      font-family: var(--font-base); font-size: 12px; font-weight: 400;
+      color: #6B7280; text-align: center; line-height: 1.4;
+    }
+    .exsum-skeleton { display: flex; align-items: center; justify-content: space-around; gap: 8px; }
+    .exsum-skel { width: 40px; height: 22px; background: #F3F4F6; border-radius: 4px; }
+    @keyframes exsumShimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+    .exsum-skel { animation: exsumShimmer 1.5s infinite; }
+    @keyframes exsumPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    .exsum-num--pulse { animation: exsumPulse 300ms cubic-bezier(0.34,1.56,0.64,1); }
+
     /* ── Explore empty state ───────────────────────────────────────────── */
     .explore-empty {
       text-align: center; margin-top: 48px; padding: 0 24px;
@@ -901,6 +927,7 @@
         </div>
       </div>
       <div id="explore-list-wrap">
+        <div id="explore-summary"></div>
         <div id="explore-list"></div>
       </div>
     </section>
@@ -1950,6 +1977,149 @@
       return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
     }
 
+    var _exsumInterval = null;
+    var _exsumPrevCounts = null;
+
+    function computeExploreSummary() {
+      var now = Date.now();
+      var cutoff30  = now - 30  * 60 * 1000;
+      var cutoff2h  = now - 120 * 60 * 1000;
+      // Latest report per venue within 2h
+      var venueLatest = {};
+      allReports.forEach(function(r) {
+        var t = new Date(r.created_at).getTime();
+        if (t < cutoff2h) return;
+        if (!venueLatest[r.venue_id] || t > new Date(venueLatest[r.venue_id].created_at).getTime()) {
+          venueLatest[r.venue_id] = r;
+        }
+      });
+      var freeCount = 0, medCount = 0, longCount = 0;
+      Object.keys(venueLatest).forEach(function(vid) {
+        var r = venueLatest[vid];
+        if (new Date(r.created_at).getTime() < cutoff30) return; // stale
+        var s = r.queue_status;
+        if (s === 'free' || s === 'none') freeCount++;
+        else if (s === 'short' || s === 'medium') medCount++;
+        else if (s === 'long') longCount++;
+      });
+      // Open venues (closing hour after current time)
+      var d = new Date();
+      var nowMins = d.getHours() * 60 + d.getMinutes();
+      var openCount = VENUES.filter(function(v) {
+        if (!v.closing) return true;
+        var parts = v.closing.split(':');
+        var close = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        if (close < 360) close += 1440; // e.g. 02:00 → 1560 next-day
+        var open = 17 * 60; // assume bars open ~17:00
+        var cur = nowMins < 12 * 60 ? nowMins + 1440 : nowMins;
+        return cur >= open && cur < close;
+      }).length;
+      // Reports since 18:00 tonight
+      var today18 = new Date(d); today18.setHours(18, 0, 0, 0);
+      if (d.getHours() < 18) today18.setDate(today18.getDate() - 1);
+      var since18 = allReports.filter(function(r) {
+        return new Date(r.created_at).getTime() >= today18.getTime();
+      }).length;
+      // Last report time
+      var lastTs = null;
+      allReports.forEach(function(r) {
+        var t = new Date(r.created_at).getTime();
+        if (!lastTs || t > lastTs) lastTs = t;
+      });
+      return { freeCount: freeCount, medCount: medCount, longCount: longCount,
+               openCount: openCount, since18: since18, lastTs: lastTs, total: allReports.length };
+    }
+
+    function exsumTimeSince(ms) {
+      if (!ms) return null;
+      var mins = Math.round((Date.now() - ms) / 60000);
+      if (mins < 1) return 'just nu';
+      return mins + ' min sedan';
+    }
+
+    function exsumCountUp(el, target) {
+      if (!el || target === 0) { if (el) el.textContent = '0'; return; }
+      var start = performance.now();
+      var dur = 500;
+      function step(now) {
+        var p = Math.min((now - start) / dur, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(target * eased);
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = target;
+      }
+      el.textContent = '0';
+      requestAnimationFrame(step);
+    }
+
+    function pulseSummaryNum(index) {
+      var el = document.getElementById('exsum-n' + index);
+      if (!el) return;
+      el.classList.remove('exsum-num--pulse');
+      void el.offsetWidth; // reflow
+      el.classList.add('exsum-num--pulse');
+      el.addEventListener('animationend', function() { el.classList.remove('exsum-num--pulse'); }, { once: true });
+    }
+
+    function renderExploreSummary(animate) {
+      var el = document.getElementById('explore-summary');
+      if (!el) return;
+      var data = computeExploreSummary();
+      var noData = data.total === 0;
+      var footerText = noData
+        ? 'Inga rapporter än — bli först att rapportera'
+        : [data.openCount + ' öppna', data.since18 + ' rapporter ikväll',
+           exsumTimeSince(data.lastTs) ? 'uppdaterad ' + exsumTimeSince(data.lastTs) : null
+          ].filter(Boolean).join(' · ');
+
+      el.innerHTML =
+        '<div class="exsum">' +
+          '<div class="exsum-stats">' +
+            '<div class="exsum-stat">' +
+              '<span class="exsum-num" id="exsum-n0" style="color:#22C55E">0</span>' +
+              '<span class="exsum-label">KORT KÖ</span>' +
+            '</div>' +
+            '<div class="exsum-sep"></div>' +
+            '<div class="exsum-stat">' +
+              '<span class="exsum-num" id="exsum-n1" style="color:#D97706">0</span>' +
+              '<span class="exsum-label">MEDEL KÖ</span>' +
+            '</div>' +
+            '<div class="exsum-sep"></div>' +
+            '<div class="exsum-stat">' +
+              '<span class="exsum-num" id="exsum-n2" style="color:#DC2626">0</span>' +
+              '<span class="exsum-label">LÅNG KÖ</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="exsum-footer" id="exsum-footer">' + footerText + '</div>' +
+        '</div>';
+
+      var targets = [data.freeCount, data.medCount, data.longCount];
+      targets.forEach(function(t, i) {
+        var numEl = document.getElementById('exsum-n' + i);
+        if (animate) {
+          exsumCountUp(numEl, t);
+        } else {
+          if (numEl) numEl.textContent = t;
+          // Pulse changed bucket if re-render after new data
+          if (_exsumPrevCounts && _exsumPrevCounts[i] !== t) pulseSummaryNum(i);
+        }
+      });
+      _exsumPrevCounts = targets;
+
+      // 30s footer refresh
+      clearInterval(_exsumInterval);
+      _exsumInterval = setInterval(function() {
+        var footer = document.getElementById('exsum-footer');
+        if (!footer) { clearInterval(_exsumInterval); return; }
+        var d2 = computeExploreSummary();
+        footer.textContent = d2.total === 0
+          ? 'Inga rapporter än — bli först att rapportera'
+          : [d2.openCount + ' öppna', d2.since18 + ' rapporter ikväll',
+             exsumTimeSince(d2.lastTs) ? 'uppdaterad ' + exsumTimeSince(d2.lastTs) : null
+            ].filter(Boolean).join(' · ');
+      }, 30000);
+    }
+
     function renderExploreVenueRow(venue, index) {
       var now = new Date();
       var venueReports = allReports.filter(function(r) { return r.venue_id === venue.id; })
@@ -2062,7 +2232,10 @@
       setTimeout(function() { openVenueCard(venue, 'explore'); }, 200);
     }
 
+    var _exsumFirstRender = true;
     function renderExploreVenues() {
+      renderExploreSummary(_exsumFirstRender);
+      _exsumFirstRender = false;
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
