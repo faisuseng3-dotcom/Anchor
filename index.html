@@ -474,33 +474,106 @@
     #ob-btn:hover { background: var(--accent-hover); }
     #ob-skip { background: none; border: 0; margin-top: 12px; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; }
 
+    /* ── Utforska — sticky header ──────────────────────────────────────── */
+    #screen-explore {
+      padding: 0 !important;
+      background: var(--bg-secondary) !important;
+      overflow: hidden !important;
+      flex-direction: column !important;
+    }
+    #explore-list-wrap {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 0 16px calc(80px + env(safe-area-inset-bottom));
+    }
+    .explore-sticky {
+      position: sticky; top: 0; z-index: 3;
+      background: #FFFFFF;
+      padding: calc(16px + env(safe-area-inset-top)) 16px 0;
+      border-bottom: 1px solid transparent;
+      transition: border-color var(--dur-fast) ease;
+    }
+    .explore-sticky.scrolled { border-bottom-color: #F3F4F6; }
+    .explore-title {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+      color: var(--text-primary); margin-bottom: 12px;
+    }
     /* ── Sök & Filter ──────────────────────────────────────────────────── */
     .search-box {
       flex-shrink: 0; display: flex; align-items: center; gap: 8px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 0 12px;
-      height: 40px; margin-bottom: var(--space-1);
+      height: 40px; margin-bottom: 12px;
       transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
     }
     .search-box:focus-within {
       border-color: var(--border-focus);
-      box-shadow: var(--shadow-focus);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.10);
     }
     .search-box svg { width: 16px; height: 16px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
     .search-box input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text-primary); font-family: var(--font-base); font-size: 14px; }
     .search-box input::placeholder { color: var(--text-muted); }
 
-    .filter-row { flex-shrink: 0; display: flex; gap: 8px; overflow-x: auto; margin-bottom: var(--space-2); padding-bottom: 2px; scrollbar-width: none; }
+    .filter-row {
+      flex-shrink: 0; display: flex; gap: 6px; overflow-x: auto;
+      padding: 0 0 12px; scrollbar-width: none;
+    }
     .filter-row::-webkit-scrollbar { display: none; }
     .fbtn {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-full); padding: 5px var(--space-2);
-      color: var(--text-secondary); font-family: var(--font-base);
+      background: #F3F4F6; border: none;
+      border-radius: var(--radius-full); padding: 0 14px;
+      height: 32px;
+      color: #6B7280; font-family: var(--font-base);
       font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
-      transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+      transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+      outline: none;
     }
-    .fbtn.active { background: var(--accent-light); color: var(--accent); border-color: rgba(59,130,246,0.25); font-weight: 600; }
-    .fbtn:not(.active):hover { background: var(--surface-hover); border-color: var(--border-hover); }
+    .fbtn.active { background: var(--accent); color: #FFFFFF; font-weight: 600; }
+    .fbtn:focus-visible { box-shadow: 0 0 0 3px rgba(59,130,246,0.20); }
+
+    /* ── Grouped venue list (iOS Settings style) ───────────────────────── */
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .venue-group {
+      background: #FFFFFF; border-radius: var(--radius-md);
+      overflow: hidden; margin-top: 12px;
+    }
+    .erow {
+      display: flex; align-items: center; gap: 12px;
+      min-height: 72px; padding: 10px 16px;
+      border-bottom: 1px solid #F3F4F6;
+      cursor: pointer; background: #FFFFFF;
+      transition: background var(--dur-fast) ease;
+      opacity: 0; animation: rowIn 150ms ease-out forwards;
+    }
+    .erow:last-child { border-bottom: 0; }
+    .erow:active { background: var(--surface-hover); }
+    .erow-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .erow-left { flex: 1; min-width: 0; }
+    .erow-name { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .erow-area { font-size: 12px; color: #9CA3AF; margin-top: 1px; }
+    .erow-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .erow-badge {
+      border-radius: var(--radius-full); padding: 2px 8px;
+      font-size: 11px; font-weight: 500; white-space: nowrap;
+    }
+    .erow-badge.free   { background: rgba(34,197,94,0.10);  color: #16A34A; }
+    .erow-badge.short  { background: rgba(245,158,11,0.10); color: #D97706; }
+    .erow-badge.medium { background: rgba(234,115,0,0.10);  color: #C2410C; }
+    .erow-badge.long   { background: rgba(239,68,68,0.10);  color: #DC2626; }
+    .erow-badge.unknown{ background: #F3F4F6; color: #9CA3AF; }
+    .erow-closing { font-size: 12px; color: #9CA3AF; }
+
+    /* ── Explore empty state ───────────────────────────────────────────── */
+    .explore-empty {
+      text-align: center; margin-top: 48px; padding: 0 24px;
+    }
+    .explore-empty-title { font-size: 15px; font-weight: 500; color: #6B7280; margin-bottom: 6px; }
+    .explore-empty-sub   { font-size: 13px; color: #9CA3AF; }
 
     /* ── Empty / Error states ──────────────────────────────────────────── */
     .empty {
@@ -729,18 +802,22 @@
     </section>
 
     <section id="screen-explore" class="screen">
-      <h1 class="screen-title">Utforska</h1>
-      <div class="search-box">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="explore-search" type="search" placeholder="Sök bar, klubb eller område" autocomplete="off" oninput="filterExplore()">
+      <div class="explore-sticky" id="explore-sticky">
+        <h1 class="explore-title">Utforska</h1>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="explore-search" type="search" placeholder="Sök bar, klubb eller område" autocomplete="off" oninput="debouncedFilterExplore()">
+        </div>
+        <div class="filter-row">
+          <button class="fbtn active" onclick="setFilter('all', this)">Alla</button>
+          <button class="fbtn" onclick="setFilter('bar', this)">Barer</button>
+          <button class="fbtn" onclick="setFilter('klubb', this)">Klubbar</button>
+          <button class="fbtn" onclick="setFilter('happy', this)">Happy Hour</button>
+        </div>
       </div>
-      <div class="filter-row">
-        <button class="fbtn active" onclick="setFilter('all', this)">Alla</button>
-        <button class="fbtn" onclick="setFilter('bar', this)">Barer</button>
-        <button class="fbtn" onclick="setFilter('klubb', this)">Klubbar</button>
-        <button class="fbtn" onclick="setFilter('happy', this)">Happy Hour</button>
+      <div id="explore-list-wrap">
+        <div id="explore-list"></div>
       </div>
-      <div id="explore-list"></div>
     </section>
 
     <section id="screen-live" class="screen">
@@ -1257,8 +1334,8 @@
       showScreen('explore');
       setTimeout(function() {
         var inp = document.getElementById('explore-search');
-        if (inp) inp.focus();
-      }, 100);
+        if (inp) { inp.focus(); inp.select(); }
+      }, 150);
     }
 
     // ── Karta ────────────────────────────────────────────────────────────────
@@ -1436,7 +1513,7 @@
     }
 
     function showSkeletons() {
-      var lists = ['sheet-list', 'explore-list'];
+      var lists = ['sheet-list'];
       lists.forEach(function(id) {
         var el = document.getElementById(id);
         if (el && !el.querySelector('.vcard') && !el.querySelector('.vcrow')) {
@@ -1596,13 +1673,58 @@
 
     // ── Utforska ─────────────────────────────────────────────────────────────
     var exploreFilter = 'all';
+    var exploreDebounceTimer = null;
+
+    // Sticky header shadow on scroll
+    (function() {
+      var wrap = document.getElementById('explore-list-wrap');
+      var sticky = document.getElementById('explore-sticky');
+      if (wrap && sticky) {
+        wrap.addEventListener('scroll', function() {
+          sticky.classList.toggle('scrolled', wrap.scrollTop > 4);
+        });
+      }
+    })();
+
     function setFilter(f, btn) {
       exploreFilter = f;
       document.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
-      renderExploreVenues();
+      var el = document.getElementById('explore-list');
+      if (el) {
+        el.style.transition = 'opacity 100ms ease';
+        el.style.opacity = '0';
+        setTimeout(function() {
+          renderExploreVenues();
+          el.style.opacity = '1';
+        }, 100);
+      }
     }
-    function filterExplore() { renderExploreVenues(); }
+
+    function debouncedFilterExplore() {
+      clearTimeout(exploreDebounceTimer);
+      exploreDebounceTimer = setTimeout(renderExploreVenues, 200);
+    }
+
+    function renderExploreVenueRow(venue, index) {
+      var status = computeStatus(venue.id, allReports);
+      var label = getStatusLabel(status);
+      var cls = getStatusClass(status);
+      var dotColor = { free: '#22C55E', short: '#F59E0B', medium: '#EA7300', long: '#EF4444', unknown: '#D1D5DB' }[cls] || '#D1D5DB';
+      var badgeText = label || 'Okänd';
+      var delay = (index * 25) + 'ms';
+      return '<div class="erow" style="animation-delay:' + delay + '" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')">' +
+        '<span class="erow-dot" style="background:' + dotColor + '"></span>' +
+        '<div class="erow-left">' +
+          '<div class="erow-name">' + venue.name + '</div>' +
+          '<div class="erow-area">' + venue.area + '</div>' +
+        '</div>' +
+        '<div class="erow-right">' +
+          '<span class="erow-badge ' + cls + '">' + badgeText + '</span>' +
+          '<span class="erow-closing">Stänger ' + venue.closing + '</span>' +
+        '</div>' +
+        '</div>';
+    }
 
     function renderExploreVenues() {
       var q = (document.getElementById('explore-search') || {}).value || '';
@@ -1614,8 +1736,15 @@
         var mf = exploreFilter === 'all' || v.type === exploreFilter || exploreFilter === 'happy';
         return ms && mf;
       });
-      el.innerHTML = list.length ? list.map(renderVenueCard).join('') :
-        '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Inga ställen hittades</p></div>';
+      if (!list.length) {
+        var term = q ? '”' + (document.getElementById('explore-search').value) + '”' : '';
+        el.innerHTML = '<div class="explore-empty">' +
+          '<div class="explore-empty-title">Inga resultat' + (term ? ' för ' + term : '') + '</div>' +
+          '<div class="explore-empty-sub">Prova ett annat namn eller område</div>' +
+          '</div>';
+        return;
+      }
+      el.innerHTML = '<div class="venue-group">' + list.map(renderExploreVenueRow).join('') + '</div>';
     }
 
     renderExploreVenues();
