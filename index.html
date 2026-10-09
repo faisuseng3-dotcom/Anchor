@@ -519,16 +519,16 @@
     }
     .filter-row::-webkit-scrollbar { display: none; }
     .fbtn {
-      background: #F3F4F6; border: none;
+      background: transparent; border: 1px solid var(--border);
       border-radius: var(--radius-full); padding: 0 14px;
       height: 36px;
       color: #6B7280; font-family: var(--font-base);
       font-size: 13px; font-weight: 600; letter-spacing: 0em; cursor: pointer; white-space: nowrap;
-      transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+      transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
       outline: none;
     }
-    .fbtn.active { background: var(--accent); color: #FFFFFF; font-weight: 600; }
-    .fbtn:focus-visible { box-shadow: 0 0 0 3px rgba(59,130,246,0.20); }
+    .fbtn.active { background: #1A1F36; border-color: #1A1F36; color: #FFFFFF; font-weight: 600; }
+    .fbtn:focus-visible { box-shadow: 0 0 0 3px rgba(26,31,54,0.15); }
 
     /* ── Venue data widget ─────────────────────────────────────────────── */
     @keyframes rowIn {
@@ -594,7 +594,7 @@
 
     /* 1 — 3px left color bar */
     .erow-left-bar {
-      width: 3px; flex-shrink: 0;
+      width: 4px; flex-shrink: 0;
       transition: opacity 150ms ease;
     }
 
@@ -632,7 +632,7 @@
     }
     /* 2 — hero number */
     .erow-hero {
-      font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+      font-size: 26px; font-weight: 700; letter-spacing: -0.04em;
       font-variant-numeric: tabular-nums; line-height: 1;
       transition: opacity 150ms ease; white-space: nowrap;
     }
@@ -706,7 +706,7 @@
     }
     /* live-row is display-only — no hover state */
     .live-status { display: flex; flex-direction: column; gap: 2px; }
-    .live-wait { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .live-wait { font-size: 26px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
     .live-cat { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
     .live-right { text-align: right; }
     .live-name { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.25; }
@@ -730,31 +730,9 @@
 
     /* ── Rapportflöde ──────────────────────────────────────────────────── */
     .rp-wrap { flex-shrink: 0; margin-bottom: var(--space-3); }
+    .rp-header-row { display: flex; align-items: baseline; justify-content: space-between; }
+    .rp-step-counter { font-size: 13px; font-weight: 400; color: var(--text-muted); letter-spacing: 0; font-variant-numeric: tabular-nums; }
     .rp-sub { font-size: 14px; font-weight: 400; letter-spacing: -0.01em; color: var(--text-muted); margin: -8px 0 var(--space-2); line-height: 1.45; }
-    .rp-steps {
-      display: flex; align-items: center; gap: 0; margin-top: var(--space-2);
-    }
-    .rp-line {
-      flex: 1; height: 2px;
-      background: var(--border); position: relative; overflow: hidden;
-    }
-    .rp-line-fill {
-      position: absolute; top: 0; left: 0; height: 100%;
-      background: var(--accent); width: 0;
-      transition: width var(--dur-slow) var(--ease-out);
-    }
-    .rp-step {
-      width: 28px; height: 28px; border-radius: 50%;
-      border: 2px solid var(--border); background: var(--bg-primary);
-      color: var(--text-muted);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700;
-      transition: all var(--dur-mid) var(--ease-out); flex-shrink: 0;
-      position: relative; z-index: 1;
-    }
-    .rp-step--done   { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
-    .rp-step--active { background: var(--accent); border-color: var(--accent); color: #FFFFFF;
-      box-shadow: 0 0 0 4px var(--accent-light); }
 
     .rs-label { font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: var(--space-1); line-height: 1.0; }
     .rs-item {
@@ -951,15 +929,11 @@
 
     <section id="screen-report" class="screen">
       <div class="rp-wrap">
-        <h1 class="screen-title">Rapportera</h1>
-        <p class="rp-sub">Hjälp andra — tar 5 sekunder</p>
-        <div class="rp-steps">
-          <div id="rp1" class="rp-step rp-step--active">1</div>
-          <div class="rp-line"><div class="rp-line-fill" id="rp-fill-1"></div></div>
-          <div id="rp2" class="rp-step">2</div>
-          <div class="rp-line"><div class="rp-line-fill" id="rp-fill-2"></div></div>
-          <div id="rp3" class="rp-step">3</div>
+        <div class="rp-header-row">
+          <h1 class="screen-title">Rapportera</h1>
+          <span id="rp-step-counter" class="rp-step-counter">1 / 3</span>
         </div>
+        <p class="rp-sub">Hjälp andra — tar 5 sekunder</p>
       </div>
 
       <div id="rs1">
@@ -2321,10 +2295,11 @@
           '<div class="live-sub-wait" style="color:' + color + '">' + subLabel + '</div>' +
           '<div class="live-sub-meta">' + timeAgo(r.created_at) + '</div></div>';
       }
+      var liveBg = { long: 'rgba(239,68,68,0.04)', none: 'rgba(34,197,94,0.03)', free: 'rgba(34,197,94,0.03)' }[qs] || '';
       var heroHtml = waitTime
         ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
         : '<div class="live-wait">' + descriptor + '</div>';
-      return '<div class="live-row">' +
+      return '<div class="live-row"' + (liveBg ? ' style="background:' + liveBg + '"' : '') + '>' +
         '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
         '<div class="live-right"><div class="live-name">' + name + '</div>' +
         '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
@@ -2420,16 +2395,13 @@
       document.getElementById('rs-vname').textContent = selectedRV.name;
       document.getElementById('rs1').style.display = 'none';
       document.getElementById('rs2').style.display = 'flex';
-      document.getElementById('rp1').className = 'rp-step rp-step--done';
-      document.getElementById('rp2').className = 'rp-step rp-step--active';
-      var f1 = document.getElementById('rp-fill-1');
-      if (f1) f1.style.width = '100%';
+      document.getElementById('rp-step-counter').textContent = '2 / 3';
     }
 
     function backToRs1() {
       document.getElementById('rs1').style.display = 'block';
       document.getElementById('rs2').style.display = 'none';
-      document.getElementById('rp2').className = 'rp-step';
+      document.getElementById('rp-step-counter').textContent = '1 / 3';
     }
 
     async function pickQueue(status) {
@@ -2439,15 +2411,11 @@
         showToast('Rapport skickad — +10 poäng');
         document.getElementById('rs2').style.display = 'none';
         document.getElementById('rs3').style.display = 'flex';
-        document.getElementById('rp2').className = 'rp-step rp-step--done';
-        document.getElementById('rp3').className = 'rp-step rp-step--active';
-        var f2 = document.getElementById('rp-fill-2');
-        if (f2) f2.style.width = '100%';
+        document.getElementById('rp-step-counter').textContent = '3 / 3';
         setTimeout(function() {
           document.getElementById('rs3').style.display = 'none';
           document.getElementById('rs1').style.display = 'block';
-          document.getElementById('rp2').className = 'rp-step';
-          document.getElementById('rp3').className = 'rp-step';
+          document.getElementById('rp-step-counter').textContent = '1 / 3';
           selectedRV = null;
         }, 2000);
       } catch(err) { alert(err.message || 'Något gick fel.'); }
