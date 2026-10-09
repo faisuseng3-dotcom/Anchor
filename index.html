@@ -721,6 +721,7 @@
     .erow-trend--down   { font-weight: 700; color: #00E676; }
     .erow-trend--stable { font-weight: 600; color: var(--text-muted); }
     .erow-trend--single { font-weight: 400; color: var(--text-muted); }
+    .erow-comment { font-size: 11px; color: rgba(255,255,255,0.38); font-style: italic; padding: 4px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Kvällsplanering ────────────────────────────────────────────────── */
     .plan-badge {
@@ -1242,6 +1243,9 @@
         <button class="q-btn q-btn-short"  onclick="pickQueue('short')">Ca 15 min</button>
         <button class="q-btn q-btn-medium" onclick="pickQueue('medium')">Ca 25 min</button>
         <button class="q-btn q-btn-long"   onclick="pickQueue('long')">30+ min</button>
+        <div style="margin-top:12px">
+          <input id="rs-comment" type="text" maxlength="80" placeholder="Valfri kommentar: fri entré, dresscode, VIP-kö öppen…" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;font-size:14px;color:rgba(255,255,255,0.8);font-family:inherit;outline:none" />
+        </div>
         <button class="rs-back" onclick="backToRs1()">← Byt ställe</button>
       </div>
 
@@ -2211,7 +2215,7 @@
       }
       var testReports = [
         // spy-bar
-        r('spy-bar', 45, 'short'), r('spy-bar', 20, 'medium'), r('spy-bar', 5, 'long'),
+        r('spy-bar', 45, 'short'), r('spy-bar', 20, 'medium'), Object.assign(r('spy-bar', 5, 'long'), { comment: 'VIP-kö öppen' }),
         // sturehof
         r('sturehof', 50, 'free'), r('sturehof', 30, 'short'), r('sturehof', 10, 'medium'),
         // soap-bar
@@ -2233,7 +2237,7 @@
         // under-bron
         r('under-bron', 45, 'free'), r('under-bron', 25, 'free'), r('under-bron', 8, 'short'),
         // cafe-opera
-        r('cafe-opera', 60, 'medium'), r('cafe-opera', 35, 'long'), r('cafe-opera', 10, 'long'), r('cafe-opera', 2, 'long'),
+        r('cafe-opera', 60, 'medium'), r('cafe-opera', 35, 'long'), r('cafe-opera', 10, 'long'), Object.assign(r('cafe-opera', 2, 'long'), { comment: 'Fri entré t.o.m. 23:30' }),
         // solidaritet
         r('solidaritet', 30, 'free'), r('solidaritet', 10, 'free'),
         // gro
@@ -2262,7 +2266,7 @@
       };
     }
 
-    async function submitReport(venueId, venueName, queueStatus) {
+    async function submitReport(venueId, venueName, queueStatus, comment) {
       if (!supabase) throw new Error('Supabase är inte tillgänglig');
       var userId = getUserId();
       var now = new Date();
@@ -2271,7 +2275,17 @@
         var wait = Math.ceil(20 - (now - new Date(recent[0].created_at)) / 60000);
         throw new Error('Vänta ' + wait + ' minuter innan nästa rapport');
       }
-      var result = await supabase.from('reports').insert({ venue_id: venueId, venue_name: venueName, queue_status: queueStatus, user_id: userId, expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString() });
+      var insertObj = { venue_id: venueId, venue_name: venueName, queue_status: queueStatus, user_id: userId, expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString() };
+      if (comment) insertObj.comment = comment;
+      var result;
+      try {
+        result = await supabase.from('reports').insert(insertObj);
+        if (result.error && result.error.message && result.error.message.toLowerCase().includes('comment')) {
+          // Column missing — retry without comment
+          delete insertObj.comment;
+          result = await supabase.from('reports').insert(insertObj);
+        }
+      } catch(e) { result = { error: e }; }
       if (result.error) throw result.error;
       await supabase.rpc('increment_points', { p_user_id: userId, p_points: 10 });
       await loadReports();
@@ -2729,13 +2743,17 @@
               var pat = _historicalPatterns[venue.id];
               var patLabels = { long: 'Vanligtvis lång kö nu', medium: 'Vanligtvis medel kö nu', short: 'Vanligtvis kort kö nu', free: 'Vanligtvis fri ingång nu' };
               var patHtml = pat && patLabels[pat.level] ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
+              var recentWithComment = venueReports.filter(function(r) {
+                return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
+              }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+              var commentHtml = recentWithComment ? '<div class="erow-comment">"' + recentWithComment.comment + '"</div>' : '';
               return '<div class="erow-tertiary">' +
                 confHtml +
                 '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
                 '<span class="erow-tertiary-sep">·</span>' +
                 '<span>senast ' + lastTime + '</span>' +
                 (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
-              '</div>';
+              '</div>' + commentHtml;
             })() +
           '</div>' +
           '<div class="erow-right">' +
@@ -3237,8 +3255,11 @@
 
     async function pickQueue(status) {
       if (!selectedRV) return;
+      var commentEl = document.getElementById('rs-comment');
+      var comment = commentEl ? commentEl.value.trim().slice(0, 80) : '';
       try {
-        await submitReport(selectedRV.id, selectedRV.name, status);
+        await submitReport(selectedRV.id, selectedRV.name, status, comment);
+        if (commentEl) commentEl.value = '';
         showToast('Rapport skickad — tack!');
         document.getElementById('rs2').style.display = 'none';
         document.getElementById('rs1').style.display = 'block';
