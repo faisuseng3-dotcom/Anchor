@@ -936,6 +936,32 @@
 
     .rs-back { background: none; border: 0; margin-top: 4px; font-family: var(--font-base); font-size: 14px; color: var(--text-secondary); cursor: pointer; align-self: flex-start; padding: 4px 0; }
 
+    /* ── Watch (Bevaka) button on each explore row ────────────────────── */
+    .erow-watch-btn {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+      margin-left: 4px;
+    }
+    .erow-watch-btn:hover {
+      background: rgba(99,102,241,0.15);
+      border-color: rgba(99,102,241,0.3);
+      color: #8B5CF6;
+    }
+    .erow-watch-btn.watching {
+      background: rgba(99,102,241,0.15);
+      border-color: rgba(99,102,241,0.35);
+      color: #8B5CF6;
+    }
+
     /* ── Quick-report button on each explore row ───────────────────────── */
     .erow-report-btn {
       flex-shrink: 0;
@@ -1530,6 +1556,86 @@
       setTimeout(function() { t.remove(); }, 3000);
     }
 
+    // ── Bevaka (Watch) ────────────────────────────────────────────────────────────
+    var STATUS_RANK_NUM = { none: 0, free: 0, short: 1, medium: 2, long: 3 };
+
+    function getWatched() {
+      try { return JSON.parse(localStorage.getItem('qb_watched') || '{}'); } catch(e) { return {}; }
+    }
+
+    function saveWatched(obj) {
+      try { localStorage.setItem('qb_watched', JSON.stringify(obj)); } catch(e) {}
+    }
+
+    function isWatching(venueId) {
+      return !!getWatched()[venueId];
+    }
+
+    function toggleWatch(venueId) {
+      var watched = getWatched();
+      if (watched[venueId] !== undefined) {
+        delete watched[venueId];
+        saveWatched(watched);
+        renderExploreVenues();
+        showToast('Bevakning avstängd');
+        return;
+      }
+      // Request notification permission first
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(function(perm) {
+          if (perm === 'granted') {
+            var status = computeStatus(venueId, allReports);
+            watched[venueId] = status;
+            saveWatched(watched);
+            renderExploreVenues();
+            showToast('Bevakar kön — du får en notis om kön minskar');
+          }
+        });
+      } else {
+        var status = computeStatus(venueId, allReports);
+        watched[venueId] = status;
+        saveWatched(watched);
+        renderExploreVenues();
+        if (Notification.permission === 'granted') {
+          showToast('Bevakar kön — du får en notis om kön minskar');
+        } else {
+          showToast('Bevakar kön (aktivera notiser för pushnotiser)');
+        }
+      }
+    }
+
+    function checkWatchedVenueAlerts() {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      var watched = getWatched();
+      var changed = false;
+      Object.keys(watched).forEach(function(venueId) {
+        var prevStatus = watched[venueId];
+        var currStatus = computeStatus(venueId, allReports);
+        var prevRank = STATUS_RANK_NUM[prevStatus] !== undefined ? STATUS_RANK_NUM[prevStatus] : 1;
+        var currRank = STATUS_RANK_NUM[currStatus] !== undefined ? STATUS_RANK_NUM[currStatus] : 1;
+        // Status improved (rank went down)
+        if (currRank < prevRank) {
+          var venue = getVenueById(venueId);
+          var name = venue ? venue.name : venueId;
+          var msg = currRank === 0 ? 'Fri ingång nu!' : (currStatus === 'short' ? 'Ca 15 min kö nu' : 'Ca 25 min kö nu');
+          try {
+            new Notification('QueueBar — ' + name, {
+              body: msg,
+              icon: '/favicon.ico',
+              tag: 'qb-' + venueId
+            });
+          } catch(e) {}
+          watched[venueId] = currStatus;
+          changed = true;
+        } else if (currStatus && currStatus !== prevStatus) {
+          // Update stored status even if not improved (so we track from latest)
+          watched[venueId] = currStatus;
+          changed = true;
+        }
+      });
+      if (changed) saveWatched(watched);
+    }
+
     var favorites = JSON.parse(localStorage.getItem('qb_favorites') || '[]');
     function isFavorite(venueId) { return favorites.indexOf(venueId) > -1; }
 
@@ -1948,6 +2054,7 @@
         if (typeof renderExploreVenues === 'function') renderExploreVenues();
         if (typeof renderLiveFeed === 'function') renderLiveFeed();
         if (typeof updateProfileStats === 'function') updateProfileStats();
+        checkWatchedVenueAlerts();
         return;
       }
       showSkeletons();
@@ -1970,6 +2077,7 @@
           if (typeof renderExploreVenues === 'function') renderExploreVenues();
           if (typeof renderLiveFeed === 'function') renderLiveFeed();
           if (typeof updateProfileStats === 'function') updateProfileStats();
+          checkWatchedVenueAlerts();
         }
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
@@ -2472,6 +2580,14 @@
             trendHtml +
           '</div>' +
           '<button class="erow-report-btn" onclick="event.stopPropagation();openQuickReport(\'' + venue.id + '\')" aria-label="Rapportera"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
+          (function() {
+            var watching = isWatching(venue.id);
+            return '<button class="erow-watch-btn' + (watching ? ' watching' : '') + '" onclick="event.stopPropagation();toggleWatch(\'' + venue.id + '\')" aria-label="' + (watching ? 'Sluta bevaka' : 'Bevaka kön') + '">' +
+              '<svg viewBox="0 0 24 24" width="15" height="15" fill="' + (watching ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>' +
+              '<path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
+              '</svg></button>';
+          })() +
         '</div>' +
         '</div>';
     }
