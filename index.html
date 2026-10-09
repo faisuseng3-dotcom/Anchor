@@ -686,6 +686,23 @@
       flex-wrap: nowrap; overflow: hidden;
     }
     .erow-tertiary-sep { color: #D1D5DB; flex-shrink: 0; }
+    .conf-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 10px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    .conf-bar {
+      width: 3px;
+      border-radius: 1px;
+      background: rgba(255,255,255,0.12);
+    }
+    .conf-bar:nth-child(1) { height: 4px; }
+    .conf-bar:nth-child(2) { height: 7px; }
+    .conf-bar:nth-child(3) { height: 10px; }
+    .conf-bar.active { background: currentColor; }
 
     /* 2+3 — right column: hero number top, badge below */
     .erow-right {
@@ -1439,6 +1456,40 @@
       { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.3342, lng: 18.0656, closing: '02:00' },
       { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00' }
     ];
+
+    function computeConfidence(venueReports) {
+      if (!venueReports.length) return 0;
+
+      var freshCutoff = Date.now() - 25 * 60 * 1000; // 25 min window
+      var freshReports = venueReports.filter(function(r) {
+        return new Date(r.created_at).getTime() > freshCutoff;
+      });
+
+      if (!freshReports.length) return 0;
+
+      // Agreement: what fraction of fresh reports match the most common status?
+      var counts = {};
+      freshReports.forEach(function(r) {
+        counts[r.queue_status] = (counts[r.queue_status] || 0) + 1;
+      });
+      var maxAgree = Math.max.apply(null, Object.keys(counts).map(function(k) { return counts[k]; }));
+      var agreementRatio = maxAgree / freshReports.length;
+
+      // Volume: 1 report = low, 2-3 = medium, 4+ = high
+      var volumeScore = Math.min(freshReports.length / 4, 1);
+
+      // Freshness of newest report (0-20 min = full, older = less)
+      var newestAge = (Date.now() - new Date(venueReports[0].created_at).getTime()) / 60000;
+      var freshnessScore = Math.max(0, 1 - newestAge / 20);
+
+      // Weighted score 0-1
+      var score = agreementRatio * 0.5 + volumeScore * 0.3 + freshnessScore * 0.2;
+
+      // Map to 1-3 bars
+      if (score >= 0.65) return 3;
+      if (score >= 0.35) return 2;
+      return 1;
+    }
 
     function computeStatus(venueId, reports) {
       var venueReports = reports.filter(function(r) { return r.venue_id === venueId; });
@@ -2378,6 +2429,15 @@
       // Tertiary row
       var reportCount = venueReports.length;
       var lastTime = latestReport ? formatAbsTime(latestReport.created_at) : '–';
+      var confLevel = hasData ? computeConfidence(venueReports) : 0;
+      var confHtml = '';
+      if (hasData) {
+        var bars = '';
+        for (var i = 1; i <= 3; i++) {
+          bars += '<span class="conf-bar' + (i <= confLevel ? ' active' : '') + '"></span>';
+        }
+        confHtml = '<span class="conf-bars" style="color:' + heroColor + '">' + bars + '</span>';
+      }
 
       // Distance (if available)
       var metaText = venue.area;
@@ -2401,6 +2461,7 @@
             '</div>' +
             '<div class="erow-meta">' + metaText + '</div>' +
             '<div class="erow-tertiary">' +
+              confHtml +
               '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
               '<span class="erow-tertiary-sep">·</span>' +
               '<span>senast ' + lastTime + '</span>' +
