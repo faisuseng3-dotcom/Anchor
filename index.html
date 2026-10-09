@@ -988,6 +988,26 @@
       color: #fff;
     }
 
+    /* ── Share button on each explore row ─────────────────────────────── */
+    .erow-share-btn {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 150ms ease, color 150ms ease;
+      margin-left: 4px;
+    }
+    .erow-share-btn:hover {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.8);
+    }
+
     /* ── Quick-report sheet animation ─────────────────────────────────── */
     @keyframes sheetIn {
       from { transform: translateX(-50%) translateY(100%); }
@@ -1299,6 +1319,7 @@
     </div>
     <button class="vc-btn vc-primary" onclick="goToReport()">Rapportera köläge</button>
     <div class="vc-actions">
+      <button class="vc-btn vc-secondary" onclick="if(activeVenue)shareVenue(activeVenue.id)">Dela</button>
       <button class="vc-btn vc-secondary" onclick="openDirections()">Vägbeskrivning</button>
       <button class="vc-btn vc-secondary" onclick="closeVenueCard()">Tillbaka</button>
     </div>
@@ -1574,6 +1595,34 @@
       t.textContent = msg;
       document.body.appendChild(t);
       setTimeout(function() { t.remove(); }, 3000);
+    }
+
+    // ── Dela (Share) ─────────────────────────────────────────────────────────────
+    function shareVenue(venueId) {
+      var venue = getVenueById(venueId);
+      if (!venue) return;
+      var status = computeStatus(venueId, allReports);
+      var statusText = {
+        long:   venue.name + ' — 30+ min kö just nu 🔴',
+        medium: venue.name + ' — ca 25 min kö just nu 🟠',
+        short:  venue.name + ' — ca 15 min kö just nu 🟡',
+        free:   venue.name + ' — fri ingång just nu 🟢'
+      }[status] || (venue.name + ' — ingen data just nu ⚪');
+
+      if (navigator.share) {
+        navigator.share({
+          title: 'QueueBar',
+          text: statusText,
+          url: window.location.origin
+        }).catch(function() {});
+      } else {
+        var full = statusText + ' — ' + window.location.origin;
+        navigator.clipboard.writeText(full).then(function() {
+          showToast('Kopierat till urklipp');
+        }).catch(function() {
+          showToast(statusText);
+        });
+      }
     }
 
     // ── Bevaka (Watch) ────────────────────────────────────────────────────────────
@@ -2663,6 +2712,7 @@
               '<path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
               '</svg></button>';
           })() +
+          '<button class="erow-share-btn" onclick="event.stopPropagation();shareVenue(\'' + venue.id + '\')" aria-label="Dela"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>' +
         '</div>' +
         '</div>';
     }
