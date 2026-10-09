@@ -27,7 +27,7 @@
       /* ── Borders ───────────────────────────────────────────────────── */
       --border:          rgba(255,255,255,0.09);
       --border-hover:    rgba(255,255,255,0.18);
-      --border-focus:    rgba(124,58,237,0.6);
+      --border-focus:    rgba(255,255,255,0.3);
 
       /* ── Text ──────────────────────────────────────────────────────── */
       --text-primary:    #FFFFFF;
@@ -35,9 +35,9 @@
       --text-muted:      rgba(255,255,255,0.28);
 
       /* ── Accent ────────────────────────────────────────────────────── */
-      --accent:          #7C3AED;
-      --accent-hover:    #6D28D9;
-      --accent-light:    rgba(124,58,237,0.12);
+      --accent:          rgba(255,255,255,0.88);
+      --accent-hover:    #FFFFFF;
+      --accent-light:    rgba(255,255,255,0.08);
 
       /* ── Status (semantiska) ───────────────────────────────────────── */
       --status-free:     #00E676;
@@ -75,7 +75,7 @@
       /* ── Skuggor ───────────────────────────────────────────────────── */
       --shadow-card:   0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px var(--border);
       --shadow-sheet:  0 -4px 24px rgba(0,0,0,0.4);
-      --shadow-focus:  0 0 0 3px rgba(124,58,237,0.3);
+      --shadow-focus:  0 0 0 3px rgba(255,255,255,0.15);
 
       /* ── Animationer ───────────────────────────────────────────────── */
       --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
@@ -102,7 +102,7 @@
       display: flex; justify-content: center;
       background-color: var(--bg-primary);
       background-image:
-        radial-gradient(ellipse 65% 40% at 82% 4%, rgba(124,58,237,0.06) 0%, transparent 100%),
+        radial-gradient(ellipse 65% 40% at 82% 4%, rgba(255,255,255,0.02) 0%, transparent 100%),
         radial-gradient(ellipse 50% 35% at 12% 88%, rgba(14,165,233,0.04) 0%, transparent 100%);
     }
 
@@ -117,7 +117,7 @@
     }
     .bg-orb-1 {
       width: 340px; height: 340px;
-      background: rgba(124,58,237,0.06);
+      background: rgba(255,255,255,0.02);
       top: -80px; right: -60px;
       animation: orbFloat1 18s ease-in-out infinite;
     }
@@ -214,8 +214,8 @@
       display: block;
       height: 2px; width: 0;
       border-radius: 1px;
-      background: linear-gradient(90deg, #6366F1, #8B5CF6);
-      box-shadow: 0 0 8px rgba(99,102,241,0.5);
+      background: rgba(255,255,255,0.8);
+      box-shadow: none;
       margin-top: 3px;
       transition: width var(--dur-mid) var(--ease-out);
     }
@@ -274,7 +274,7 @@
     #err-toast.visible { display: flex; animation: toastIn 0.25s var(--ease-out); }
     .err-toast-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
     .err-toast-msg { flex: 1; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: #EF4444; }
-    .err-toast-retry { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: var(--accent); background: none; border: 0; cursor: pointer; font-family: var(--font-base); white-space: nowrap; }
+    .err-toast-retry { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: #374151; background: none; border: 0; cursor: pointer; font-family: var(--font-base); white-space: nowrap; }
 
     /* ── Bottom Sheet ("Nära dig") ─────────────────────────────────────── */
     #nearby-sheet {
@@ -456,8 +456,8 @@
       transition: background var(--dur-fast) ease, transform 100ms ease;
     }
     .vc-btn:active { transform: scale(0.98); }
-    .vc-primary { background: var(--accent); color: #FFFFFF; margin-bottom: 8px; }
-    .vc-primary:hover { background: var(--accent-hover); }
+    .vc-primary { background: rgba(255,255,255,0.10); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.18); margin-bottom: 8px; }
+    .vc-primary:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
     .vc-actions { display: flex; gap: 8px; }
     .vc-secondary {
       background: transparent; color: var(--text-primary); font-weight: 600;
@@ -491,13 +491,13 @@
     .consent-list-item { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); }
     .consent-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
     .consent-accept {
-      width: 100%; background: var(--accent); color: #FFFFFF; border: 0;
+      width: 100%; background: rgba(255,255,255,0.10); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.18);
       border-radius: var(--radius-md); height: 44px; font-family: var(--font-base);
       font-size: 14px; font-weight: 600; cursor: pointer;
       margin-bottom: 8px;
       transition: background var(--dur-fast) ease, transform 100ms ease;
     }
-    .consent-accept:hover { background: var(--accent-hover); }
+    .consent-accept:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
     .consent-accept:active { transform: scale(0.98); }
     .consent-decline { width: 100%; background: none; border: 0; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; padding: 8px 0; }
 
@@ -514,12 +514,12 @@
     .ob-dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--border-hover); transition: width 0.2s var(--ease-out), background 0.2s ease; }
     .ob-dot.active { width: 20px; background: var(--accent); }
     #ob-btn {
-      width: min(320px, 100%); background: var(--accent); color: #FFFFFF; border: 0;
+      width: min(320px, 100%); background: rgba(255,255,255,0.10); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.18);
       border-radius: var(--radius-md); height: 44px; font-family: var(--font-base);
       font-size: 14px; font-weight: 600; cursor: pointer;
       transition: background var(--dur-fast) ease;
     }
-    #ob-btn:hover { background: var(--accent-hover); }
+    #ob-btn:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
     #ob-skip { background: none; border: 0; margin-top: 12px; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; }
 
     /* ── Utforska — sticky header ──────────────────────────────────────── */
@@ -577,7 +577,7 @@
       transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
       outline: none;
     }
-    .fbtn.active { background: linear-gradient(135deg, #6366F1, #8B5CF6); border-color: transparent; color: #FFFFFF; font-weight: 700; box-shadow: 0 4px 20px rgba(99,102,241,0.4); }
+    .fbtn.active { background: rgba(255,255,255,0.92); border-color: transparent; color: #0D0F1A; font-weight: 700; box-shadow: none; }
     .fbtn:focus-visible { box-shadow: 0 0 0 3px rgba(0,0,0,0.15); }
 
     /* ── Venue data widget ─────────────────────────────────────────────── */
@@ -732,7 +732,7 @@
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #8B5CF6;
+      color: #00E676;
       margin-bottom: 8px;
       display: flex;
       align-items: center;
@@ -743,13 +743,13 @@
       display: inline-block;
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: #8B5CF6;
-      box-shadow: 0 0 8px rgba(139,92,246,0.7);
+      background: #00E676;
+      box-shadow: 0 0 8px rgba(0,230,118,0.5);
       animation: ripplePulse 2s ease-out infinite;
     }
     .bn-card {
-      background: rgba(99,102,241,0.07);
-      border: 1px solid rgba(99,102,241,0.25);
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.09);
       border-radius: 14px;
       padding: 14px 16px;
       display: flex;
@@ -761,14 +761,14 @@
       overflow: hidden;
     }
     .bn-card:hover {
-      background: rgba(99,102,241,0.12);
+      background: rgba(255,255,255,0.07);
       transform: translateY(-1px);
     }
     .bn-card::before {
       content: '';
       position: absolute;
       top: 0; left: 20%; right: 20%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
     }
     .bn-bar {
       width: 3px;
@@ -952,14 +952,19 @@
       margin-left: 4px;
     }
     .erow-watch-btn:hover {
-      background: rgba(99,102,241,0.15);
-      border-color: rgba(99,102,241,0.3);
-      color: #8B5CF6;
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.9);
     }
     .erow-watch-btn.watching {
-      background: rgba(99,102,241,0.15);
-      border-color: rgba(99,102,241,0.35);
-      color: #8B5CF6;
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.9);
+    }
+    .erow-watch-btn.watching:hover {
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.4);
+      color: #FFFFFF;
     }
 
     /* ── Quick-report button on each explore row ───────────────────────── */
@@ -978,8 +983,8 @@
       margin-left: 8px;
     }
     .erow-report-btn:hover {
-      background: rgba(99,102,241,0.2);
-      border-color: rgba(99,102,241,0.4);
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.3);
       color: #fff;
     }
 
