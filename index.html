@@ -1998,7 +1998,7 @@
     }
 
     var STATUS_COLORS = {
-      free: '#000000', short: '#000000', medium: '#000000', long: '#CC0000', unknown: '#AAAAAA'
+      free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: 'rgba(255,255,255,0.18)'
     };
     var STATUS_Y = { none: 0, free: 0, short: 1, medium: 2, long: 2 };
 
@@ -2125,17 +2125,17 @@
         '<div class="exsum">' +
           '<div class="exsum-stats">' +
             '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n0" style="color:#22C55E">0</span>' +
+              '<span class="exsum-num" id="exsum-n0" style="color:#00E676">0</span>' +
               '<span class="exsum-label">KORT KÖ</span>' +
             '</div>' +
             '<div class="exsum-sep"></div>' +
             '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n1" style="color:#D97706">0</span>' +
+              '<span class="exsum-num" id="exsum-n1" style="color:#FFB300">0</span>' +
               '<span class="exsum-label">MEDEL KÖ</span>' +
             '</div>' +
             '<div class="exsum-sep"></div>' +
             '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n2" style="color:#DC2626">0</span>' +
+              '<span class="exsum-num" id="exsum-n2" style="color:#FF3B3B">0</span>' +
               '<span class="exsum-label">LÅNG KÖ</span>' +
             '</div>' +
           '</div>' +
@@ -2193,7 +2193,7 @@
         level = 'medium'; // short or medium
       }
 
-      var levelBg = { long: 'rgba(204,0,0,0.04)', medium: '#FFFFFF', free: '#FFFFFF', empty: '#FAFAFA' }[level];
+      var levelBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', empty: 'rgba(255,255,255,0.02)' }[level];
       var stateClass = isEmpty ? ' erow--empty' : (isStale ? ' erow--stale' : '');
       var barColor = isEmpty ? '#F0F0F0' : color;
 
@@ -2205,7 +2205,8 @@
         var mins = { none: 0, free: 0, short: 15, medium: 25, long: 30 }[status];
         heroText = mins === 0 ? '~0 min' : (mins === 30 ? '30+ min' : '~' + mins + ' min');
         // Per-level hero color for better contrast
-        heroColor = level === 'long' ? '#CC0000' : '#000000';
+        var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
+        heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
       }
 
       var pulseHtml = level === 'long' ? '<span class="erow-pulse-dot"></span>' : '';
@@ -2243,9 +2244,10 @@
         metaText = venue.area + ' · ' + (dist >= 1000 ? (dist / 1000).toFixed(1) + ' km' : dist + 'm');
       }
 
-      var delay = (index * 30) + 'ms';
+      var delay = (index * 75 + 340) + 'ms';
+      var levelClass = level === 'long' ? ' erow--long' : '';
 
-      return '<div class="erow' + stateClass + '" style="animation-delay:' + delay + ';background-color:' + levelBg + '" onclick="goToVenueOnMap(getVenueById(\'' + venue.id + '\'))">' +
+      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + '" onclick="goToVenueOnMap(getVenueById(\'' + venue.id + '\'))">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
           '<div class="erow-body">' +
@@ -2361,7 +2363,7 @@
           '<div class="live-sub-wait" style="color:' + color + '">' + subLabel + '</div>' +
           '<div class="live-sub-meta">' + timeAgo(r.created_at) + '</div></div>';
       }
-      var liveBg = { long: 'rgba(204,0,0,0.04)' }[qs] || '';
+      var liveBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', none: 'rgba(0,230,118,0.04)' }[qs] || '';
       var heroHtml = waitTime
         ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
         : '<div class="live-wait">' + descriptor + '</div>';

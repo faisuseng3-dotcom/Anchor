@@ -33,7 +33,7 @@ check('.env not committed', !hasEnvFile || true); // .gitignore handles it; warn
 check('No hardcoded supabase key in plain text (anon key OK)', true); // informational
 
 // ── Design system ─────────────────────────────────────────────────────────────
-check('Status colors defined: free/short/medium/long/unknown', html.includes("free: '#000000'"));
+check('Status colors defined: free/short/medium/long/unknown', html.includes("free: '#00E676'"));
 check('STATUS_RANK map defined', html.includes('STATUS_RANK'));
 check('erow--empty uses rowInEmpty keyframe', html.includes('rowInEmpty'));
 // opacity 0.55 is allowed ONLY inside prefers-reduced-motion (fallback for no-animation)
@@ -57,10 +57,10 @@ check('No-data message in summary', html.includes('Inga rapporter än'));
 // ── Venue rows ────────────────────────────────────────────────────────────────
 check('erow-pulse-dot for long queue', html.includes('erow-pulse-dot'));
 check('pulseDot keyframe animation', html.includes('@keyframes pulseDot'));
-check('Level backgrounds: long rgba(204,0,0,0.04)', html.includes('rgba(204,0,0,0.04)'));
-check('Level backgrounds: empty #FAFAFA', html.includes('#FAFAFA'));
-check('Hero color long: #CC0000', html.includes('#CC0000'));
-check('Hero color free/short/medium: #000000 (brutalist)', html.includes("level === 'long' ? '#CC0000' : '#000000'"));
+check('Level backgrounds: long rgba(255,59,59,0.06)', html.includes('rgba(255,59,59,0.06)'));
+check('Level backgrounds: empty rgba(255,255,255,0.02)', html.includes('rgba(255,255,255,0.02)'));
+check('Hero color long: #FF3B3B', html.includes('#FF3B3B'));
+check('Hero color map: heroColors[level]', html.includes('heroColors[level]'));
 check('Trend indicator: ↑ Ökar / ↓ Minskar / → Stabil', html.includes('↑ Ökar') && html.includes('↓ Minskar') && html.includes('→ Stabil'));
 check('Sorting: Swedish localeCompare for empty venues', html.includes("localeCompare(b.name, 'sv')"));
 check('Sorting: newest-report-first for venues with data', html.includes('bLatest - aLatest'));
