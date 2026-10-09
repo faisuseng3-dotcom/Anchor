@@ -280,7 +280,7 @@
     }
     .vcrow-badge.free   { background: rgba(34,197,94,0.10);  color: #16A34A; }
     .vcrow-badge.short  { background: rgba(245,158,11,0.10); color: #D97706; }
-    .vcrow-badge.medium { background: rgba(234,115,0,0.10);  color: #C2410C; }
+    .vcrow-badge.medium { background: rgba(234,115,0,0.10);  color: #D97706; }
     .vcrow-badge.long   { background: rgba(239,68,68,0.10);  color: #DC2626; }
     .vcrow-badge.unknown{ background: #F3F4F6;               color: #9CA3AF; }
 
@@ -318,7 +318,7 @@
       display: flex; align-items: flex-start; justify-content: space-between;
       margin-bottom: 6px; padding-right: 32px;
     }
-    .vcard-name { font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+    .vcard-name { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
     .vcard-badge {
       width: 28px; height: 28px; border-radius: var(--radius-sm);
       background: var(--bg-secondary); border: 1px solid var(--border);
@@ -335,7 +335,7 @@
     }
     .vcard-status-badge.free   { background: rgba(34,197,94,0.10);  color: #16A34A; }
     .vcard-status-badge.short  { background: rgba(245,158,11,0.10); color: #D97706; }
-    .vcard-status-badge.medium { background: rgba(234,115,0,0.10);  color: #C2410C; }
+    .vcard-status-badge.medium { background: rgba(234,115,0,0.10);  color: #D97706; }
     .vcard-status-badge.long   { background: rgba(239,68,68,0.10);  color: #DC2626; }
     .vcard-status-badge.unknown{ background: #F3F4F6;               color: #9CA3AF; }
     .vcard-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -521,7 +521,7 @@
     .fbtn {
       background: #F3F4F6; border: none;
       border-radius: var(--radius-full); padding: 0 14px;
-      height: 32px;
+      height: 36px;
       color: #6B7280; font-family: var(--font-base);
       font-size: 13px; font-weight: 600; letter-spacing: 0em; cursor: pointer; white-space: nowrap;
       transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
@@ -558,7 +558,7 @@
       position: relative;
       display: flex; align-items: stretch;
       min-height: 80px;
-      cursor: pointer; background: #FFFFFF;
+      cursor: pointer; background: var(--surface);
       opacity: 0;
       animation: rowIn 180ms ease-out forwards;
       transition: background-color 300ms ease-out,
@@ -573,12 +573,12 @@
       background: #F3F4F6;
     }
     .erow:hover {
-      background: #F7F8FA;
+      background: var(--surface-hover);
       transform: translateY(-1px);
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
       z-index: 1;
     }
-    .erow:active { transform: scale(0.99); transition-duration: 80ms; }
+    .erow:active  { transform: scale(0.99); transition-duration: 80ms; }
 
     /* State — empty: fade in at 0.55 opacity, pushed-back background */
     .erow--empty { animation: rowInEmpty 180ms ease-out forwards !important; background: #FAFAFA !important; }
@@ -636,17 +636,7 @@
       font-variant-numeric: tabular-nums; line-height: 1;
       transition: opacity 150ms ease; white-space: nowrap;
     }
-    /* 3 — badge under hero */
-    .erow-badge {
-      border-radius: var(--radius-full); padding: 2px 8px;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; line-height: 1.0;
-    }
-    .erow-badge.free   { background: rgba(34,197,94,0.12);  color: #16A34A; }
-    .erow-badge.short  { background: rgba(245,158,11,0.12); color: #D97706; }
-    .erow-badge.medium { background: rgba(234,115,0,0.12);  color: #C2410C; }
-    .erow-badge.long   { background: rgba(239,68,68,0.12);  color: #DC2626; }
-    .erow-badge.unknown{ background: #F3F4F6; color: #9CA3AF; }
-    .erow-badge.stale  { background: #F3F4F6; color: #9CA3AF; }
+    /* .erow-badge removed — replaced by .erow-trend (trendindikator) */
     .erow-trend { font-size: 11px; line-height: 1; white-space: nowrap; }
     .erow-trend--up     { font-weight: 700; }
     .erow-trend--down   { font-weight: 700; color: #22C55E; }
@@ -714,7 +704,7 @@
       margin-bottom: var(--space-1); flex-shrink: 0;
       transition: background var(--dur-fast) ease;
     }
-    .live-row:hover { background: var(--surface-hover); }
+    /* live-row is display-only — no hover state */
     .live-name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); line-height: 1.25; }
     .live-status { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px; }
     .live-time { font-size: 12px; font-weight: 400; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1273,7 +1263,7 @@
     }
 
     function getStatusColor(status) {
-      return { none: '#16A34A', short: '#D97706', medium: '#C2410C', long: '#DC2626', unknown: '#9CA3AF' }[status] || '#9CA3AF';
+      return { none: '#16A34A', short: '#D97706', medium: '#D97706', long: '#DC2626', unknown: '#9CA3AF' }[status] || '#9CA3AF';
     }
 
     function getStatusClass(status) {
