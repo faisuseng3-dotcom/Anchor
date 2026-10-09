@@ -15,6 +15,21 @@ Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `ma
 - **Font**: Zilla Slab (Google Fonts) — serif. CSS var: `--font-base: 'Zilla Slab', Georgia, serif`.
 - **Map**: Mapbox GL JS v3.9.4, style `streets-v12`, center Stockholm `[18.0686, 59.3293]`.
 
+## Product thinking (applies to all tasks)
+
+Act as a senior fintech product designer with an independent opinion. Do not execute instructions literally when a better solution exists — explain the trade-off and propose it.
+
+Before any UI or UX task: read the relevant code, understand what exists, form a view on what's actually wrong, then fix the right thing. Load **`/fintech-product-thinking`** for the full operating framework.
+
+Core obligations:
+- Every number on screen comes from real data — never a placeholder
+- States must be complete: empty, loading, stale, error
+- The most important information always gets the most visual weight
+- Challenge redundancy before adding anything new
+- Verify with `?testdata=true` before declaring work complete
+
+These apply whether the task is a feature, a bug fix, a spacing change, or a refactor.
+
 ## Design principles (non-negotiable)
 
 1. **DATA FÖRST** — real numbers, never placeholders or lorem ipsum
