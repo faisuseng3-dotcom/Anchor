@@ -22,8 +22,8 @@ function check(label, condition) {
 
 // ── Architecture ─────────────────────────────────────────────────────────────
 check('Single file: no external JS src (besides CDN)', !/<script src="(?!https)/.test(html));
-check('Font: Barlow Condensed loaded', html.includes('Barlow+Condensed'));
-check('Font var: --font-base Barlow Condensed', html.includes("--font-base: 'Barlow Condensed'"));
+check('Font: DM Sans loaded', html.includes('DM+Sans'));
+check('Font var: --font-base DM Sans', html.includes("--font-base: 'DM Sans'"));
 check('Mapbox streets-v12', html.includes('streets-v12'));
 check('Supabase CDN import', html.includes('supabase-js'));
 

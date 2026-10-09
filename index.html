@@ -7,45 +7,47 @@
   <title>QueueBar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <style>
     /* ══════════════════════════════════════════════════════════════════════
-       QUEUEBAR DESIGN SYSTEM v3.0 — Stockholm Minimal (Light + Blue)
+       QUEUEBAR DESIGN SYSTEM v4.0 — Premium Dark Glassmorphic
     ══════════════════════════════════════════════════════════════════════ */
     :root {
+      color-scheme: dark;
+
       /* ── Bakgrund ──────────────────────────────────────────────────── */
-      --bg-primary:      #FFFFFF;
-      --bg-secondary:    #FFFFFF;
-      --surface:         #FFFFFF;
-      --surface-hover:   #F0F0F0;
+      --bg-primary:      #08090F;
+      --bg-secondary:    #0D0F1A;
+      --surface:         rgba(255,255,255,0.045);
+      --surface-hover:   rgba(255,255,255,0.08);
 
       /* ── Borders ───────────────────────────────────────────────────── */
-      --border:          #000000;
-      --border-hover:    #222222;
-      --border-focus:    #000000;
+      --border:          rgba(255,255,255,0.09);
+      --border-hover:    rgba(255,255,255,0.18);
+      --border-focus:    rgba(124,58,237,0.6);
 
       /* ── Text ──────────────────────────────────────────────────────── */
-      --text-primary:    #000000;
-      --text-secondary:  #444444;
-      --text-muted:      #777777;
+      --text-primary:    #FFFFFF;
+      --text-secondary:  rgba(255,255,255,0.55);
+      --text-muted:      rgba(255,255,255,0.28);
 
       /* ── Accent ────────────────────────────────────────────────────── */
-      --accent:          #CC0000;
-      --accent-hover:    #AA0000;
-      --accent-light:    rgba(204,0,0,0.06);
+      --accent:          #7C3AED;
+      --accent-hover:    #6D28D9;
+      --accent-light:    rgba(124,58,237,0.12);
 
       /* ── Status (semantiska) ───────────────────────────────────────── */
-      --status-free:     #000000;
-      --status-short:    #000000;
-      --status-medium:   #000000;
-      --status-long:     #CC0000;
-      --status-unknown:  #AAAAAA;
-      --success:         #22C55E;
-      --warning:         #F59E0B;
-      --danger:          #CC0000;
+      --status-free:     #00E676;
+      --status-short:    #FFB300;
+      --status-medium:   #FF7043;
+      --status-long:     #FF3B3B;
+      --status-unknown:  rgba(255,255,255,0.18);
+      --success:         #00E676;
+      --warning:         #FFB300;
+      --danger:          #FF3B3B;
 
       /* ── Avstånd (8px-grid) ────────────────────────────────────────── */
       --space-1:   8px;
@@ -64,16 +66,16 @@
       --space-xxl:24px;
 
       /* ── Hörnradier ────────────────────────────────────────────────── */
-      --radius-sm:   0px;
-      --radius-md:   0px;
-      --radius-lg:   0px;
-      --radius-xl:   0px;
-      --radius-full: 0px;
+      --radius-sm:   8px;
+      --radius-md:   12px;
+      --radius-lg:   14px;
+      --radius-xl:   16px;
+      --radius-full: 999px;
 
       /* ── Skuggor ───────────────────────────────────────────────────── */
-      --shadow-card:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px var(--border);
-      --shadow-sheet:  0 -4px 24px rgba(0,0,0,0.08);
-      --shadow-focus:  0 0 0 3px rgba(0,0,0,0.15);
+      --shadow-card:   0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px var(--border);
+      --shadow-sheet:  0 -4px 24px rgba(0,0,0,0.4);
+      --shadow-focus:  0 0 0 3px rgba(124,58,237,0.3);
 
       /* ── Animationer ───────────────────────────────────────────────── */
       --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
@@ -83,20 +85,57 @@
       --dur-slow:   300ms;
 
       /* ── Typografi ─────────────────────────────────────────────────── */
-      --font-base: 'Barlow Condensed', system-ui, sans-serif;
+      --font-base: 'DM Sans', system-ui, sans-serif;
     }
 
     /* ── Reset ─────────────────────────────────────────────────────────── */
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body {
       height: 100%;
-      background: var(--bg-secondary);
+      background: var(--bg-primary);
       font-family: var(--font-base);
       color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-    body { display: flex; justify-content: center; }
+    body {
+      display: flex; justify-content: center;
+      background-color: var(--bg-primary);
+      background-image:
+        radial-gradient(ellipse 65% 40% at 82% 4%, rgba(124,58,237,0.18) 0%, transparent 100%),
+        radial-gradient(ellipse 50% 35% at 12% 88%, rgba(14,165,233,0.12) 0%, transparent 100%);
+    }
+
+    /* ── Background orbs ──────────────────────────────────────────────── */
+    .bg-orbs {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; overflow: hidden;
+    }
+    .bg-orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(60px); opacity: 0.5;
+    }
+    .bg-orb-1 {
+      width: 340px; height: 340px;
+      background: rgba(124,58,237,0.18);
+      top: -80px; right: -60px;
+      animation: orbFloat1 18s ease-in-out infinite;
+    }
+    .bg-orb-2 {
+      width: 280px; height: 280px;
+      background: rgba(14,165,233,0.12);
+      bottom: -60px; left: -80px;
+      animation: orbFloat2 22s ease-in-out infinite;
+    }
+    .bg-orb-3 {
+      width: 200px; height: 200px;
+      background: rgba(99,102,241,0.10);
+      top: 45%; left: 30%;
+      animation: orbFloat3 28s ease-in-out infinite;
+    }
+    @keyframes orbFloat1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-20px,30px) scale(1.1)} }
+    @keyframes orbFloat2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,-20px) scale(1.08)} }
+    @keyframes orbFloat3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-15px,25px) scale(0.9)} }
 
     #app {
       position: relative;
@@ -143,7 +182,7 @@
       100% { background-position:  400px 0; }
     }
     .skeleton {
-      background: linear-gradient(90deg, #F3F4F6 25%, #E9EAEC 50%, #F3F4F6 75%);
+      background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.06) 75%);
       background-size: 400px 100%;
       animation: shimmer 1.5s infinite linear;
       border-radius: var(--radius-md);
@@ -160,7 +199,9 @@
       display: flex;
       height: calc(64px + env(safe-area-inset-bottom));
       padding-bottom: env(safe-area-inset-bottom);
-      background: var(--bg-primary);
+      background: rgba(8,9,15,0.82);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
       border-top: 1px solid var(--border);
     }
     .tab {
@@ -193,10 +234,11 @@
     /* ── Map overlays ──────────────────────────────────────────────────── */
     .map-pill {
       position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 16px; z-index: 5;
-      background: #FFFFFF; border-radius: var(--radius-full);
+      background: rgba(8,9,15,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-full);
       padding: 8px 16px;
       font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
       pointer-events: none;
     }
     .map-search-float {
@@ -204,10 +246,11 @@
       top: calc(16px + env(safe-area-inset-top));
       left: 50%; transform: translateX(-50%);
       z-index: 5; width: 90%;
-      background: #FFFFFF; border-radius: 12px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+      background: rgba(8,9,15,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-radius: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.3);
       height: 44px; display: flex; align-items: center; gap: 8px;
-      padding: 0 14px; cursor: pointer; border: 1px solid rgba(0,0,0,0.08);
+      padding: 0 14px; cursor: pointer; border: 1px solid rgba(255,255,255,0.12);
     }
     .map-search-float svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
     .map-search-float span { font-size: 14px; font-weight: 400; letter-spacing: -0.01em; color: var(--text-muted); font-family: var(--font-base); }
@@ -488,12 +531,14 @@
     }
     .explore-sticky {
       position: sticky; top: 0; z-index: 3;
-      background: #FFFFFF;
+      background: rgba(8,9,15,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       padding: calc(16px + env(safe-area-inset-top)) 16px 0;
       border-bottom: 1px solid transparent;
       transition: border-color var(--dur-fast) ease;
     }
-    .explore-sticky.scrolled { border-bottom-color: #F3F4F6; }
+    .explore-sticky.scrolled { border-bottom-color: rgba(255,255,255,0.08); }
     .explore-title {
       font-size: 24px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.25;
       color: var(--text-primary); margin-bottom: 12px;
@@ -528,7 +573,7 @@
       transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
       outline: none;
     }
-    .fbtn.active { background: #000000; border-color: #000000; color: #FFFFFF; font-weight: 900; }
+    .fbtn.active { background: linear-gradient(135deg, #6366F1, #8B5CF6); border-color: transparent; color: #FFFFFF; font-weight: 700; box-shadow: 0 4px 20px rgba(99,102,241,0.4); }
     .fbtn:focus-visible { box-shadow: 0 0 0 3px rgba(0,0,0,0.15); }
 
     /* ── Venue data widget ─────────────────────────────────────────────── */
@@ -547,49 +592,61 @@
 
     /* 7 — grouped container: outer border, inner separators */
     .venue-group {
-      background: #FFFFFF;
-      border-radius: 0;
-      border: 2px solid #000000;
+      background: transparent;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
       overflow: hidden;
       margin-top: 12px;
     }
+
+    @keyframes fadeSlideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 
     /* Base card */
     .erow {
       position: relative;
       display: flex; align-items: stretch;
       min-height: 80px;
-      cursor: pointer; background: var(--surface);
+      cursor: pointer;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       opacity: 0;
-      animation: rowIn 180ms ease-out forwards;
-      transition: background-color 300ms ease-out,
-                  opacity    200ms ease,
-                  box-shadow 150ms cubic-bezier(0.16,1,0.3,1),
-                  transform  150ms cubic-bezier(0.16,1,0.3,1);
+      margin-bottom: 6px;
+      animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both;
+      transition: transform 200ms cubic-bezier(0.22,1,0.36,1),
+                  background 200ms ease,
+                  box-shadow 200ms ease,
+                  background-color 300ms ease-out;
     }
     /* 4 — 1px separator, indented past the 3px left bar (19px) */
     .erow:not(:last-child)::after {
       content: ''; position: absolute;
-      bottom: 0; left: 19px; right: 0; height: 1px;
-      background: #F3F4F6;
+      bottom: -3px; left: 0; right: 0; height: 1px;
+      background: transparent;
     }
     .erow:hover {
-      background: var(--surface-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      background: rgba(255,255,255,0.07);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 36px rgba(0,0,0,0.35);
       z-index: 1;
     }
     .erow:active  { transform: scale(0.99); transition-duration: 80ms; }
 
     /* State — empty: fade in at 0.55 opacity, pushed-back background */
-    .erow--empty { animation: rowInEmpty 180ms ease-out forwards !important; background: #FAFAFA !important; }
-    .erow--empty:hover { background: #F3F4F6 !important; }
+    .erow--empty { animation: rowInEmpty 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both !important; background: rgba(255,255,255,0.02) !important; }
+    .erow--empty:hover { background: rgba(255,255,255,0.04) !important; }
     /* State — stale: partial opacity on bar + hero only */
     .erow--stale .erow-left-bar { opacity: 0.4; }
     .erow--stale .erow-hero     { opacity: 0.5; }
     /* Level backgrounds — set via inline style, transition handled by .erow transition */
     @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
-    .erow-pulse-dot { display: inline-flex; width: 6px; height: 6px; border-radius: 50%; background: #EF4444; flex-shrink: 0; animation: pulseDot 2s ease-in-out infinite; align-self: center; margin-right: 5px; }
+    @keyframes ripplePulse { 0%{box-shadow:0 0 0 0 rgba(255,59,59,0.7)} 70%{box-shadow:0 0 0 7px rgba(255,59,59,0)} 100%{box-shadow:0 0 0 0 rgba(255,59,59,0)} }
+    @keyframes breatheRed { 0%,100%{box-shadow:0 2px 20px rgba(255,59,59,0.08)} 50%{box-shadow:0 4px 40px rgba(255,59,59,0.22)} }
+    .erow-pulse-dot { display: inline-flex; width: 6px; height: 6px; border-radius: 50%; background: #FF3B3B; box-shadow: 0 0 0 0 rgba(255,59,59,0.6); flex-shrink: 0; animation: ripplePulse 2s ease-out infinite; align-self: center; margin-right: 5px; }
+    .erow--long { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheRed 4s ease-in-out infinite !important; }
+    .erow--long .erow-left-bar { box-shadow: 0 4px 40px rgba(255,59,59,0.15); }
     @keyframes heroCountUp { from { opacity: 0; transform: translateY(4px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .erow-hero--animate { animation: heroCountUp 400ms cubic-bezier(0.16,1,0.3,1) forwards; }
 
@@ -610,7 +667,7 @@
     /* Layer 1 — name */
     .erow-name-row { display: flex; align-items: center; min-width: 0; }
     .erow-name {
-      font-size: 14px; font-weight: 900; letter-spacing: 0.02em; color: #000000;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-primary);
       text-transform: uppercase;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       line-height: 1.25; padding-right: 8px;
@@ -647,7 +704,7 @@
 
     /* ── Explore summary widget ─────────────────────────────────────────── */
     #explore-summary { margin: 16px 0 12px; }
-    .exsum { background: #FFFFFF; border: 2px solid #000000; border-radius: 0; padding: 14px 16px; }
+    .exsum { background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.09); border-radius: var(--radius-xl); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 14px 16px; }
     .exsum-stats { display: flex; align-items: center; }
     .exsum-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .exsum-num {
@@ -658,14 +715,14 @@
       font-family: var(--font-base); font-size: 10px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.04em; color: #6B7280; line-height: 1;
     }
-    .exsum-sep { width: 2px; height: 32px; background: #000000; flex-shrink: 0; }
+    .exsum-sep { width: 1px; height: 32px; background: rgba(255,255,255,0.12); flex-shrink: 0; }
     .exsum-footer {
-      margin-top: 10px; padding-top: 10px; border-top: 1px solid #F3F4F6;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);
       font-family: var(--font-base); font-size: 12px; font-weight: 400;
       color: #6B7280; text-align: center; line-height: 1.4;
     }
     .exsum-skeleton { display: flex; align-items: center; justify-content: space-around; gap: 8px; }
-    .exsum-skel { width: 40px; height: 22px; background: #F3F4F6; border-radius: 4px; }
+    .exsum-skel { width: 40px; height: 22px; background: rgba(255,255,255,0.08); border-radius: 4px; }
     @keyframes exsumShimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
     .exsum-skel { animation: exsumShimmer 1.5s infinite; }
     @keyframes exsumPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
@@ -701,9 +758,10 @@
     #live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: livePulse 1.5s ease-in-out infinite; flex-shrink: 0; }
     .live-row {
       display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-      background: var(--surface); border: 2px solid #000000;
-      border-radius: 0; padding: 12px var(--space-2);
+      background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius-lg); padding: 12px var(--space-2);
       margin-bottom: var(--space-1); flex-shrink: 0;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       transition: background var(--dur-fast) ease;
     }
     /* live-row is display-only — no hover state */
@@ -739,9 +797,9 @@
     .rs-label { font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: var(--space-1); line-height: 1.0; }
     .rs-item {
       display: flex; align-items: center; justify-content: space-between;
-      background: var(--surface); border: 2px solid #000000;
-      border-radius: 0; height: 52px; padding: 0 var(--space-2);
-      margin-bottom: -2px; cursor: pointer;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); height: 52px; padding: 0 var(--space-2);
+      margin-bottom: 4px; cursor: pointer;
       transition: background var(--dur-fast) ease;
     }
     .rs-item:last-child { margin-bottom: 0; }
@@ -880,6 +938,11 @@
 
 </head>
 <body>
+  <div class="bg-orbs">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+  </div>
   <div id="app">
     <section id="screen-home" class="screen active">
       <div id="map"></div>
