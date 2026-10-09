@@ -705,6 +705,88 @@
     .erow-trend--stable { font-weight: 600; color: var(--text-muted); }
     .erow-trend--single { font-weight: 400; color: var(--text-muted); }
 
+    /* ── Bäst just nu ───────────────────────────────────────────────────── */
+    #best-now {
+      margin-bottom: 12px;
+      animation: fadeSlideUp 500ms 220ms cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .bn-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #8B5CF6;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bn-label::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #8B5CF6;
+      box-shadow: 0 0 8px rgba(139,92,246,0.7);
+      animation: ripplePulse 2s ease-out infinite;
+    }
+    .bn-card {
+      background: rgba(99,102,241,0.07);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background 150ms ease, transform 150ms ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .bn-card:hover {
+      background: rgba(99,102,241,0.12);
+      transform: translateY(-1px);
+    }
+    .bn-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 20%; right: 20%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(139,92,246,0.3), transparent);
+    }
+    .bn-bar {
+      width: 3px;
+      align-self: stretch;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .bn-body { flex: 1; min-width: 0; }
+    .bn-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bn-meta {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 3px;
+    }
+    .bn-right { text-align: right; flex-shrink: 0; }
+    .bn-time {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .bn-detail {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 3px;
+    }
+
     /* ── Explore summary widget ─────────────────────────────────────────── */
     #explore-summary { margin: 16px 0 12px; }
     .exsum { background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.09); border-radius: var(--radius-xl); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 14px 16px; }
@@ -1012,6 +1094,7 @@
         </div>
       </div>
       <div id="explore-list-wrap">
+        <div id="best-now" style="display:none"></div>
         <div id="explore-summary"></div>
         <div id="explore-list"></div>
       </div>
@@ -2343,10 +2426,108 @@
       setTimeout(function() { openVenueCard(venue, 'explore'); }, 200);
     }
 
+    function computeBestNow() {
+      var now = new Date();
+      var nowH = now.getHours() + now.getMinutes() / 60;
+      var freshCutoff = Date.now() - 30 * 60 * 1000;
+
+      function distKm(lat1, lng1, lat2, lng2) {
+        var R = 6371;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLng = (lng2 - lng1) * Math.PI / 180;
+        var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+                Math.sin(dLng/2)*Math.sin(dLng/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      }
+
+      function closingHour(str) {
+        var parts = str.split(':');
+        var h = parseInt(parts[0]);
+        return h < 12 ? h + 24 : h;
+      }
+
+      var candidates = VENUES.filter(function(v) {
+        var status = computeStatus(v.id, allReports);
+        if (status !== 'free' && status !== 'short') return false;
+        var fresh = allReports.some(function(r) {
+          return r.venue_id === v.id && new Date(r.created_at).getTime() > freshCutoff;
+        });
+        if (!fresh) return false;
+        var cl = closingHour(v.closing);
+        var nowAdj = nowH < 12 ? nowH + 24 : nowH;
+        if (cl - nowAdj < 0.75) return false;
+        return true;
+      });
+
+      if (!candidates.length) return null;
+
+      candidates = candidates.map(function(v) {
+        var status = computeStatus(v.id, allReports);
+        var score = status === 'free' ? 2 : 1;
+        var dist = null;
+        if (window._userPos) {
+          dist = distKm(window._userPos.lat, window._userPos.lng, v.lat, v.lng);
+          score -= dist * 0.1;
+        }
+        var reports = allReports.filter(function(r) { return r.venue_id === v.id; });
+        var latest = reports.reduce(function(max, r) { return Math.max(max, new Date(r.created_at).getTime()); }, 0);
+        var minsAgo = (Date.now() - latest) / 60000;
+        score += Math.max(0, (30 - minsAgo) / 30) * 0.5;
+        return { venue: v, status: status, score: score, dist: dist };
+      });
+
+      candidates.sort(function(a, b) { return b.score - a.score; });
+      return candidates[0] || null;
+    }
+
+    function renderBestNow() {
+      var el = document.getElementById('best-now');
+      if (!el) return;
+      var best = computeBestNow();
+      if (!best) { el.style.display = 'none'; return; }
+
+      var v = best.venue;
+      var status = best.status;
+      var barColor = status === 'free' ? '#00E676' : '#FFB300';
+      var timeText = status === 'free' ? 'Fri ingång' : 'Ca 15 min';
+
+      var reports = allReports.filter(function(r) { return r.venue_id === v.id; });
+      if (reports.length) {
+        var latest = reports.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); })[0];
+        if (latest.queue_status === 'free' || latest.queue_status === 'none') timeText = 'Fri ingång';
+        else if (latest.queue_status === 'short') timeText = 'Ca 15 min';
+        else if (latest.queue_status === 'medium') timeText = 'Ca 25 min';
+      }
+
+      var distText = '';
+      if (best.dist !== null) {
+        distText = best.dist < 1
+          ? Math.round(best.dist * 1000) + ' m bort · '
+          : best.dist.toFixed(1) + ' km bort · ';
+      }
+
+      el.style.display = 'block';
+      el.innerHTML =
+        '<div class="bn-label">Bäst just nu</div>' +
+        '<div class="bn-card" onclick="goToVenueOnMap(getVenueById(\'' + v.id + '\'))">' +
+          '<div class="bn-bar" style="background:' + barColor + ';box-shadow:0 0 8px ' + barColor + '66"></div>' +
+          '<div class="bn-body">' +
+            '<div class="bn-name">' + v.name + '</div>' +
+            '<div class="bn-meta">' + distText + v.area + ' · stänger ' + v.closing + '</div>' +
+          '</div>' +
+          '<div class="bn-right">' +
+            '<div class="bn-time" style="color:' + barColor + '">' + timeText + '</div>' +
+            '<div class="bn-detail">→ Visa på karta</div>' +
+          '</div>' +
+        '</div>';
+    }
+
     var _exsumFirstRender = true;
     function renderExploreVenues() {
       renderExploreSummary(_exsumFirstRender);
       _exsumFirstRender = false;
+      renderBestNow();
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
