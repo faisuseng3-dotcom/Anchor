@@ -711,6 +711,22 @@
     .live-right { text-align: right; }
     .live-name { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.25; }
     .live-meta { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .live-expand-btn {
+      display: block; width: 100%; text-align: left;
+      font-family: var(--font-base); font-size: 11px; font-weight: 600;
+      color: var(--text-muted); letter-spacing: 0.02em;
+      background: none; border: none; border-top: 1px solid var(--border);
+      padding: 7px var(--space-2); cursor: pointer; margin-bottom: var(--space-1);
+    }
+    .live-expand-btn:hover { color: var(--text-primary); }
+    .live-sub-row {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+      background: var(--surface); border: 1px solid var(--border); border-top: none;
+      padding: 9px var(--space-2); opacity: 0.6;
+    }
+    .live-sub-row:last-child { border-radius: 0 0 var(--radius-md) var(--radius-md); margin-bottom: var(--space-1); }
+    .live-sub-wait { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .live-sub-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
     /* ── Rapportflöde ──────────────────────────────────────────────────── */
     .rp-wrap { flex-shrink: 0; margin-bottom: var(--space-3); }
@@ -2285,6 +2301,40 @@
     renderExploreVenues();
 
     // ── Live-feed ─────────────────────────────────────────────────────────────
+    var _liveExpanded = new Set();
+
+    function _liveRowHtml(r, isSub) {
+      var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
+      var liveTimes  = { short: '15 min', medium: '25 min', long: '30+ min' };
+      var liveColors = { none: '#16A34A', free: '#16A34A', short: '#D97706', medium: '#D97706', long: '#DC2626' };
+      var qs = r.queue_status;
+      var descriptor = liveDescriptors[qs];
+      if (!descriptor) return '';
+      var waitTime = liveTimes[qs] || '';
+      var color = liveColors[qs] || '#9CA3AF';
+      var venue = getVenueById(r.venue_id);
+      var name = venue ? venue.name : (r.venue_name || r.venue_id);
+      var area = venue ? venue.area : '';
+      if (isSub) {
+        var subLabel = waitTime || descriptor;
+        return '<div class="live-sub-row">' +
+          '<div class="live-sub-wait" style="color:' + color + '">' + subLabel + '</div>' +
+          '<div class="live-sub-meta">' + timeAgo(r.created_at) + '</div></div>';
+      }
+      var heroHtml = waitTime
+        ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
+        : '<div class="live-wait">' + descriptor + '</div>';
+      return '<div class="live-row">' +
+        '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
+        '<div class="live-right"><div class="live-name">' + name + '</div>' +
+        '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
+    }
+
+    function toggleLiveVenue(venueId) {
+      if (_liveExpanded.has(venueId)) { _liveExpanded.delete(venueId); } else { _liveExpanded.add(venueId); }
+      renderLiveFeed();
+    }
+
     function renderLiveFeed() {
       var el = document.getElementById('live-feed');
       if (!el) return;
@@ -2293,30 +2343,42 @@
         return;
       }
       var now = new Date();
-      var recent = allReports.filter(function(r) { return (now - new Date(r.created_at)) < 45 * 60 * 1000; }).slice(0, 20);
+      var cutoff = now - 45 * 60 * 1000;
+      var recent = allReports.filter(function(r) { return new Date(r.created_at).getTime() > cutoff; });
       if (!recent.length) {
         el.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p>Inga rapporter ännu.<br>Gå ut och rapportera!</p></div>';
         return;
       }
-      var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
-      var liveTimes      = { short: '15 min', medium: '25 min', long: '30+ min' };
-      var liveColors     = { none: '#16A34A', free: '#16A34A', short: '#D97706', medium: '#D97706', long: '#DC2626' };
-      el.innerHTML = recent.map(function(r) {
-        var venue = getVenueById(r.venue_id);
-        var name = venue ? venue.name : (r.venue_name || r.venue_id);
-        var area = venue ? venue.area : '';
-        var qs = r.queue_status;
-        var descriptor = liveDescriptors[qs];
-        if (!descriptor) return '';
-        var waitTime = liveTimes[qs] || '';
-        var color = liveColors[qs] || '#9CA3AF';
-        var heroHtml = waitTime
-          ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
-          : '<div class="live-wait">' + descriptor + '</div>';
-        return '<div class="live-row">' +
-          '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
-          '<div class="live-right"><div class="live-name">' + name + '</div>' +
-          '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
+      // Group by venue, sort each group newest-first
+      var groups = {};
+      recent.forEach(function(r) {
+        if (!groups[r.venue_id]) groups[r.venue_id] = [];
+        groups[r.venue_id].push(r);
+      });
+      Object.keys(groups).forEach(function(vid) {
+        groups[vid].sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+      });
+      // Sort venues by their latest report time
+      var venueIds = Object.keys(groups).sort(function(a, b) {
+        return new Date(groups[b][0].created_at) - new Date(groups[a][0].created_at);
+      });
+      el.innerHTML = venueIds.map(function(vid) {
+        var reports = groups[vid];
+        var latest = reports[0];
+        var older = reports.slice(1);
+        var mainRow = _liveRowHtml(latest, false);
+        if (!mainRow) return '';
+        var html = mainRow;
+        if (older.length) {
+          var expanded = _liveExpanded.has(vid);
+          if (expanded) {
+            html += older.map(function(r) { return _liveRowHtml(r, true); }).filter(Boolean).join('');
+            html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">↑ Dölj tidigare rapporter</button>';
+          } else {
+            html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">+' + older.length + ' tidigare ' + (older.length === 1 ? 'rapport' : 'rapporter') + ' · visa</button>';
+          }
+        }
+        return html;
       }).filter(Boolean).join('');
     }
 
@@ -2329,7 +2391,23 @@
     function filterReportList() {
       var q = (document.getElementById('rs-search').value || '').toLowerCase();
       var el = document.getElementById('rs-list');
+      var cutoff2h = Date.now() - 2 * 60 * 60 * 1000;
+      // Latest report per venue within 2h
+      var latestTs = {};
+      allReports.forEach(function(r) {
+        var t = new Date(r.created_at).getTime();
+        if (t < cutoff2h) return;
+        if (!latestTs[r.venue_id] || t > latestTs[r.venue_id]) latestTs[r.venue_id] = t;
+      });
       var list = VENUES.filter(function(v) { return !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q); });
+      list.sort(function(a, b) {
+        var at = latestTs[a.id] || 0;
+        var bt = latestTs[b.id] || 0;
+        if (at && !bt) return -1;
+        if (!at && bt) return 1;
+        if (!at && !bt) return a.name.localeCompare(b.name, 'sv');
+        return bt - at;
+      });
       el.innerHTML = list.map(function(v) {
         return '<div class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
           '<div><div class="rs-name">' + v.name + '</div><div class="rs-area">' + v.area + '</div></div>' +
