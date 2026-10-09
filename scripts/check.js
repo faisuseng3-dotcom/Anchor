@@ -22,8 +22,8 @@ function check(label, condition) {
 
 // ── Architecture ─────────────────────────────────────────────────────────────
 check('Single file: no external JS src (besides CDN)', !/<script src="(?!https)/.test(html));
-check('Font: Zilla Slab loaded', html.includes('Zilla+Slab'));
-check('Font var: --font-base Zilla Slab', html.includes("--font-base: 'Zilla Slab'"));
+check('Font: Barlow Condensed loaded', html.includes('Barlow+Condensed'));
+check('Font var: --font-base Barlow Condensed', html.includes("--font-base: 'Barlow Condensed'"));
 check('Mapbox streets-v12', html.includes('streets-v12'));
 check('Supabase CDN import', html.includes('supabase-js'));
 
@@ -33,7 +33,7 @@ check('.env not committed', !hasEnvFile || true); // .gitignore handles it; warn
 check('No hardcoded supabase key in plain text (anon key OK)', true); // informational
 
 // ── Design system ─────────────────────────────────────────────────────────────
-check('Status colors defined: free/short/medium/long/unknown', html.includes("free: '#22C55E'"));
+check('Status colors defined: free/short/medium/long/unknown', html.includes("free: '#000000'"));
 check('STATUS_RANK map defined', html.includes('STATUS_RANK'));
 check('erow--empty uses rowInEmpty keyframe', html.includes('rowInEmpty'));
 // opacity 0.55 is allowed ONLY inside prefers-reduced-motion (fallback for no-animation)
@@ -57,12 +57,10 @@ check('No-data message in summary', html.includes('Inga rapporter än'));
 // ── Venue rows ────────────────────────────────────────────────────────────────
 check('erow-pulse-dot for long queue', html.includes('erow-pulse-dot'));
 check('pulseDot keyframe animation', html.includes('@keyframes pulseDot'));
-check('Level backgrounds: long rgba(239,68,68,0.04)', html.includes('rgba(239,68,68,0.04)'));
-check('Level backgrounds: free rgba(34,197,94,0.03)', html.includes('rgba(34,197,94,0.03)'));
+check('Level backgrounds: long rgba(204,0,0,0.04)', html.includes('rgba(204,0,0,0.04)'));
 check('Level backgrounds: empty #FAFAFA', html.includes('#FAFAFA'));
-check('Hero color long: #DC2626', html.includes('#DC2626'));
-check('Hero color free: #16A34A', html.includes('#16A34A'));
-check('Hero color medium: #D97706', html.includes('#D97706'));
+check('Hero color long: #CC0000', html.includes('#CC0000'));
+check('Hero color free/short/medium: #000000 (brutalist)', html.includes("level === 'long' ? '#CC0000' : '#000000'"));
 check('Trend indicator: ↑ Ökar / ↓ Minskar / → Stabil', html.includes('↑ Ökar') && html.includes('↓ Minskar') && html.includes('→ Stabil'));
 check('Sorting: Swedish localeCompare for empty venues', html.includes("localeCompare(b.name, 'sv')"));
 check('Sorting: newest-report-first for venues with data', html.includes('bLatest - aLatest'));
