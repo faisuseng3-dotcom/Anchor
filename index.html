@@ -1992,8 +1992,48 @@
         });
         map.touchZoomRotate.disableRotation();
 
+        function addMapIcon(map, name, drawFn) {
+          var size = 20;
+          var canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          var ctx = canvas.getContext('2d');
+          drawFn(ctx, size);
+          var imageData = ctx.getImageData(0, 0, size, size);
+          map.addImage(name, { width: size, height: size, data: imageData.data });
+        }
+
         map.on('load', function() {
           console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
+
+          addMapIcon(map, 'icon-bar', function(ctx) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(3, 4); ctx.lineTo(10, 11);
+            ctx.moveTo(17, 4); ctx.lineTo(10, 11);
+            ctx.moveTo(3, 4); ctx.lineTo(17, 4);
+            ctx.moveTo(10, 11); ctx.lineTo(10, 17);
+            ctx.moveTo(7, 17); ctx.lineTo(13, 17);
+            ctx.stroke();
+          });
+
+          addMapIcon(map, 'icon-klubb', function(ctx) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(8, 16); ctx.lineTo(8, 6); ctx.lineTo(16, 4); ctx.lineTo(16, 14);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(6, 16, 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(14, 14, 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+          });
 
           map.addSource('venues', {
             type: 'geojson', data: venueGeoJSON,
@@ -2083,12 +2123,11 @@
             id: 'venues-type', type: 'symbol', source: 'venues',
             filter: ['!', ['has', 'point_count']],
             layout: {
-              'text-field': ['match', ['get', 'type'], 'bar', 'B', 'klubb', 'K', ''],
-              'text-size': 7, 'text-offset': [0, 0], 'text-anchor': 'center', 'text-allow-overlap': true,
-              'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
-            },
-            paint: {
-              'text-color': 'rgba(255,255,255,0.75)'
+              'icon-image': ['match', ['get', 'type'], 'bar', 'icon-bar', 'icon-klubb'],
+              'icon-size': 1,
+              'icon-allow-overlap': true,
+              'icon-anchor': 'center',
+              'icon-offset': [0, 0]
             }
           });
 
