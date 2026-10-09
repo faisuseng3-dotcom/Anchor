@@ -845,8 +845,15 @@
     .live-wait { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
     .live-cat { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
     .live-right { text-align: right; }
-    .live-name { font-size: 13px; font-weight: 900; text-transform: uppercase; color: var(--text-primary); line-height: 1.25; letter-spacing: 0.03em; }
+    .live-name { font-size: 13px; font-weight: 900; text-transform: uppercase; color: var(--text-primary); line-height: 1.25; letter-spacing: 0.03em; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
     .live-meta { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .type-badge {
+      font-size: 8px; font-weight: 800; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06);
+      border-radius: 3px; padding: 1px 4px;
+      vertical-align: middle; flex-shrink: 0;
+      text-transform: uppercase;
+    }
     .live-expand-btn {
       display: block; width: 100%; text-align: left;
       font-family: var(--font-base); font-size: 11px; font-weight: 600;
@@ -1151,6 +1158,8 @@
             <button class="fbtn" data-filter="free" onclick="setExploreFilter('free')">Fri <span class="fcount fcount--free" id="fc-free"></span></button>
             <button class="fbtn" data-filter="short" onclick="setExploreFilter('short')">Kort <span class="fcount fcount--short" id="fc-short"></span></button>
             <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')">Lång <span class="fcount fcount--long" id="fc-long"></span></button>
+            <button class="fbtn" data-filter="bar" onclick="setExploreFilter('bar')">Barer</button>
+            <button class="fbtn" data-filter="klubb" onclick="setExploreFilter('klubb')">Klubbar</button>
             <button class="fbtn fbtn--plan" onclick="togglePlanningMode()">Planera</button>
           </div>
         </div>
@@ -2070,6 +2079,19 @@
             }
           });
 
+          map.addLayer({
+            id: 'venues-type', type: 'symbol', source: 'venues',
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'text-field': ['match', ['get', 'type'], 'bar', 'B', 'klubb', 'K', ''],
+              'text-size': 7, 'text-offset': [0, 0], 'text-anchor': 'center', 'text-allow-overlap': true,
+              'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
+            },
+            paint: {
+              'text-color': 'rgba(255,255,255,0.75)'
+            }
+          });
+
           map.on('click', 'clusters', function(e) {
             var id = e.features[0].properties.cluster_id;
             var coords = e.features[0].geometry.coordinates;
@@ -2429,6 +2451,14 @@
       setExploreFilter(f);
     }
 
+    function venueTypeLabel(type) {
+      if (!type) return '';
+      var t = type.toLowerCase();
+      if (t === 'bar') return 'Bar';
+      if (t === 'club' || t === 'nightclub' || t === 'klubb') return 'Klubb';
+      return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+
     function setExploreFilter(f) {
       _exploreFilter = f;
       exploreFilter = f; // keep legacy alias in sync
@@ -2694,12 +2724,13 @@
       }
 
       // Distance (if available)
-      var metaText = venue.area;
+      var typeLabel = venueTypeLabel(venue.type);
+      var metaText = venue.area + (typeLabel ? ' · ' + typeLabel : '');
       if (window._userPos && venue.lat && venue.lng) {
         var dlat = (venue.lat - window._userPos.lat) * 111000;
         var dlng = (venue.lng - window._userPos.lng) * 111000 * Math.cos(venue.lat * Math.PI / 180);
         var dist = Math.round(Math.sqrt(dlat * dlat + dlng * dlng) / 100) * 100;
-        metaText = venue.area + ' · ' + (dist >= 1000 ? (dist / 1000).toFixed(1) + ' km' : dist + 'm');
+        metaText = venue.area + (typeLabel ? ' · ' + typeLabel : '') + ' · ' + (dist >= 1000 ? (dist / 1000).toFixed(1) + ' km' : dist + 'm');
       }
 
       var delay = (index * 75 + 340) + 'ms';
@@ -3002,13 +3033,17 @@
           var s = computeStatus(v.id, allReports);
           return s === 'long';
         });
+      } else if (_exploreFilter === 'bar') {
+        list = list.filter(function(v) { return v.type === 'bar'; });
+      } else if (_exploreFilter === 'klubb') {
+        list = list.filter(function(v) { return v.type === 'klubb'; });
       }
       // 'all' — no additional filter
 
       // Filter context line
       var contextEl = document.getElementById('filter-context');
       if (_exploreFilter !== 'all') {
-        var label = { free: 'venues med fri ingång just nu', short: 'venues med kort kö just nu', long: 'venues med lång kö just nu' }[_exploreFilter] || '';
+        var label = { free: 'venues med fri ingång just nu', short: 'venues med kort kö just nu', long: 'venues med lång kö just nu', bar: 'barer', klubb: 'klubbar' }[_exploreFilter] || '';
         if (contextEl) { contextEl.textContent = list.length + ' ' + label; contextEl.style.display = 'block'; }
       } else {
         if (contextEl) contextEl.style.display = 'none';
@@ -3016,7 +3051,7 @@
 
       if (!list.length) {
         var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
-        var filterLabels = { free: 'fri ingång', short: 'kort kö', long: 'lång kö' };
+        var filterLabels = { free: 'fri ingång', short: 'kort kö', long: 'lång kö', bar: 'typ bar', klubb: 'typ klubb' };
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
           emptyTitle = 'Inga venues med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
@@ -3123,9 +3158,11 @@
       var heroHtml = waitTime
         ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
         : '<div class="live-wait">' + descriptor + '</div>';
+      var venueLiveType = venue ? venueTypeLabel(venue.type) : '';
+      var typeBadgeHtml = venueLiveType ? '<span class="type-badge">' + venueLiveType.toUpperCase() + '</span>' : '';
       return '<div class="live-row"' + (liveBg ? ' style="background:' + liveBg + '"' : '') + '>' +
         '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
-        '<div class="live-right"><div class="live-name">' + name + '</div>' +
+        '<div class="live-right"><div class="live-name">' + name + typeBadgeHtml + '</div>' +
         '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
     }
 
@@ -3275,8 +3312,10 @@
         return bt - at;
       });
       el.innerHTML = list.map(function(v) {
+        var rsTypeLbl = venueTypeLabel(v.type);
+        var rsAreaText = v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '');
         return '<div class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
-          '<div><div class="rs-name">' + v.name + '</div><div class="rs-area">' + v.area + '</div></div>' +
+          '<div><div class="rs-name">' + v.name + '</div><div class="rs-area">' + rsAreaText + '</div></div>' +
           '<span class="rs-arrow">→</span></div>';
       }).join('');
     }
