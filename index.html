@@ -7,7 +7,7 @@
   <title>QueueBar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
@@ -85,7 +85,7 @@
       --dur-slow:   300ms;
 
       /* ── Typografi ─────────────────────────────────────────────────── */
-      --font-base: 'DM Sans', system-ui, sans-serif;
+      --font-base: 'Plus Jakarta Sans', system-ui, sans-serif;
     }
 
     /* ── Reset ─────────────────────────────────────────────────────────── */
@@ -102,8 +102,8 @@
       display: flex; justify-content: center;
       background-color: var(--bg-primary);
       background-image:
-        radial-gradient(ellipse 65% 40% at 82% 4%, rgba(124,58,237,0.18) 0%, transparent 100%),
-        radial-gradient(ellipse 50% 35% at 12% 88%, rgba(14,165,233,0.12) 0%, transparent 100%);
+        radial-gradient(ellipse 65% 40% at 82% 4%, rgba(124,58,237,0.06) 0%, transparent 100%),
+        radial-gradient(ellipse 50% 35% at 12% 88%, rgba(14,165,233,0.04) 0%, transparent 100%);
     }
 
     /* ── Background orbs ──────────────────────────────────────────────── */
@@ -113,29 +113,22 @@
     }
     .bg-orb {
       position: absolute; border-radius: 50%;
-      filter: blur(60px); opacity: 0.5;
+      filter: blur(100px); opacity: 0.5;
     }
     .bg-orb-1 {
       width: 340px; height: 340px;
-      background: rgba(124,58,237,0.18);
+      background: rgba(124,58,237,0.06);
       top: -80px; right: -60px;
       animation: orbFloat1 18s ease-in-out infinite;
     }
     .bg-orb-2 {
       width: 280px; height: 280px;
-      background: rgba(14,165,233,0.12);
+      background: rgba(14,165,233,0.04);
       bottom: -60px; left: -80px;
       animation: orbFloat2 22s ease-in-out infinite;
     }
-    .bg-orb-3 {
-      width: 200px; height: 200px;
-      background: rgba(99,102,241,0.10);
-      top: 45%; left: 30%;
-      animation: orbFloat3 28s ease-in-out infinite;
-    }
     @keyframes orbFloat1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-20px,30px) scale(1.1)} }
     @keyframes orbFloat2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,-20px) scale(1.08)} }
-    @keyframes orbFloat3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-15px,25px) scale(0.9)} }
 
     #app {
       position: relative;
@@ -213,9 +206,20 @@
       color: var(--text-muted);
       transition: color var(--dur-mid) ease;
     }
-    .tab.active { color: var(--accent); font-weight: 600; }
+    .tab.active { color: #FFFFFF; font-weight: 700; }
     .tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .tab .icon { position: relative; display: flex; }
+    .tab .icon { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .tab .icon::after {
+      content: '';
+      display: block;
+      height: 2px; width: 0;
+      border-radius: 1px;
+      background: linear-gradient(90deg, #6366F1, #8B5CF6);
+      box-shadow: 0 0 8px rgba(99,102,241,0.5);
+      margin-top: 3px;
+      transition: width var(--dur-mid) var(--ease-out);
+    }
+    .tab.active .icon::after { width: 20px; }
     .live-dot { position: absolute; top: -2px; right: -4px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); border: 1.5px solid var(--bg-primary); }
 
     /* ── Karta (helskärm) ──────────────────────────────────────────────── */
@@ -667,8 +671,7 @@
     /* Layer 1 — name */
     .erow-name-row { display: flex; align-items: center; min-width: 0; }
     .erow-name {
-      font-size: 14px; font-weight: 700; letter-spacing: 0.02em; color: var(--text-primary);
-      text-transform: uppercase;
+      font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       line-height: 1.25; padding-right: 8px;
     }
@@ -697,10 +700,10 @@
     }
     /* .erow-badge removed — replaced by .erow-trend (trendindikator) */
     .erow-trend { font-size: 11px; line-height: 1; white-space: nowrap; }
-    .erow-trend--up     { font-weight: 900; color: #CC0000; }
-    .erow-trend--down   { font-weight: 900; color: #000000; }
-    .erow-trend--stable { font-weight: 700; color: #777777; }
-    .erow-trend--single { font-weight: 400; color: #777777; }
+    .erow-trend--up     { font-weight: 700; color: #FF7043; }
+    .erow-trend--down   { font-weight: 700; color: #00E676; }
+    .erow-trend--stable { font-weight: 600; color: var(--text-muted); }
+    .erow-trend--single { font-weight: 400; color: var(--text-muted); }
 
     /* ── Explore summary widget ─────────────────────────────────────────── */
     #explore-summary { margin: 16px 0 12px; }
@@ -941,7 +944,6 @@
   <div class="bg-orbs">
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
-    <div class="bg-orb bg-orb-3"></div>
   </div>
   <div id="app">
     <section id="screen-home" class="screen active">
@@ -970,7 +972,7 @@
         <h1 class="explore-title">Utforska</h1>
         <div class="search-box">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="explore-search" type="search" placeholder="Sök bar, klubb eller område" autocomplete="off" oninput="debouncedFilterExplore()">
+          <input id="explore-search" type="search" placeholder="Café Opera, Spy Bar, Södermalm…" autocomplete="off" oninput="debouncedFilterExplore()">
         </div>
         <div class="filter-row">
           <button class="fbtn active" onclick="setFilter('all', this)">Alla</button>
@@ -2115,11 +2117,10 @@
       if (!el) return;
       var data = computeExploreSummary();
       var noData = data.total === 0;
+      var freeShortCount = data.freeCount + data.medCount;
       var footerText = noData
         ? 'Inga rapporter än — bli först att rapportera'
-        : [data.openCount + ' öppna', data.since18 + ' rapporter ikväll',
-           exsumTimeSince(data.lastTs) ? 'uppdaterad ' + exsumTimeSince(data.lastTs) : null
-          ].filter(Boolean).join(' · ');
+        : freeShortCount + ' ställen med kort eller ingen kö nu';
 
       el.innerHTML =
         '<div class="exsum">' +
@@ -2161,11 +2162,10 @@
         var footer = document.getElementById('exsum-footer');
         if (!footer) { clearInterval(_exsumInterval); return; }
         var d2 = computeExploreSummary();
+        var fs2 = d2.freeCount + d2.medCount;
         footer.textContent = d2.total === 0
           ? 'Inga rapporter än — bli först att rapportera'
-          : [d2.openCount + ' öppna', d2.since18 + ' rapporter ikväll',
-             exsumTimeSince(d2.lastTs) ? 'uppdaterad ' + exsumTimeSince(d2.lastTs) : null
-            ].filter(Boolean).join(' · ');
+          : fs2 + ' ställen med kort eller ingen kö nu';
       }, 30000);
     }
 
@@ -2178,8 +2178,10 @@
       var cls = getStatusClass(status);
       var color = STATUS_COLORS[cls] || '#D1D5DB';
       var hasData = venueReports.length > 0;
-      var isStale = hasData && latestReport && (now - new Date(latestReport.created_at)) > 30 * 60 * 1000;
-      var isEmpty = !hasData;
+      var minsOld = hasData && latestReport ? (now - new Date(latestReport.created_at)) / 60000 : Infinity;
+      var isAging = hasData && minsOld >= 15 && minsOld < 45;
+      var isStale = hasData && minsOld >= 45;
+      var isEmpty = !hasData || isStale;
 
       // Visual level (4 tiers)
       var level; // 'long' | 'medium' | 'free' | 'empty'
@@ -2194,7 +2196,8 @@
       }
 
       var levelBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', empty: 'rgba(255,255,255,0.02)' }[level];
-      var stateClass = isEmpty ? ' erow--empty' : (isStale ? ' erow--stale' : '');
+      var stateClass = isEmpty ? ' erow--empty' : '';
+      var agingStyle = isAging ? ' opacity:0.7;' : '';
       var barColor = isEmpty ? '#F0F0F0' : color;
 
       // Hero number
@@ -2203,13 +2206,16 @@
         heroText = '–'; heroColor = '#D1D5DB';
       } else {
         var mins = { none: 0, free: 0, short: 15, medium: 25, long: 30 }[status];
-        heroText = mins === 0 ? '~0 min' : (mins === 30 ? '30+ min' : '~' + mins + ' min');
+        heroText = mins === 0 ? '0 min' : (mins === 30 ? '30+ min' : mins + ' min');
         // Per-level hero color for better contrast
         var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
         heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
       }
 
-      var pulseHtml = level === 'long' ? '<span class="erow-pulse-dot"></span>' : '';
+      // Freshness check for pulse dot: only show if long AND report < 20 min old
+      var minutesSince = latestReport ? (Date.now() - new Date(latestReport.created_at)) / 60000 : Infinity;
+      var showPulseDot = level === 'long' && minutesSince < 20;
+      var pulseHtml = showPulseDot ? '<span class="erow-pulse-dot"></span>' : '';
 
       // Trend (replaces badge — new information, not redundant with hero)
       var trendHtml = '';
@@ -2233,7 +2239,6 @@
       // Tertiary row
       var reportCount = venueReports.length;
       var lastTime = latestReport ? formatAbsTime(latestReport.created_at) : '–';
-      var spark = renderSparkline(venueReports, color);
 
       // Distance (if available)
       var metaText = venue.area;
@@ -2247,7 +2252,7 @@
       var delay = (index * 75 + 340) + 'ms';
       var levelClass = level === 'long' ? ' erow--long' : '';
 
-      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + '" onclick="goToVenueOnMap(getVenueById(\'' + venue.id + '\'))">' +
+      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';' + agingStyle + '" onclick="goToVenueOnMap(getVenueById(\'' + venue.id + '\'))">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
           '<div class="erow-body">' +
@@ -2260,8 +2265,6 @@
               '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
               '<span class="erow-tertiary-sep">·</span>' +
               '<span>senast ' + lastTime + '</span>' +
-              '<span class="erow-tertiary-sep">·</span>' +
-              spark +
             '</div>' +
           '</div>' +
           '<div class="erow-right">' +
@@ -2323,18 +2326,27 @@
           '</div>';
         return;
       }
-      // Sort: venues with data first (newest report → top), no-data last (alphabetical)
+      // Sort: by urgency descending (long→medium→short→free→empty), then recency within same level
+      var URGENCY_RANK = { long: 3, medium: 2, short: 1, none: 0, free: 0, unknown: -1 };
       list = list.slice().sort(function(a, b) {
         var aReports = allReports.filter(function(r) { return r.venue_id === a.id; });
         var bReports = allReports.filter(function(r) { return r.venue_id === b.id; });
-        var aHas = aReports.length > 0;
-        var bHas = bReports.length > 0;
-        if (aHas && !bHas) return -1;
-        if (!aHas && bHas) return 1;
-        if (!aHas && !bHas) return a.name.localeCompare(b.name, 'sv');
-        // Both have data: sort by newest report timestamp descending
-        var aLatest = Math.max.apply(null, aReports.map(function(r) { return new Date(r.created_at).getTime(); }));
-        var bLatest = Math.max.apply(null, bReports.map(function(r) { return new Date(r.created_at).getTime(); }));
+        var aLatest = aReports.length > 0 ? Math.max.apply(null, aReports.map(function(r) { return new Date(r.created_at).getTime(); })) : 0;
+        var bLatest = bReports.length > 0 ? Math.max.apply(null, bReports.map(function(r) { return new Date(r.created_at).getTime(); })) : 0;
+        var now45 = Date.now() - 45 * 60 * 1000;
+        var aFresh = aLatest > now45;
+        var bFresh = bLatest > now45;
+        // Empty/stale always last
+        if (!aFresh && bFresh) return 1;
+        if (aFresh && !bFresh) return -1;
+        if (!aFresh && !bFresh) return a.name.localeCompare(b.name, 'sv');
+        // Both have fresh data: sort by urgency rank descending
+        var aStatus = computeStatus(a.id, allReports);
+        var bStatus = computeStatus(b.id, allReports);
+        var aRank = URGENCY_RANK[aStatus] !== undefined ? URGENCY_RANK[aStatus] : -1;
+        var bRank = URGENCY_RANK[bStatus] !== undefined ? URGENCY_RANK[bStatus] : -1;
+        if (bRank !== aRank) return bRank - aRank;
+        // Same urgency: newest report first
         return bLatest - aLatest;
       });
       el.innerHTML = '<div class="venue-group">' + list.map(renderExploreVenueRow).join('') + '</div>';
