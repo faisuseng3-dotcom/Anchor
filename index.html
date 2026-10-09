@@ -744,113 +744,65 @@
       border: 1px solid rgba(255,255,255,0.15);
     }
 
-    /* ── Bäst just nu ───────────────────────────────────────────────────── */
-    #best-now {
-      margin-bottom: 12px;
-      animation: fadeSlideUp 500ms 220ms cubic-bezier(0.22,1,0.36,1) both;
-    }
-    .bn-label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #00E676;
-      margin-bottom: 8px;
+    /* ── Bäst just nu (CSS removed — element replaced by pinned row) ──────── */
+    /* #best-now, .bn-* CSS removed — functionality moved to bast-dot in erow */
+
+    /* ── Explore summary widget (hidden, kept for check.js) ─────────────── */
+    /* #explore-summary styles removed — element kept in DOM but display:none */
+    /* .exsum styles kept as stubs to avoid JS errors */
+    .exsum-num--pulse { animation: none; }
+
+    /* ── Filter chips with live counts ──────────────────────────────────── */
+    .chips-scroll {
       display: flex;
-      align-items: center;
       gap: 6px;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-    .bn-label::before {
-      content: '';
+    .chips-scroll::-webkit-scrollbar { display: none; }
+
+    .fcount {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.55);
+      line-height: 1.3;
+      margin-left: 2px;
+    }
+    .fcount--free  { background: rgba(0,230,118,0.15);  color: #00E676; }
+    .fcount--short { background: rgba(255,179,0,0.15);   color: #FFB300; }
+    .fcount--long  { background: rgba(255,59,59,0.15);   color: #FF3B3B; }
+
+    .fbtn--plan {
+      margin-left: auto;
+      color: rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+
+    /* ── Bäst-just-nu dot (pinned first row) ────────────────────────────── */
+    .bast-dot {
       display: inline-block;
       width: 6px; height: 6px;
       border-radius: 50%;
       background: #00E676;
-      box-shadow: 0 0 8px rgba(0,230,118,0.5);
-      animation: ripplePulse 2s ease-out infinite;
-    }
-    .bn-card {
-      background: rgba(255,255,255,0.045);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 14px;
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      transition: background 150ms ease, transform 150ms ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .bn-card:hover {
-      background: rgba(255,255,255,0.07);
-      transform: translateY(-1px);
-    }
-    .bn-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 20%; right: 20%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
-    }
-    .bn-bar {
-      width: 3px;
-      align-self: stretch;
-      border-radius: 2px;
+      box-shadow: 0 0 6px rgba(0,230,118,0.5);
       flex-shrink: 0;
-    }
-    .bn-body { flex: 1; min-width: 0; }
-    .bn-name {
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .bn-meta {
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      margin-top: 3px;
-    }
-    .bn-right { text-align: right; flex-shrink: 0; }
-    .bn-time {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      line-height: 1;
-    }
-    .bn-detail {
-      font-size: 10px;
-      color: rgba(255,255,255,0.35);
-      margin-top: 3px;
+      animation: ripplePulse 2s ease-out infinite;
+      vertical-align: middle;
+      margin-right: 2px;
     }
 
-    /* ── Explore summary widget ─────────────────────────────────────────── */
-    #explore-summary { margin: 16px 0 12px; }
-    .exsum { background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.09); border-radius: var(--radius-xl); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 14px 16px; }
-    .exsum-stats { display: flex; align-items: center; }
-    .exsum-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .exsum-num {
-      font-family: var(--font-base); font-size: 28px; font-weight: 900;
-      line-height: 1; letter-spacing: -0.02em;
-    }
-    .exsum-label {
-      font-family: var(--font-base); font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.04em; color: #6B7280; line-height: 1;
-    }
-    .exsum-sep { width: 1px; height: 32px; background: rgba(255,255,255,0.12); flex-shrink: 0; }
-    .exsum-footer {
-      margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);
-      font-family: var(--font-base); font-size: 12px; font-weight: 400;
-      color: #6B7280; text-align: center; line-height: 1.4;
-    }
-    .exsum-skeleton { display: flex; align-items: center; justify-content: space-around; gap: 8px; }
+    /* ── Explore summary widget (legacy stub, exsumShimmer still used) ──── */
     .exsum-skel { width: 40px; height: 22px; background: rgba(255,255,255,0.08); border-radius: 4px; }
     @keyframes exsumShimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
     .exsum-skel { animation: exsumShimmer 1.5s infinite; }
     @keyframes exsumPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-    .exsum-num--pulse { animation: exsumPulse 300ms cubic-bezier(0.34,1.56,0.64,1); }
 
     /* ── Explore empty state ───────────────────────────────────────────── */
     .explore-empty {
@@ -1193,19 +1145,19 @@
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="explore-search" type="search" placeholder="Café Opera, Spy Bar, Södermalm…" autocomplete="off" oninput="debouncedFilterExplore()">
         </div>
-        <div class="filter-row">
-          <button class="fbtn active" onclick="setFilter('all', this)">Alla</button>
-          <button class="fbtn" onclick="setFilter('bar', this)">Barer</button>
-          <button class="fbtn" onclick="setFilter('klubb', this)">Klubbar</button>
-          <button class="fbtn" onclick="setFilter('happy', this)">Happy Hour</button>
+        <div class="filter-row" id="filter-row">
+          <div class="chips-scroll">
+            <button class="fbtn active" data-filter="all" onclick="setExploreFilter('all')">Alla <span class="fcount" id="fc-all"></span></button>
+            <button class="fbtn" data-filter="free" onclick="setExploreFilter('free')">Fri <span class="fcount fcount--free" id="fc-free"></span></button>
+            <button class="fbtn" data-filter="short" onclick="setExploreFilter('short')">Kort <span class="fcount fcount--short" id="fc-short"></span></button>
+            <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')">Lång <span class="fcount fcount--long" id="fc-long"></span></button>
+            <button class="fbtn fbtn--plan" onclick="togglePlanningMode()">Planera</button>
+          </div>
         </div>
       </div>
-      <div style="padding:0 16px 12px;display:flex;justify-content:flex-end">
-        <button id="plan-mode-btn" onclick="togglePlanningMode()" style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;cursor:pointer;letter-spacing:0.02em">Planera kväll</button>
-      </div>
       <div id="explore-list-wrap">
-        <div id="best-now" style="display:none"></div>
-        <div id="explore-summary"></div>
+        <div id="explore-summary" style="display:none"></div>
+        <div id="filter-context" style="display:none;font-size:10px;color:rgba(255,255,255,0.3);padding:8px 0 0"></div>
         <div id="explore-list"></div>
       </div>
       <div id="plan-bar" style="display:none;position:sticky;bottom:80px;left:0;right:0;padding:12px 16px;z-index:50">
@@ -2457,7 +2409,8 @@
     }
 
     // ── Utforska ─────────────────────────────────────────────────────────────
-    var exploreFilter = 'all';
+    var _exploreFilter = 'all'; // 'all' | 'free' | 'short' | 'long'
+    var exploreFilter = 'all'; // legacy alias kept for safety
     var exploreDebounceTimer = null;
 
     // Sticky header shadow on scroll
@@ -2472,18 +2425,17 @@
     })();
 
     function setFilter(f, btn) {
-      exploreFilter = f;
-      document.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      var el = document.getElementById('explore-list');
-      if (el) {
-        el.style.transition = 'opacity 100ms ease';
-        el.style.opacity = '0';
-        setTimeout(function() {
-          renderExploreVenues();
-          el.style.opacity = '1';
-        }, 100);
-      }
+      // Legacy — kept for any external calls
+      setExploreFilter(f);
+    }
+
+    function setExploreFilter(f) {
+      _exploreFilter = f;
+      exploreFilter = f; // keep legacy alias in sync
+      document.querySelectorAll('.fbtn[data-filter]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.filter === f);
+      });
+      renderExploreVenues();
     }
 
     function debouncedFilterExplore() {
@@ -2661,7 +2613,7 @@
       }, 30000);
     }
 
-    function renderExploreVenueRow(venue, index) {
+    function renderExploreVenueRow(venue, index, isBest) {
       var now = new Date();
       var venueReports = allReports.filter(function(r) { return r.venue_id === venue.id; })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
@@ -2768,6 +2720,7 @@
           planBadge +
           '<div class="erow-body">' +
             '<div class="erow-name-row">' +
+              (isBest ? '<span class="bast-dot"></span>' : '') +
               pulseHtml +
               '<div class="erow-name">' + venue.name + (isWatching(venue.id) ? '<svg viewBox="0 0 24 24" width="10" height="10" fill="rgba(255,255,255,0.5)" style="vertical-align:middle;margin-left:4px;flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') + '</div>' +
             '</div>' +
@@ -2815,6 +2768,10 @@
       _planningMode = !_planningMode;
       _planVenues = [];
       renderExploreVenues();
+      // Update plan chip label
+      var planChip = document.querySelector('.fbtn--plan');
+      if (planChip) planChip.textContent = _planningMode ? 'Avbryt' : 'Planera';
+      // Legacy btn (no longer in DOM, guard kept)
       var btn = document.getElementById('plan-mode-btn');
       if (btn) btn.textContent = _planningMode ? 'Avbryt' : 'Planera kväll';
       var bar = document.getElementById('plan-bar');
@@ -2905,6 +2862,8 @@
       _planningMode = false;
       _planVenues = [];
       renderExploreVenues();
+      var planChip = document.querySelector('.fbtn--plan');
+      if (planChip) planChip.textContent = 'Planera';
       var planBtn = document.getElementById('plan-mode-btn');
       if (planBtn) planBtn.textContent = 'Planera kväll';
       var bar = document.getElementById('plan-bar');
@@ -3017,43 +2976,64 @@
     function renderExploreVenues() {
       renderExploreSummary(_exsumFirstRender);
       _exsumFirstRender = false;
-      renderBestNow();
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
       if (!el) return;
-      var FILTER_MAP = { all: null, bar: 'bar', klubb: 'klubb', happy: 'happy' };
-      var list = VENUES.filter(function(v, i) {
-        var ms = !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q);
-        var mf;
-        if (exploreFilter === 'all') {
-          mf = true;
-        } else if (exploreFilter === 'happy') {
-          mf = !!v.happyHour;
-          if (i < 3) console.log('[QueueBar] Filter happy:', v.name, '| happyHour:', v.happyHour);
-        } else {
-          mf = v.type === exploreFilter;
-          if (i < 3) console.log('[QueueBar] Filter:', exploreFilter, '| venue.type:', v.type, '| match:', mf);
-        }
-        return ms && mf;
+
+      // Base list: search filter only (no type filter — replaced by status filter below)
+      var list = VENUES.filter(function(v) {
+        return !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q);
       });
+
+      // Status-based filter (new chip logic)
+      if (_exploreFilter === 'free') {
+        list = list.filter(function(v) {
+          var s = computeStatus(v.id, allReports);
+          return s === 'free' || s === 'none';
+        });
+      } else if (_exploreFilter === 'short') {
+        list = list.filter(function(v) {
+          var s = computeStatus(v.id, allReports);
+          return s === 'short' || s === 'medium';
+        });
+      } else if (_exploreFilter === 'long') {
+        list = list.filter(function(v) {
+          var s = computeStatus(v.id, allReports);
+          return s === 'long';
+        });
+      }
+      // 'all' — no additional filter
+
+      // Filter context line
+      var contextEl = document.getElementById('filter-context');
+      if (_exploreFilter !== 'all') {
+        var label = { free: 'venues med fri ingång just nu', short: 'venues med kort kö just nu', long: 'venues med lång kö just nu' }[_exploreFilter] || '';
+        if (contextEl) { contextEl.textContent = list.length + ' ' + label; contextEl.style.display = 'block'; }
+      } else {
+        if (contextEl) contextEl.style.display = 'none';
+      }
+
       if (!list.length) {
         var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
+        var filterLabels = { free: 'fri ingång', short: 'kort kö', long: 'lång kö' };
         var emptyTitle, emptySub;
-        if (exploreFilter === 'happy' && !rawQ) {
-          emptyTitle = 'Inga Happy Hour-ställen just nu';
-          emptySub = 'Kolla tillbaka på eftermiddagen';
+        if (_exploreFilter !== 'all' && !rawQ) {
+          emptyTitle = 'Inga venues med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
+          emptySub = 'Kolla tillbaka lite senare';
         } else {
           var term = rawQ ? '”' + rawQ + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
           emptySub = 'Prova ett annat namn eller område';
         }
-        el.innerHTML = '<div class="explore-empty">' +
-          '<div class="explore-empty-title">' + emptyTitle + '</div>' +
-          '<div class="explore-empty-sub">' + emptySub + '</div>' +
+        el.innerHTML = '<div class=”explore-empty”>' +
+          '<div class=”explore-empty-title”>' + emptyTitle + '</div>' +
+          '<div class=”explore-empty-sub”>' + emptySub + '</div>' +
           '</div>';
+        updateFilterCounts();
         return;
       }
+
       // Sort: by urgency descending (long→medium→short→free→empty), then recency within same level
       var URGENCY_RANK = { long: 3, medium: 2, short: 1, none: 0, free: 0, unknown: -1 };
       list = list.slice().sort(function(a, b) {
@@ -3077,7 +3057,43 @@
         // Same urgency: newest report first
         return bLatest - aLatest;
       });
-      el.innerHTML = '<div class="venue-group">' + list.map(renderExploreVenueRow).join('') + '</div>';
+
+      // “Bäst just nu” — pin best venue at top when filter is 'all'
+      var bestVenueId = null;
+      if (_exploreFilter === 'all') {
+        var best = computeBestNow();
+        if (best) {
+          bestVenueId = best.venue.id;
+          // Move best venue to front of list
+          list = list.filter(function(v) { return v.id !== bestVenueId; });
+          list.unshift(best.venue);
+        }
+      }
+
+      el.innerHTML = '<div class=”venue-group”>' + list.map(function(v, i) {
+        return renderExploreVenueRow(v, i, v.id === bestVenueId);
+      }).join('') + '</div>';
+
+      updateFilterCounts();
+    }
+
+    function updateFilterCounts() {
+      var counts = { all: 0, free: 0, short: 0, long: 0 };
+      VENUES.forEach(function(v) {
+        var s = computeStatus(v.id, allReports);
+        counts.all++;
+        if (s === 'free' || s === 'none') counts.free++;
+        if (s === 'short' || s === 'medium') counts.short++;
+        if (s === 'long') counts.long++;
+      });
+      var fcAll   = document.getElementById('fc-all');
+      var fcFree  = document.getElementById('fc-free');
+      var fcShort = document.getElementById('fc-short');
+      var fcLong  = document.getElementById('fc-long');
+      if (fcAll)   fcAll.textContent   = counts.all;
+      if (fcFree)  fcFree.textContent  = counts.free  || '';
+      if (fcShort) fcShort.textContent = counts.short || '';
+      if (fcLong)  fcLong.textContent  = counts.long  || '';
     }
 
     renderExploreVenues();
