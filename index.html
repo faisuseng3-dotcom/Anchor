@@ -705,9 +705,10 @@
       transition: background var(--dur-fast) ease;
     }
     /* live-row is display-only — no hover state */
-    .live-name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); line-height: 1.25; }
-    .live-status { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; margin-top: 3px; }
-    .live-time { font-size: 12px; font-weight: 400; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .live-status { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+    .live-right { text-align: right; }
+    .live-name { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.25; }
+    .live-meta { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
     /* ── Rapportflöde ──────────────────────────────────────────────────── */
     .rp-wrap { flex-shrink: 0; margin-bottom: var(--space-3); }
@@ -2298,11 +2299,11 @@
       el.innerHTML = recent.map(function(r) {
         var venue = getVenueById(r.venue_id);
         var name = venue ? venue.name : (r.venue_name || r.venue_id);
-        var cls = getStatusClass(r.queue_status);
+        var area = venue ? venue.area : '';
         return '<div class="live-row">' +
-          '<div><div class="live-name">' + name + '</div>' +
-          '<div class="live-status" style="color:' + getStatusColor(r.queue_status) + '">' + getStatusLabel(r.queue_status) + '</div></div>' +
-          '<div class="live-time">' + timeAgo(r.created_at) + '</div></div>';
+          '<div class="live-status" style="color:' + getStatusColor(r.queue_status) + '">' + getStatusLabel(r.queue_status) + '</div>' +
+          '<div class="live-right"><div class="live-name">' + name + '</div>' +
+          '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
       }).join('');
     }
 
