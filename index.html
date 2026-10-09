@@ -1092,6 +1092,21 @@
 
     /* ── Focus visible ─────────────────────────────────────────────────── */
     :focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.25); border-radius: var(--radius-sm); }
+
+    /* ── Historiska mönster chip ────────────────────────────────────────── */
+    .hist-chip {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.01em;
+      opacity: 0.75;
+      flex-shrink: 0;
+    }
+    .hist-chip--long   { background: rgba(255,59,59,0.12);   color: #FF3B3B; }
+    .hist-chip--medium { background: rgba(255,112,67,0.12);  color: #FF7043; }
+    .hist-chip--short  { background: rgba(255,179,0,0.12);   color: #FFB300; }
+    .hist-chip--free   { background: rgba(0,230,118,0.10);   color: #00E676; }
   </style>
 
 </head>
@@ -2099,7 +2114,7 @@
       if (!supabase) return;
       supabase.channel('reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, function() {
         console.log('[QueueBar] Realtime: ny händelse i reports');
-        loadReports();
+        loadReports().then(loadHistoricalPatterns);
       }).subscribe();
       console.log('[QueueBar] Prenumererar på realtidsuppdateringar');
     }
@@ -2151,6 +2166,17 @@
       allReports = allReports.filter(function(r) { return !r.id || !String(r.id).startsWith('test-'); });
       allReports = testReports.concat(allReports);
       console.log('[QueueBar] injectTestData: ' + testReports.length + ' testrap injicerade, totalt ' + allReports.length + ' rapporter för ' + VENUES.length + ' venues');
+
+      // Historical patterns for test mode — simulate typical Friday night data
+      var testDow = new Date().getDay();
+      var testHour = new Date().getHours();
+      _historicalPatterns = {
+        'cafe-opera':      { level: 'long',   count: 8,  dow: testDow, hour: testHour },
+        'spy-bar':         { level: 'long',   count: 6,  dow: testDow, hour: testHour },
+        'sturecompagniet': { level: 'medium', count: 5,  dow: testDow, hour: testHour },
+        'berns':           { level: 'short',  count: 4,  dow: testDow, hour: testHour },
+        'under-bron':      { level: 'free',   count: 3,  dow: testDow, hour: testHour }
+      };
     }
 
     async function submitReport(venueId, venueName, queueStatus) {
@@ -2178,9 +2204,47 @@
       }, function() {}, { timeout: 8000, maximumAge: 300000 });
     }
 
+    // ── Historiska mönster ───────────────────────────────────────────────────
+    var _historicalPatterns = {};
+
+    async function loadHistoricalPatterns() {
+      if (!supabase) return;
+      try {
+        var now = new Date();
+        var dow = now.getDay();
+        var hour = now.getHours();
+        var eightWeeksAgo = new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString();
+        var result = await supabase
+          .from('reports')
+          .select('venue_id, level, created_at')
+          .gte('created_at', eightWeeksAgo)
+          .not('level', 'eq', 'none');
+        if (result.error || !result.data) return;
+        var byVenue = {};
+        result.data.forEach(function(r) {
+          var d = new Date(r.created_at);
+          var rdow = d.getDay();
+          var rhour = d.getHours();
+          if (rdow !== dow) return;
+          if (Math.abs(rhour - hour) > 1) return;
+          if (!byVenue[r.venue_id]) byVenue[r.venue_id] = {};
+          byVenue[r.venue_id][r.level] = (byVenue[r.venue_id][r.level] || 0) + 1;
+        });
+        _historicalPatterns = {};
+        Object.keys(byVenue).forEach(function(vid) {
+          var counts = byVenue[vid];
+          var total = Object.values(counts).reduce(function(a, b) { return a + b; }, 0);
+          if (total < 3) return;
+          var modal = Object.keys(counts).reduce(function(a, b) { return counts[a] >= counts[b] ? a : b; });
+          _historicalPatterns[vid] = { level: modal, count: total, dow: dow, hour: hour };
+        });
+        renderExploreVenues();
+      } catch(e) {}
+    }
+
     // Fix 4 — loadReports alltid, oavsett karta
     console.log('[QueueBar] Startar initial datainläsning');
-    loadReports();
+    loadReports().then(loadHistoricalPatterns);
     subscribeToReports();
     if (supabase) {
       setInterval(loadReports, 30000);
@@ -2568,12 +2632,18 @@
               '<div class="erow-name">' + venue.name + '</div>' +
             '</div>' +
             '<div class="erow-meta">' + metaText + '</div>' +
-            '<div class="erow-tertiary">' +
-              confHtml +
-              '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
-              '<span class="erow-tertiary-sep">·</span>' +
-              '<span>senast ' + lastTime + '</span>' +
-            '</div>' +
+            (function() {
+              var pat = _historicalPatterns[venue.id];
+              var patLabels = { long: 'Vanligtvis lång kö nu', medium: 'Vanligtvis medel kö nu', short: 'Vanligtvis kort kö nu', free: 'Vanligtvis fri ingång nu' };
+              var patHtml = pat && patLabels[pat.level] ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
+              return '<div class="erow-tertiary">' +
+                confHtml +
+                '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
+                '<span class="erow-tertiary-sep">·</span>' +
+                '<span>senast ' + lastTime + '</span>' +
+                (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
+              '</div>';
+            })() +
           '</div>' +
           '<div class="erow-right">' +
             '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + heroText + '</span>' +
