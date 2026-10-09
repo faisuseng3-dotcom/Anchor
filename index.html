@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0A0A0F">
+  <meta name="theme-color" content="#08090F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;QueueBar&quot;,&quot;short_name&quot;:&quot;QueueBar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%2308090F&quot;,&quot;theme_color&quot;:&quot;%2308090F&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.ico&quot;,&quot;sizes&quot;:&quot;any&quot;}]}">
   <title>QueueBar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1383,6 +1386,36 @@
   </div>
 
   <script>
+    // ── PWA install prompt ───────────────────────────────────────────────────
+    var _deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      _deferredInstallPrompt = e;
+    });
+
+    function maybeShowInstallPrompt() {
+      if (!_deferredInstallPrompt) return;
+      if (window.matchMedia('(display-mode: standalone)').matches) return;
+      try { if (localStorage.getItem('qb_install_dismissed')) return; } catch(e) {}
+      var card = document.getElementById('install-prompt');
+      if (card) card.style.display = 'flex';
+    }
+
+    function acceptInstall() {
+      if (!_deferredInstallPrompt) return;
+      _deferredInstallPrompt.prompt();
+      _deferredInstallPrompt.userChoice.then(function() {
+        _deferredInstallPrompt = null;
+        dismissInstall();
+      });
+    }
+
+    function dismissInstall() {
+      try { localStorage.setItem('qb_install_dismissed', '1'); } catch(e) {}
+      var card = document.getElementById('install-prompt');
+      if (card) card.style.display = 'none';
+    }
+
     console.log('[QueueBar] Script startar');
 
     // ── Navigation initieras ALLRA FÖRST — fungerar oavsett CDN ─────────────
@@ -3260,6 +3293,7 @@
       try {
         await submitReport(selectedRV.id, selectedRV.name, status, comment);
         if (commentEl) commentEl.value = '';
+        maybeShowInstallPrompt();
         showToast('Rapport skickad — tack!');
         document.getElementById('rs2').style.display = 'none';
         document.getElementById('rs1').style.display = 'block';
@@ -3299,6 +3333,7 @@
       closeQuickReport();
       try {
         await submitReport(v.id, v.name, status);
+        maybeShowInstallPrompt();
         showToast('Rapport skickad — tack!');
         loadReports();
       } catch(e) {
@@ -3398,5 +3433,14 @@
     console.log('[QueueBar] Initiering klar');
     checkConsent();
   </script>
+
+  <div id="install-prompt" style="display:none;position:fixed;bottom:88px;left:16px;right:16px;z-index:700;background:rgba(13,15,26,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;align-items:center;gap:12px">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600;color:#fff;line-height:1.3">Lägg till på hemskärmen</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px">Öppna QueueBar snabbt utan webbläsaren</div>
+    </div>
+    <button onclick="acceptInstall()" style="flex-shrink:0;height:36px;padding:0 16px;border-radius:20px;background:rgba(255,255,255,0.92);color:#0D0F1A;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap;font-family:inherit">Lägg till</button>
+    <button onclick="dismissInstall()" style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-family:inherit">×</button>
+  </div>
 </body>
 </html>
