@@ -705,7 +705,9 @@
       transition: background var(--dur-fast) ease;
     }
     /* live-row is display-only — no hover state */
-    .live-status { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+    .live-status { display: flex; flex-direction: column; gap: 2px; }
+    .live-wait { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .live-cat { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
     .live-right { text-align: right; }
     .live-name { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.25; }
     .live-meta { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
@@ -2296,15 +2298,26 @@
         el.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p>Inga rapporter ännu.<br>Gå ut och rapportera!</p></div>';
         return;
       }
+      var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
+      var liveTimes      = { short: '15 min', medium: '25 min', long: '30+ min' };
+      var liveColors     = { none: '#16A34A', free: '#16A34A', short: '#D97706', medium: '#D97706', long: '#DC2626' };
       el.innerHTML = recent.map(function(r) {
         var venue = getVenueById(r.venue_id);
         var name = venue ? venue.name : (r.venue_name || r.venue_id);
         var area = venue ? venue.area : '';
+        var qs = r.queue_status;
+        var descriptor = liveDescriptors[qs];
+        if (!descriptor) return '';
+        var waitTime = liveTimes[qs] || '';
+        var color = liveColors[qs] || '#9CA3AF';
+        var heroHtml = waitTime
+          ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
+          : '<div class="live-wait">' + descriptor + '</div>';
         return '<div class="live-row">' +
-          '<div class="live-status" style="color:' + getStatusColor(r.queue_status) + '">' + getStatusLabel(r.queue_status) + '</div>' +
+          '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
           '<div class="live-right"><div class="live-name">' + name + '</div>' +
           '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
-      }).join('');
+      }).filter(Boolean).join('');
     }
 
     renderLiveFeed();
