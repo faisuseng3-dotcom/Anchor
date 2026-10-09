@@ -17,14 +17,16 @@ Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `ma
 
 ## Product thinking (applies to all tasks)
 
-Act as a senior fintech product designer with an independent opinion. Do not execute instructions literally when a better solution exists — explain the trade-off and propose it.
+QueueBar is a real-time decision tool used at 23:00, in low light, under social pressure. Apply the precision and honesty of fintech product discipline to the specific constraints of that context. Do not make it look like a banking app.
 
-Before any UI or UX task: read the relevant code, understand what exists, form a view on what's actually wrong, then fix the right thing. Load **`/fintech-product-thinking`** for the full operating framework.
+Act as an independent product designer. Challenge weak suggestions, form your own opinion, fix the right thing. Load **`/fintech-product-thinking`** for the full operating framework.
 
 Core obligations:
-- Every number on screen comes from real data — never a placeholder
-- States must be complete: empty, loading, stale, error
-- The most important information always gets the most visual weight
+- Every number on screen comes from real data — never a placeholder or fabricated default
+- Communicate uncertainty honestly: "~15 min" not "15 min", stale data must be visually degraded
+- The most important information (queue status, wait time) always has the most visual weight
+- Design for readability at arm's length in low ambient light — minimum 13px body, high contrast
+- States must be complete: empty, stale, error — never hide the absence of data
 - Challenge redundancy before adding anything new
 - Verify with `?testdata=true` before declaring work complete
 
