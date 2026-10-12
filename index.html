@@ -354,10 +354,10 @@
       flex-shrink: 0; border-radius: var(--radius-full);
       padding: 3px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.0;
     }
-    .vcrow-badge.free   { background: #F0F0F0; color: #000000; }
-    .vcrow-badge.short  { background: #F0F0F0; color: #000000; }
-    .vcrow-badge.medium { background: #F0F0F0; color: #000000; }
-    .vcrow-badge.long   { background: rgba(204,0,0,0.08); color: #CC0000; }
+    .vcrow-badge.free   { background: rgba(0,230,118,0.12); color: #00C060; }
+    .vcrow-badge.short  { background: rgba(255,179,0,0.12);  color: #B37800; }
+    .vcrow-badge.medium { background: rgba(255,112,67,0.12); color: #CC5500; }
+    .vcrow-badge.long   { background: rgba(204,0,0,0.10);    color: #CC0000; }
     .vcrow-badge.unknown{ background: #F0F0F0; color: #AAAAAA; }
 
     /* ── Venue Cards ───────────────────────────────────────────────────── */
@@ -660,8 +660,7 @@
     }
     .erow:hover {
       background: rgba(255,255,255,0.07);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 36px rgba(0,0,0,0.35);
+      border-color: rgba(255,255,255,0.16);
       z-index: 1;
     }
     .erow:active  { transform: scale(0.99); transition-duration: 80ms; }
@@ -2932,7 +2931,7 @@
         heroText = '–'; heroColor = '#D1D5DB';
       } else {
         var mins = { none: 0, free: 0, short: 15, medium: 25, long: 30 }[status];
-        heroText = mins === 0 ? '0 min' : (mins === 30 ? '30+ min' : mins + ' min');
+        heroText = (status === 'free' || status === 'none') ? 'Fri' : (mins === 30 ? '30+ min' : mins + ' min');
         // Per-level hero color for better contrast
         var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
         heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
@@ -3016,13 +3015,16 @@
                 return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
               }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
               var commentHtml = recentWithComment ? '<div class="erow-comment">"' + recentWithComment.comment + '"</div>' : '';
-              return '<div class="erow-tertiary">' +
-                confHtml +
-                '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
-                '<span class="erow-tertiary-sep">·</span>' +
-                '<span>senast ' + lastTime + '</span>' +
-                (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
-              '</div>' + commentHtml;
+              var tertiaryHtml = hasData
+                ? '<div class="erow-tertiary">' +
+                    confHtml +
+                    '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
+                    '<span class="erow-tertiary-sep">·</span>' +
+                    '<span>senast ' + lastTime + '</span>' +
+                    (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
+                  '</div>'
+                : (patHtml ? '<div class="erow-tertiary">' + patHtml + '</div>' : '');
+              return tertiaryHtml + commentHtml;
             })() +
           '</div>' +
           '<div class="erow-right">' +
