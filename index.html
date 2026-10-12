@@ -2332,6 +2332,10 @@
       });
     }
 
+    var STATUS_COLORS = {
+      free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: 'rgba(255,255,255,0.18)'
+    };
+
     async function loadReports() {
       if (!supabase) {
         console.warn('[QueueBar] loadReports: supabase är null — kör testdata-only');
@@ -2721,9 +2725,6 @@
       exploreDebounceTimer = setTimeout(renderExploreVenues, 60);
     }
 
-    var STATUS_COLORS = {
-      free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: 'rgba(255,255,255,0.18)'
-    };
     var STATUS_Y = { none: 0, free: 0, short: 1, medium: 2, long: 2 };
 
     function renderSparkline(venueReports, statusColor) {
