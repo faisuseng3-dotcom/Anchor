@@ -2132,48 +2132,6 @@
         map.on('load', function() {
           console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
 
-          addMapIcon(map, 'icon-bar', function(ctx, s) {
-            // Shadow pass for contrast against any marker color
-            ctx.shadowColor = 'rgba(0,0,0,0.6)';
-            ctx.shadowBlur = 2;
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2.2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            // Martini glass scaled to 28px canvas: rim 4→24, bowl tip at 14,17, stem to 21, base 10→18
-            ctx.beginPath();
-            ctx.moveTo(4, 5); ctx.lineTo(14, 17);   // left rim to stem top
-            ctx.moveTo(24, 5); ctx.lineTo(14, 17);   // right rim to stem top
-            ctx.moveTo(4, 5); ctx.lineTo(24, 5);     // rim top bar
-            ctx.moveTo(14, 17); ctx.lineTo(14, 23);  // stem
-            ctx.moveTo(10, 23); ctx.lineTo(18, 23);  // base
-            ctx.stroke();
-          });
-
-          addMapIcon(map, 'icon-klubb', function(ctx, s) {
-            ctx.shadowColor = 'rgba(0,0,0,0.6)';
-            ctx.shadowBlur = 2;
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2.2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            // Music note scaled to 28px: stem 10→23 vertical, flag at top right
-            ctx.beginPath();
-            ctx.moveTo(11, 22); ctx.lineTo(11, 7);   // stem
-            ctx.lineTo(21, 5); ctx.lineTo(21, 18);   // flag line
-            ctx.stroke();
-            // Note head (filled circle at stem bottom)
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(9, 22, 3.5, 0, Math.PI * 2);
-            ctx.fill();
-            // Second note head at flag bottom
-            ctx.beginPath();
-            ctx.arc(19, 18, 3.5, 0, Math.PI * 2);
-            ctx.fill();
-          });
-
           map.addSource('venues', {
             type: 'geojson', data: venueGeoJSON,
             cluster: true, clusterMaxZoom: 13, clusterRadius: 40
@@ -2209,8 +2167,8 @@
                 'long',   '#EF4444',
                 '#D1D5DB'
               ],
-              'circle-radius': 8,
-              'circle-stroke-width': 3,
+              'circle-radius': ['match', ['get', 'type'], 'bar', 9, 13],
+              'circle-stroke-width': 2.5,
               'circle-stroke-color': '#FFFFFF'
             }
           });
@@ -2230,12 +2188,12 @@
           });
 
           // animate pulse ring
-          var pulseSize = 8, pulseDir = 1;
+          var pulseSize = 11, pulseDir = 1;
           function animatePulse() {
             pulseSize += pulseDir * 0.2;
-            if (pulseSize >= 14) pulseDir = -1;
-            if (pulseSize <= 8) pulseDir = 1;
-            var opacity = (14 - pulseSize) / 6 * 0.4;
+            if (pulseSize >= 18) pulseDir = -1;
+            if (pulseSize <= 11) pulseDir = 1;
+            var opacity = (18 - pulseSize) / 7 * 0.4;
             if (map.getLayer('venues-pulse')) {
               map.setPaintProperty('venues-pulse', 'circle-radius', pulseSize);
               map.setPaintProperty('venues-pulse', 'circle-stroke-color', 'rgba(34,197,94,' + opacity + ')');
@@ -2249,7 +2207,7 @@
             filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
             layout: {
               'text-field': ['match', ['get', 'status'], 'none', 'Ingen kö', 'short', '15 min', 'medium', '25 min', 'long', '30+ min', ''],
-              'text-size': 10, 'text-offset': [0, 2.2], 'text-anchor': 'top', 'text-allow-overlap': true,
+              'text-size': 10, 'text-offset': ['match', ['get', 'type'], 'bar', ['literal', [0, 2.0]], ['literal', [0, 2.8]]], 'text-anchor': 'top', 'text-allow-overlap': true,
               'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
             },
             paint: {
@@ -2260,13 +2218,18 @@
 
           map.addLayer({
             id: 'venues-type', type: 'symbol', source: 'venues',
-            filter: ['!', ['has', 'point_count']],
+            filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'type'], 'klubb']],
             layout: {
-              'icon-image': ['match', ['get', 'type'], 'bar', 'icon-bar', 'icon-klubb'],
-              'icon-size': 0.9,
-              'icon-allow-overlap': true,
-              'icon-anchor': 'center',
-              'icon-offset': [0, 0]
+              'text-field': '★',
+              'text-size': 11,
+              'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+              'text-anchor': 'center',
+              'text-allow-overlap': true
+            },
+            paint: {
+              'text-color': '#FFFFFF',
+              'text-halo-color': 'rgba(0,0,0,0.2)',
+              'text-halo-width': 0.5
             }
           });
 
