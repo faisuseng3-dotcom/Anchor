@@ -2030,21 +2030,13 @@
       var floatEl = document.getElementById('map-search-float');
       if (!resultsEl) return;
 
-      var hits = [];
-      if (query.length >= 1) {
-        var q = query.toLowerCase();
-        hits = VENUES.filter(function(v) {
-          return v.name.toLowerCase().includes(q) ||
-                 v.area.toLowerCase().includes(q) ||
-                 v.address.toLowerCase().includes(q);
-        }).slice(0, 6);
-      }
-
       if (query.length < 1) {
         resultsEl.style.display = 'none';
         floatEl.style.borderRadius = '12px';
         return;
       }
+
+      var hits = venueSearch(query, VENUES).slice(0, 6);
 
       floatEl.style.borderRadius = '12px 12px 10px 10px';
       resultsEl.style.display = 'block';
@@ -2616,6 +2608,63 @@
       location.reload();
     }
 
+    // ── Gemensam fuzzy-sökning ───────────────────────────────────────────────
+    // Returns venues sorted by relevance score (highest first).
+    // Handles: prefix, word-start, substring, and fuzzy (collapsed whitespace).
+    function venueSearch(query, venues) {
+      if (!query) return venues.slice();
+      // Normalize: lowercase, remove diacritics, collapse whitespace
+      function norm(s) {
+        return s.toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .replace(/\s+/g, ' ').trim();
+      }
+      // Compact: also strip ALL spaces (lets "spybar" match "Spy Bar")
+      function compact(s) { return norm(s).replace(/\s/g, ''); }
+
+      var q = norm(query);
+      var qc = compact(query);
+
+      function score(v) {
+        var name = norm(v.name);
+        var namec = compact(v.name);
+        var area = norm(v.area);
+        var addr = norm(v.address);
+
+        // Exact match
+        if (name === q) return 100;
+        // Prefix of full name
+        if (name.startsWith(q)) return 90;
+        // Compact match (e.g. "spybar" → "spy bar")
+        if (namec.startsWith(qc)) return 85;
+        if (namec.includes(qc)) return 75;
+        // Word-start within name (e.g. "bar" matches "Spy Bar")
+        var words = name.split(' ');
+        if (words.some(function(w) { return w.startsWith(q); })) return 70;
+        // Substring in name
+        if (name.includes(q)) return 60;
+        // Area prefix / substring
+        if (area.startsWith(q)) return 40;
+        if (area.includes(q)) return 35;
+        // Address substring
+        if (addr.includes(q)) return 20;
+        // Fuzzy: all query chars appear in order in name
+        var ni = 0;
+        for (var ci = 0; ci < qc.length; ci++) {
+          ni = namec.indexOf(qc[ci], ni);
+          if (ni === -1) return -1;
+          ni++;
+        }
+        return 10;
+      }
+
+      return venues
+        .map(function(v) { return { v: v, s: score(v) }; })
+        .filter(function(x) { return x.s >= 0; })
+        .sort(function(a, b) { return b.s - a.s; })
+        .map(function(x) { return x.v; });
+    }
+
     // ── Utforska ─────────────────────────────────────────────────────────────
     var _exploreFilter = 'all'; // 'all' | 'free' | 'short' | 'long'
     var exploreFilter = 'all'; // legacy alias kept for safety
@@ -2655,8 +2704,9 @@
     }
 
     function debouncedFilterExplore() {
+      // 28 venues — fuzzy sort is synchronous and fast enough to run immediately
       clearTimeout(exploreDebounceTimer);
-      exploreDebounceTimer = setTimeout(renderExploreVenues, 200);
+      exploreDebounceTimer = setTimeout(renderExploreVenues, 60);
     }
 
     var STATUS_COLORS = {
@@ -3198,10 +3248,8 @@
       var el = document.getElementById('explore-list');
       if (!el) return;
 
-      // Base list: search filter only (no type filter — replaced by status filter below)
-      var list = VENUES.filter(function(v) {
-        return !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q);
-      });
+      // Base list: fuzzy search, preserves relevance order when query present
+      var list = q ? venueSearch(q, VENUES) : VENUES.slice();
 
       // Status-based filter (new chip logic)
       if (_exploreFilter === 'free') {
@@ -3488,15 +3536,18 @@
         if (t < cutoff2h) return;
         if (!latestTs[r.venue_id] || t > latestTs[r.venue_id]) latestTs[r.venue_id] = t;
       });
-      var list = VENUES.filter(function(v) { return !q || v.name.toLowerCase().includes(q) || v.area.toLowerCase().includes(q); });
-      list.sort(function(a, b) {
-        var at = latestTs[a.id] || 0;
-        var bt = latestTs[b.id] || 0;
-        if (at && !bt) return -1;
-        if (!at && bt) return 1;
-        if (!at && !bt) return a.name.localeCompare(b.name, 'sv');
-        return bt - at;
-      });
+      var list = q ? venueSearch(q, VENUES) : VENUES.slice();
+      // When no query: sort by recency; when searching: preserve relevance order
+      if (!q) {
+        list.sort(function(a, b) {
+          var at = latestTs[a.id] || 0;
+          var bt = latestTs[b.id] || 0;
+          if (at && !bt) return -1;
+          if (!at && bt) return 1;
+          if (!at && !bt) return a.name.localeCompare(b.name, 'sv');
+          return bt - at;
+        });
+      }
       el.innerHTML = list.map(function(v) {
         var rsTypeLbl = venueTypeLabel(v.type);
         var rsAreaText = v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '');
