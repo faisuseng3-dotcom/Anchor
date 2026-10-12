@@ -2609,46 +2609,54 @@
     }
 
     // ── Gemensam fuzzy-sökning ───────────────────────────────────────────────
-    // Returns venues sorted by relevance score (highest first).
-    // Handles: prefix, word-start, substring, and fuzzy (collapsed whitespace).
-    function venueSearch(query, venues) {
-      if (!query) return venues.slice();
-      // Normalize: lowercase, remove diacritics, collapse whitespace
-      function norm(s) {
-        return s.toLowerCase()
-          .normalize('NFD').replace(/[̀-ͯ]/g, '')
-          .replace(/\s+/g, ' ').trim();
-      }
-      // Compact: also strip ALL spaces (lets "spybar" match "Spy Bar")
-      function compact(s) { return norm(s).replace(/\s/g, ''); }
+    // Returns {v, s} pairs sorted by relevance score (highest first).
+    // Use venueSearch() for sorted results; venueScore() for the raw score.
+    //
+    // Score tiers (length-gated to avoid single-char flooding):
+    //   100 exact name match
+    //    90 name starts with query
+    //    85 compact match ("spybar" → "Spy Bar")          requires len ≥ 2
+    //    70 any word in name starts with query
+    //    60 compact contains query                         requires len ≥ 3
+    //    50 name contains query as substring               requires len ≥ 2
+    //    40 area name starts with query                    requires len ≥ 2
+    //    30 area contains query                            requires len ≥ 3
+    //    20 address contains query                         requires len ≥ 3
+    //    10 fuzzy char-sequence in compact name            requires len ≥ 3
+    //    -1 no match → excluded
 
-      var q = norm(query);
-      var qc = compact(query);
+    function _searchNorm(s) {
+      return s.toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/\s+/g, ' ').trim();
+    }
+    function _searchCompact(s) { return _searchNorm(s).replace(/\s/g, ''); }
 
-      function score(v) {
-        var name = norm(v.name);
-        var namec = compact(v.name);
-        var area = norm(v.area);
-        var addr = norm(v.address);
+    function venueScore(query, v) {
+      var q  = _searchNorm(query);
+      var qc = _searchCompact(query);
+      var ql = qc.length;
 
-        // Exact match
-        if (name === q) return 100;
-        // Prefix of full name
-        if (name.startsWith(q)) return 90;
-        // Compact match (e.g. "spybar" → "spy bar")
-        if (namec.startsWith(qc)) return 85;
-        if (namec.includes(qc)) return 75;
-        // Word-start within name (e.g. "bar" matches "Spy Bar")
-        var words = name.split(' ');
-        if (words.some(function(w) { return w.startsWith(q); })) return 70;
-        // Substring in name
-        if (name.includes(q)) return 60;
-        // Area prefix / substring
-        if (area.startsWith(q)) return 40;
-        if (area.includes(q)) return 35;
-        // Address substring
-        if (addr.includes(q)) return 20;
-        // Fuzzy: all query chars appear in order in name
+      var name  = _searchNorm(v.name);
+      var namec = _searchCompact(v.name);
+      var area  = _searchNorm(v.area);
+      var addr  = _searchNorm(v.address);
+
+      if (name === q)              return 100;
+      if (name.startsWith(q))     return 90;
+
+      var words = name.split(' ');
+      if (words.some(function(w) { return w.startsWith(q); })) return 70;
+
+      if (ql >= 2 && namec.startsWith(qc))  return 85;
+      if (ql >= 3 && namec.includes(qc))    return 60;
+      if (ql >= 2 && name.includes(q))      return 50;
+      if (ql >= 2 && area.startsWith(q))    return 40;
+      if (ql >= 3 && area.includes(q))      return 30;
+      if (ql >= 3 && addr.includes(q))      return 20;
+
+      // Fuzzy: every char in query appears in order in compact name (3+ chars only)
+      if (ql >= 3) {
         var ni = 0;
         for (var ci = 0; ci < qc.length; ci++) {
           ni = namec.indexOf(qc[ci], ni);
@@ -2657,9 +2665,13 @@
         }
         return 10;
       }
+      return -1;
+    }
 
+    function venueSearch(query, venues) {
+      if (!query) return venues.slice();
       return venues
-        .map(function(v) { return { v: v, s: score(v) }; })
+        .map(function(v) { return { v: v, s: venueScore(query, v) }; })
         .filter(function(x) { return x.s >= 0; })
         .sort(function(a, b) { return b.s - a.s; })
         .map(function(x) { return x.v; });
@@ -3303,8 +3315,11 @@
         return;
       }
 
-      // Sort: by urgency descending (long→medium→short→free→empty), then recency within same level
+      // Sort strategy:
+      //   No query  → urgency (long first) then recency; stale venues last
+      //   Query set → relevance score first; within same score bucket: urgency then recency
       var URGENCY_RANK = { long: 3, medium: 2, short: 1, none: 0, free: 0, unknown: -1 };
+      var activeQuery = (document.getElementById('explore-search') || {}).value || '';
       list = list.slice().sort(function(a, b) {
         var aReports = allReports.filter(function(r) { return r.venue_id === a.id; });
         var bReports = allReports.filter(function(r) { return r.venue_id === b.id; });
@@ -3313,17 +3328,31 @@
         var now45 = Date.now() - 45 * 60 * 1000;
         var aFresh = aLatest > now45;
         var bFresh = bLatest > now45;
-        // Empty/stale always last
+
+        // When searching: relevance score is primary sort key
+        if (activeQuery.trim()) {
+          var aScore = venueScore(activeQuery, a);
+          var bScore = venueScore(activeQuery, b);
+          if (bScore !== aScore) return bScore - aScore;
+          // Tie-break within same score: fresh + urgency
+          if (!aFresh && bFresh) return 1;
+          if (aFresh && !bFresh) return -1;
+          var aStatus = computeStatus(a.id, allReports);
+          var bStatus = computeStatus(b.id, allReports);
+          var aRank = URGENCY_RANK[aStatus] !== undefined ? URGENCY_RANK[aStatus] : -1;
+          var bRank = URGENCY_RANK[bStatus] !== undefined ? URGENCY_RANK[bStatus] : -1;
+          return bRank - aRank;
+        }
+
+        // No query: urgency sort, stale last
         if (!aFresh && bFresh) return 1;
         if (aFresh && !bFresh) return -1;
         if (!aFresh && !bFresh) return a.name.localeCompare(b.name, 'sv');
-        // Both have fresh data: sort by urgency rank descending
         var aStatus = computeStatus(a.id, allReports);
         var bStatus = computeStatus(b.id, allReports);
         var aRank = URGENCY_RANK[aStatus] !== undefined ? URGENCY_RANK[aStatus] : -1;
         var bRank = URGENCY_RANK[bStatus] !== undefined ? URGENCY_RANK[bStatus] : -1;
         if (bRank !== aRank) return bRank - aRank;
-        // Same urgency: newest report first
         return bLatest - aLatest;
       });
 
