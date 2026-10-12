@@ -2304,13 +2304,13 @@
             });
           });
 
-          map.on('click', 'venues-circle', function(e) {
+          map.on('click', 'venues-pins', function(e) {
             var venue = getVenueById(e.features[0].properties.id);
             console.log('[QueueBar] Kartmarkörsklick:', e.features[0].properties.id);
             if (venue) openVenueCard(venue, 'karta');
           });
 
-          ['venues-circle', 'clusters'].forEach(function(l) {
+          ['venues-pins', 'clusters'].forEach(function(l) {
             map.on('mouseenter', l, function() { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', l, function() { map.getCanvas().style.cursor = ''; });
           });
