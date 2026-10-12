@@ -253,14 +253,39 @@
       top: calc(16px + env(safe-area-inset-top));
       left: 50%; transform: translateX(-50%);
       z-index: 5; width: 90%;
-      background: rgba(8,9,15,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: rgba(8,9,15,0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       border-radius: 12px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .map-search-inner {
       height: 44px; display: flex; align-items: center; gap: 8px;
-      padding: 0 14px; cursor: pointer; border: 1px solid rgba(255,255,255,0.12);
+      padding: 0 14px;
     }
     .map-search-float svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-    .map-search-float span { font-size: 14px; font-weight: 400; letter-spacing: -0.01em; color: var(--text-muted); font-family: var(--font-base); }
+    #map-search-input {
+      flex: 1; min-width: 0; background: none; border: 0; outline: 0;
+      color: var(--text-primary); font-family: var(--font-base); font-size: 14px;
+    }
+    #map-search-input::placeholder { color: var(--text-muted); }
+    #map-search-clear {
+      background: none; border: 0; padding: 0; cursor: pointer;
+      color: var(--text-muted); font-size: 18px; line-height: 1;
+      display: none; flex-shrink: 0;
+    }
+    #map-search-results {
+      display: none; border-top: 1px solid rgba(255,255,255,0.08);
+      max-height: 260px; overflow-y: auto;
+    }
+    .msearch-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; cursor: pointer;
+    }
+    .msearch-row:active { background: rgba(255,255,255,0.05); }
+    .msearch-row + .msearch-row { border-top: 1px solid rgba(255,255,255,0.05); }
+    .msearch-name { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
+    .msearch-meta { font-size: 12px; color: var(--text-muted); }
+    .msearch-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .msearch-empty { padding: 16px 14px; font-size: 13px; color: var(--text-muted); text-align: center; }
 
     /* ── Error toast (replaces conn-banner) ────────────────────────────── */
     #err-toast {
@@ -1127,9 +1152,17 @@
     <section id="screen-home" class="screen active">
       <div id="map"></div>
       <div class="map-pill">QueueBar</div>
-      <div class="map-search-float" onclick="focusExploreSearch()">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span>Sök bar, klubb eller adress...</span>
+      <div class="map-search-float" id="map-search-float">
+        <div class="map-search-inner">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="map-search-input" type="search" placeholder="Sök bar, klubb eller område..." autocomplete="off"
+            oninput="onMapSearchInput(this.value)"
+            onfocus="onMapSearchFocus()"
+            onblur="onMapSearchBlur()"
+            onkeydown="onMapSearchKey(event)">
+          <button id="map-search-clear" onclick="clearMapSearch()" tabindex="-1">×</button>
+        </div>
+        <div id="map-search-results"></div>
       </div>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
@@ -1546,7 +1579,8 @@
       { id: 'gro', name: 'Gro', address: 'Folkungagatan 84', area: 'Södermalm', type: 'bar', lat: 59.3135, lng: 18.0760, closing: '01:00' },
       { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00' },
       { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.3342, lng: 18.0656, closing: '02:00' },
-      { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00' }
+      { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00' },
+      { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: '05:00' }
     ];
 
     function computeConfidence(venueReports) {
@@ -1949,6 +1983,107 @@
         var inp = document.getElementById('explore-search');
         if (inp) { inp.focus(); inp.select(); }
       }, 150);
+    }
+
+    // ── Kartans inline-sökning ──────────────────────────────────────────────
+    var _mapSearchActive = false;
+
+    function onMapSearchInput(val) {
+      var clearBtn = document.getElementById('map-search-clear');
+      if (clearBtn) clearBtn.style.display = val.length ? 'block' : 'none';
+      renderMapSearchResults(val.trim());
+    }
+
+    function onMapSearchFocus() {
+      _mapSearchActive = true;
+      var inp = document.getElementById('map-search-input');
+      renderMapSearchResults(inp ? inp.value.trim() : '');
+    }
+
+    function onMapSearchBlur() {
+      // Delay to allow click on result to fire first
+      setTimeout(function() {
+        if (!_mapSearchActive) return;
+        _mapSearchActive = false;
+        document.getElementById('map-search-results').style.display = 'none';
+        document.getElementById('map-search-float').style.borderRadius = '12px';
+      }, 200);
+    }
+
+    function onMapSearchKey(e) {
+      if (e.key === 'Escape') {
+        clearMapSearch();
+        document.getElementById('map-search-input').blur();
+      }
+    }
+
+    function clearMapSearch() {
+      var inp = document.getElementById('map-search-input');
+      if (inp) { inp.value = ''; inp.focus(); }
+      document.getElementById('map-search-clear').style.display = 'none';
+      document.getElementById('map-search-results').style.display = 'none';
+      document.getElementById('map-search-float').style.borderRadius = '12px';
+    }
+
+    function renderMapSearchResults(query) {
+      var resultsEl = document.getElementById('map-search-results');
+      var floatEl = document.getElementById('map-search-float');
+      if (!resultsEl) return;
+
+      var hits = [];
+      if (query.length >= 1) {
+        var q = query.toLowerCase();
+        hits = VENUES.filter(function(v) {
+          return v.name.toLowerCase().includes(q) ||
+                 v.area.toLowerCase().includes(q) ||
+                 v.address.toLowerCase().includes(q);
+        }).slice(0, 6);
+      }
+
+      if (query.length < 1) {
+        resultsEl.style.display = 'none';
+        floatEl.style.borderRadius = '12px';
+        return;
+      }
+
+      floatEl.style.borderRadius = '12px 12px 10px 10px';
+      resultsEl.style.display = 'block';
+
+      if (!hits.length) {
+        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + query + '"</div>';
+        return;
+      }
+
+      resultsEl.innerHTML = hits.map(function(v) {
+        var status = computeStatus(v.id, allReports);
+        var dotColor = STATUS_COLORS[status] || '#6B7280';
+        var typeLabel = venueTypeLabel(v.type);
+        return '<div class="msearch-row" onmousedown="selectMapSearchVenue(\'' + v.id + '\')">' +
+          '<div class="msearch-dot" style="background:' + dotColor + '"></div>' +
+          '<div class="msearch-name">' + v.name + '</div>' +
+          '<div class="msearch-meta">' + v.area + ' · ' + typeLabel + '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    function selectMapSearchVenue(venueId) {
+      _mapSearchActive = false;
+      var v = VENUES.find(function(x) { return x.id === venueId; });
+      if (!v) return;
+
+      // Clear search
+      var inp = document.getElementById('map-search-input');
+      if (inp) inp.blur();
+      document.getElementById('map-search-results').style.display = 'none';
+      document.getElementById('map-search-float').style.borderRadius = '12px';
+
+      // Fly map to venue
+      if (map) {
+        map.flyTo({ center: [v.lng, v.lat], zoom: 15, duration: 600 });
+      }
+
+      // Open venue card after fly animation
+      setTimeout(function() { openVenueCard(v); }, 400);
     }
 
     // ── Karta ────────────────────────────────────────────────────────────────
