@@ -531,7 +531,7 @@
     .consent-accept:active { transform: scale(0.98); }
     .consent-decline { width: 100%; background: none; border: 0; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; padding: 8px 0; }
 
-    /* ── Onboarding overlay ────────────────────────────────────────────── */
+    /* ── Onboarding — car + bubble ─────────────────────────────────────── */
     #onboarding-overlay {
       position: fixed; inset: 0; z-index: 200;
       display: none; flex-direction: column;
@@ -539,25 +539,43 @@
     #onboarding-overlay.active { display: flex; }
     #ob-dim {
       flex: 1;
-      background: rgba(8,9,15,0.65);
+      background: rgba(8,9,15,0.68);
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
     }
-    #ob-sheet {
-      background: rgba(10,11,18,0.97);
-      border-top: 1px solid rgba(255,255,255,0.09);
-      border-radius: 24px 24px 0 0;
-      padding: 28px 24px calc(40px + env(safe-area-inset-bottom));
-      transform: translateY(100%);
-      animation: obSheetIn 440ms cubic-bezier(0.22,1,0.36,1) forwards;
+    #ob-stage {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 24px calc(36px + env(safe-area-inset-bottom));
     }
-    @keyframes obSheetIn {
-      from { transform: translateY(100%); }
-      to   { transform: translateY(0); }
+    #ob-bubble {
+      width: 100%; max-width: 440px; position: relative;
+      background: rgba(10,11,18,0.95);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 24px 24px 20px;
+      transform-origin: bottom center;
+      opacity: 0;
+    }
+    #ob-bubble.ob-visible {
+      animation: obBubbleIn 380ms cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    @keyframes obBubbleIn {
+      from { transform: scale(0.88); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    #ob-tail {
+      position: absolute; bottom: -7px; left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 14px; height: 14px;
+      background: rgba(10,11,18,0.95);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
     }
     #ob-counter {
-      font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
-      text-transform: uppercase; color: var(--text-muted); margin-bottom: 18px;
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px;
     }
     #ob-title {
       font-size: 22px; font-weight: 600; letter-spacing: -0.03em;
@@ -565,7 +583,7 @@
     }
     #ob-subtitle {
       font-size: 15px; font-weight: 400; color: var(--text-secondary);
-      line-height: 1.5; margin-bottom: 28px;
+      line-height: 1.5; margin-bottom: 24px;
     }
     #ob-next {
       width: 100%; height: 48px;
@@ -574,7 +592,7 @@
       font-family: var(--font-base); font-size: 15px; font-weight: 600;
       letter-spacing: -0.01em; cursor: pointer;
       transition: background var(--dur-fast) ease;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     #ob-next:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
     #ob-skip {
@@ -582,6 +600,22 @@
       background: none; border: 0; font-family: var(--font-base);
       font-size: 14px; font-weight: 400; color: var(--text-muted);
       cursor: pointer; padding: 4px 0;
+    }
+    #ob-car { margin-top: 8px; transform: translateX(-140%); }
+    #ob-car svg { display: block; }
+    #ob-car.ob-driving {
+      animation: obCarIn 520ms cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    #ob-car.ob-leaving {
+      animation: obCarOut 340ms cubic-bezier(0.55,0,0.85,0.06) forwards;
+    }
+    @keyframes obCarIn {
+      from { transform: translateX(-140%); }
+      to   { transform: translateX(0); }
+    }
+    @keyframes obCarOut {
+      from { transform: translateX(0); }
+      to   { transform: translateX(140%); }
     }
 
     /* ── Utforska — sticky header ──────────────────────────────────────── */
@@ -1414,12 +1448,30 @@
 
   <div id="onboarding-overlay">
     <div id="ob-dim"></div>
-    <div id="ob-sheet">
-      <div id="ob-counter"></div>
-      <div id="ob-title"></div>
-      <div id="ob-subtitle"></div>
-      <button id="ob-next" onclick="obNext()">Nästa</button>
-      <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
+    <div id="ob-stage">
+      <div id="ob-bubble">
+        <div id="ob-inner">
+          <div id="ob-counter"></div>
+          <div id="ob-title"></div>
+          <div id="ob-subtitle"></div>
+          <button id="ob-next" onclick="obNext()">Nästa</button>
+          <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
+        </div>
+        <div id="ob-tail"></div>
+      </div>
+      <div id="ob-car">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 48" width="100" height="48" fill="none">
+          <circle cx="26" cy="40" r="8" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" fill="rgba(255,255,255,0.06)"/>
+          <circle cx="26" cy="40" r="3" fill="rgba(255,255,255,0.20)"/>
+          <circle cx="74" cy="40" r="8" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" fill="rgba(255,255,255,0.06)"/>
+          <circle cx="74" cy="40" r="3" fill="rgba(255,255,255,0.20)"/>
+          <rect x="6" y="24" width="88" height="14" rx="4" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+          <path d="M26 24 L34 10 L66 10 L74 24Z" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M36 23 L42 13 L58 13 L64 23Z" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
+          <rect x="91" y="26" width="5" height="5" rx="1.5" fill="#FFD166" opacity="0.9"/>
+          <rect x="4" y="26" width="4" height="5" rx="1" fill="rgba(255,80,80,0.65)"/>
+        </svg>
+      </div>
     </div>
   </div>
 
@@ -2653,8 +2705,18 @@
       if (!overlay) return;
       obStep = 0;
       obRenderScreen();
+      obRenderContent();
       overlay.classList.add('active');
-      obRenderSheet();
+      // Car drives in from left
+      var car = document.getElementById('ob-car');
+      car.classList.remove('ob-leaving', 'ob-driving');
+      void car.offsetWidth;
+      car.classList.add('ob-driving');
+      // Bubble pops up after car settles
+      setTimeout(function() {
+        var bubble = document.getElementById('ob-bubble');
+        bubble.classList.add('ob-visible');
+      }, 560);
     }
 
     function obRenderScreen() {
@@ -2665,7 +2727,7 @@
       if (s.screen === 'home' && map) setTimeout(function() { map.resize(); }, 50);
     }
 
-    function obRenderSheet() {
+    function obRenderContent() {
       var s = OB[obStep];
       document.getElementById('ob-counter').textContent = (obStep + 1) + ' / ' + OB.length;
       document.getElementById('ob-title').textContent = s.title;
@@ -2677,16 +2739,31 @@
       if (obStep < OB.length - 1) {
         obStep++;
         obRenderScreen();
-        var sheet = document.getElementById('ob-sheet');
-        sheet.style.opacity = '0';
-        sheet.style.transform = 'translateY(10px)';
-        sheet.style.transition = 'opacity 120ms ease, transform 120ms ease';
+        // Car pulses forward (right = direction it's driving)
+        var car = document.getElementById('ob-car');
+        car.style.transition = 'transform 90ms cubic-bezier(0.55,0,0.85,0.06)';
+        car.style.transform = 'translateX(10px)';
         setTimeout(function() {
-          obRenderSheet();
-          sheet.style.opacity = '1';
-          sheet.style.transform = 'translateY(0)';
-          setTimeout(function() { sheet.style.transition = ''; }, 200);
-        }, 130);
+          car.style.transition = 'transform 200ms cubic-bezier(0.22,1,0.36,1)';
+          car.style.transform = 'translateX(0)';
+          setTimeout(function() { car.style.transition = ''; }, 210);
+        }, 90);
+        // Bubble content slides out left, new content slides in from right
+        var inner = document.getElementById('ob-inner');
+        inner.style.transition = 'opacity 130ms ease, transform 130ms ease';
+        inner.style.opacity = '0';
+        inner.style.transform = 'translateX(-14px)';
+        setTimeout(function() {
+          inner.style.transition = 'none';
+          obRenderContent();
+          inner.style.opacity = '0';
+          inner.style.transform = 'translateX(14px)';
+          void inner.offsetWidth;
+          inner.style.transition = 'opacity 160ms ease, transform 160ms ease';
+          inner.style.opacity = '1';
+          inner.style.transform = 'translateX(0)';
+          setTimeout(function() { inner.style.transition = ''; }, 170);
+        }, 140);
       } else {
         obSkip();
       }
@@ -2695,16 +2772,36 @@
     function obSkip() {
       localStorage.setItem('qb_onboarding_done', 'true');
       var overlay = document.getElementById('onboarding-overlay');
-      if (overlay) {
+      if (!overlay) return;
+      var bubble = document.getElementById('ob-bubble');
+      var car = document.getElementById('ob-car');
+      // Bubble shrinks and fades
+      bubble.style.transition = 'transform 200ms cubic-bezier(0.55,0,0.85,0.06), opacity 200ms ease';
+      bubble.style.transform = 'scale(0.88)';
+      bubble.style.opacity = '0';
+      // Car drives off right after bubble starts collapsing
+      setTimeout(function() {
+        car.style.transition = '';
+        car.classList.remove('ob-driving');
+        car.classList.add('ob-leaving');
+      }, 80);
+      // Fade overlay and clean up
+      setTimeout(function() {
+        overlay.style.transition = 'opacity 220ms ease';
         overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 250ms ease';
         setTimeout(function() {
           overlay.classList.remove('active');
           overlay.style.opacity = '';
           overlay.style.transition = '';
+          bubble.style.transition = '';
+          bubble.style.transform = '';
+          bubble.style.opacity = '';
+          bubble.classList.remove('ob-visible');
+          car.classList.remove('ob-leaving', 'ob-driving');
+          car.style.transform = '';
           showScreen('home');
-        }, 260);
-      }
+        }, 230);
+      }, 160);
     }
 
     // ── Dataradering ─────────────────────────────────────────────────────────
