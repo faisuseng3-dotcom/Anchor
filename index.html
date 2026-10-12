@@ -10,7 +10,9 @@
   <title>QueueBar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,600,500,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
@@ -88,7 +90,8 @@
       --dur-slow:   300ms;
 
       /* ── Typografi ─────────────────────────────────────────────────── */
-      --font-base: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-base: 'Satoshi', system-ui, sans-serif;
+      --font-mono: 'Geist Mono', monospace;
     }
 
     /* ── Reset ─────────────────────────────────────────────────────────── */
@@ -158,12 +161,12 @@
 
     /* ── Typografi ─────────────────────────────────────────────────────── */
     .screen-title {
-      font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25;
+      font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25;
       color: var(--text-primary);
       margin-bottom: var(--space-2); flex-shrink: 0;
     }
     .section-label {
-      font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+      font-size: 13px; font-weight: 500; letter-spacing: 0.04em;
       text-transform: uppercase; color: var(--text-muted);
       margin-bottom: var(--space-1); flex-shrink: 0;
     }
@@ -202,12 +205,12 @@
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 4px;
       background: none; border: 0; cursor: pointer;
-      font-family: var(--font-base); font-size: 11px; font-weight: 600;
+      font-family: var(--font-base); font-size: 11px; font-weight: 500;
       letter-spacing: 0.02em; line-height: 1.0;
       color: var(--text-muted);
       transition: color var(--dur-mid) ease;
     }
-    .tab.active { color: #FFFFFF; font-weight: 700; }
+    .tab.active { color: #FFFFFF; font-weight: 600; }
     .tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .tab .icon { position: relative; display: flex; flex-direction: column; align-items: center; }
     .tab .icon::after {
@@ -571,7 +574,7 @@
     }
     .explore-sticky.scrolled { border-bottom-color: rgba(255,255,255,0.08); }
     .explore-title {
-      font-size: 24px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.25;
+      font-size: 24px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.25;
       color: var(--text-primary); margin-bottom: 12px;
     }
     /* ── Sök & Filter ──────────────────────────────────────────────────── */
@@ -706,7 +709,7 @@
     /* Layer 1 — name */
     .erow-name-row { display: flex; align-items: center; min-width: 0; }
     .erow-name {
-      font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary);
+      font-size: 16px; font-weight: 600; letter-spacing: -0.03em; color: var(--text-primary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       line-height: 1.25; padding-right: 8px;
     }
@@ -746,7 +749,7 @@
     }
     /* 2 — hero number */
     .erow-hero {
-      font-size: 28px; font-weight: 900; letter-spacing: -0.02em;
+      font-family: var(--font-mono); font-size: 36px; font-weight: 700; letter-spacing: -0.04em;
       font-variant-numeric: tabular-nums; line-height: 1;
       transition: opacity 150ms ease; white-space: nowrap;
     }
@@ -874,10 +877,10 @@
     }
     /* live-row is display-only — no hover state */
     .live-status { display: flex; flex-direction: column; gap: 2px; }
-    .live-wait { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-    .live-cat { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
+    .live-wait { font-family: var(--font-mono); font-size: 36px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .live-cat { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
     .live-right { text-align: right; }
-    .live-name { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.25; letter-spacing: -0.01em; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .live-name { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.25; letter-spacing: -0.02em; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
     .live-meta { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
     .type-badge {
       font-size: 8px; font-weight: 800; letter-spacing: 0.08em;
@@ -919,7 +922,7 @@
     }
     .rs-item:last-child { margin-bottom: 0; }
     .rs-item:hover { background: var(--surface-hover); }
-    .rs-name { font-size: 14px; font-weight: 900; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-primary); line-height: 1.25; }
+    .rs-name { font-size: 14px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-primary); line-height: 1.25; }
     .rs-area { font-size: 13px; font-weight: 400; letter-spacing: -0.01em; color: var(--text-muted); margin-top: 2px; }
     .rs-arrow { color: var(--text-muted); font-size: 14px; }
 
@@ -1038,7 +1041,7 @@
     }
     .rs-success-icon svg { width: 28px; height: 28px; stroke: var(--success); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
     .rs-thanks { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; color: var(--text-primary); line-height: 1.25; }
-    .rs-points { font-size: 32px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+    .rs-points { font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
 
     /* ── Profil ────────────────────────────────────────────────────────── */
     .pf-head { flex-shrink: 0; text-align: center; margin-bottom: var(--space-2); }
@@ -1049,7 +1052,7 @@
       margin: var(--space-1) auto var(--space-2);
     }
     .pf-avatar svg { width: 32px; height: 32px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-    .pf-name { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+    .pf-name { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
     .pf-level {
       display: inline-block;
       background: var(--accent-light); color: var(--accent);
@@ -1062,8 +1065,8 @@
       flex: 1; padding: 12px; text-align: center;
       background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
     }
-    .pf-stat b { display: block; font-size: 26px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1.25; }
-    .pf-stat span { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); line-height: 1.0; }
+    .pf-stat b { display: block; font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1.25; }
+    .pf-stat span { font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); line-height: 1.0; }
     .pf-card {
       flex-shrink: 0; padding: var(--space-2); margin-bottom: var(--space-1);
       background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
