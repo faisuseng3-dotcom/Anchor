@@ -71,6 +71,22 @@ These apply whether the task is a feature, a bug fix, a spacing change, or a ref
 - `renderExploreSummary(animate)` — updates "Stockholm just nu" widget
 - `injectTestData()` — 52 test reports for 17 venues
 
+## Engineering philosophy
+
+QueueBar is a real-time information system, not merely a map app. The hardest problem is turning unreliable human reports into trustworthy, honest information. Every architectural decision should support that.
+
+Core principles:
+- **Understand before changing** — trace data flows, read existing code, run check.js first
+- **Simplest reliable solution** — prefer explainable deterministic algorithms over clever abstractions
+- **Verified, not assumed** — distinguish what you have tested from what you believe to be true
+- **Security is layered** — client validation is UX; server-side RLS is the actual boundary
+- **Uncertainty is honest** — stale data must look stale; missing data must say so; never invent
+- **Evidence over intuition** — observe behavior, form a hypothesis, make the minimal change, inspect the result
+
+Load **`/first-principles-engineering`** for the complete methodology: queue-report lifecycle, freshness model, security layers, search architecture, hypothesis-driven debugging, and the repeatable inspect→diagnose→implement→verify workflow.
+
+Scale depth to risk: a CSS tweak does not need a full audit. An aggregation change or security fix does.
+
 ## Security constraints
 
 **NEVER commit `.env`** — already in `.gitignore`. Mapbox token in HTML is public-safe (URL-restricted).
