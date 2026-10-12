@@ -673,10 +673,19 @@
     /* Level backgrounds — set via inline style, transition handled by .erow transition */
     @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
     @keyframes ripplePulse { 0%{box-shadow:0 0 0 0 rgba(255,59,59,0.7)} 70%{box-shadow:0 0 0 7px rgba(255,59,59,0)} 100%{box-shadow:0 0 0 0 rgba(255,59,59,0)} }
-    @keyframes breatheRed { 0%,100%{box-shadow:0 2px 20px rgba(255,59,59,0.08)} 50%{box-shadow:0 4px 40px rgba(255,59,59,0.22)} }
+    @keyframes breatheRed    { 0%,100%{box-shadow:0 2px 20px rgba(255,59,59,0.08)}  50%{box-shadow:0 4px 40px rgba(255,59,59,0.22)} }
+    @keyframes breatheOrange { 0%,100%{box-shadow:0 2px 20px rgba(255,112,67,0.07)} 50%{box-shadow:0 4px 36px rgba(255,112,67,0.18)} }
+    @keyframes breatheAmber  { 0%,100%{box-shadow:0 2px 20px rgba(255,179,0,0.06)}  50%{box-shadow:0 4px 36px rgba(255,179,0,0.16)} }
+    @keyframes breatheGreen  { 0%,100%{box-shadow:0 2px 20px rgba(0,230,118,0.06)}  50%{box-shadow:0 4px 36px rgba(0,230,118,0.16)} }
     .erow-pulse-dot { display: inline-flex; width: 6px; height: 6px; border-radius: 50%; background: #FF3B3B; box-shadow: 0 0 0 0 rgba(255,59,59,0.6); flex-shrink: 0; animation: ripplePulse 2s ease-out infinite; align-self: center; margin-right: 5px; }
-    .erow--long { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheRed 4s ease-in-out infinite !important; }
-    .erow--long .erow-left-bar { box-shadow: 0 4px 40px rgba(255,59,59,0.15); }
+    .erow--long   { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheRed    4s ease-in-out infinite !important; }
+    .erow--medium { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheOrange 4s ease-in-out infinite !important; }
+    .erow--short  { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheAmber  4s ease-in-out infinite !important; }
+    .erow--free   { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheGreen  4s ease-in-out infinite !important; }
+    .erow--long   .erow-left-bar { box-shadow: 0 4px 40px rgba(255,59,59,0.15); }
+    .erow--medium .erow-left-bar { box-shadow: 0 4px 36px rgba(255,112,67,0.12); }
+    .erow--short  .erow-left-bar { box-shadow: 0 4px 36px rgba(255,179,0,0.10); }
+    .erow--free   .erow-left-bar { box-shadow: 0 4px 36px rgba(0,230,118,0.10); }
     @keyframes heroCountUp { from { opacity: 0; transform: translateY(4px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .erow-hero--animate { animation: heroCountUp 400ms cubic-bezier(0.16,1,0.3,1) forwards; }
 
@@ -2948,7 +2957,7 @@
       }
 
       var delay = (index * 75 + 340) + 'ms';
-      var levelClass = level === 'long' ? ' erow--long' : '';
+      var levelClass = level === 'long' ? ' erow--long' : level === 'medium' ? ' erow--medium' : level === 'short' ? ' erow--short' : level === 'free' ? ' erow--free' : '';
 
       // Planning mode
       var planIdx = _planVenues.indexOf(venue.id);
