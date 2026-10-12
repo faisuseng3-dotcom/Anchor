@@ -531,26 +531,58 @@
     .consent-accept:active { transform: scale(0.98); }
     .consent-decline { width: 100%; background: none; border: 0; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; padding: 8px 0; }
 
-    /* ── Onboarding ────────────────────────────────────────────────────── */
-    #onboarding {
-      display: none; position: fixed; inset: 0; z-index: 60;
-      background: var(--bg-primary); flex-direction: column; align-items: center; justify-content: center;
-      padding: var(--space-3) var(--space-2) var(--space-6); text-align: center;
+    /* ── Onboarding overlay ────────────────────────────────────────────── */
+    #onboarding-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      display: none; flex-direction: column;
     }
-    #ob-emoji { font-size: 56px; margin-bottom: var(--space-3); line-height: 1; }
-    #ob-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; color: var(--text-primary); }
-    #ob-body { font-size: 15px; line-height: 1.6; color: var(--text-secondary); max-width: 300px; margin-bottom: 32px; }
-    #ob-dots { display: flex; gap: 8px; margin-bottom: var(--space-3); justify-content: center; }
-    .ob-dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--border-hover); transition: width 0.2s var(--ease-out), background 0.2s ease; }
-    .ob-dot.active { width: 20px; background: var(--accent); }
-    #ob-btn {
-      width: min(320px, 100%); background: rgba(255,255,255,0.10); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.18);
-      border-radius: var(--radius-md); height: 44px; font-family: var(--font-base);
-      font-size: 14px; font-weight: 600; cursor: pointer;
+    #onboarding-overlay.active { display: flex; }
+    #ob-dim {
+      flex: 1;
+      background: rgba(8,9,15,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    #ob-sheet {
+      background: rgba(10,11,18,0.97);
+      border-top: 1px solid rgba(255,255,255,0.09);
+      border-radius: 24px 24px 0 0;
+      padding: 28px 24px calc(40px + env(safe-area-inset-bottom));
+      transform: translateY(100%);
+      animation: obSheetIn 440ms cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    @keyframes obSheetIn {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    #ob-counter {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 18px;
+    }
+    #ob-title {
+      font-size: 22px; font-weight: 600; letter-spacing: -0.03em;
+      color: var(--text-primary); margin-bottom: 8px; line-height: 1.2;
+    }
+    #ob-subtitle {
+      font-size: 15px; font-weight: 400; color: var(--text-secondary);
+      line-height: 1.5; margin-bottom: 28px;
+    }
+    #ob-next {
+      width: 100%; height: 48px;
+      background: rgba(255,255,255,0.10); color: var(--text-primary);
+      border: 1px solid rgba(255,255,255,0.18); border-radius: var(--radius-md);
+      font-family: var(--font-base); font-size: 15px; font-weight: 600;
+      letter-spacing: -0.01em; cursor: pointer;
       transition: background var(--dur-fast) ease;
+      margin-bottom: 12px;
     }
-    #ob-btn:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
-    #ob-skip { background: none; border: 0; margin-top: 12px; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; }
+    #ob-next:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
+    #ob-skip {
+      display: block; width: 100%; text-align: center;
+      background: none; border: 0; font-family: var(--font-base);
+      font-size: 14px; font-weight: 400; color: var(--text-muted);
+      cursor: pointer; padding: 4px 0;
+    }
 
     /* ── Utforska — sticky header ──────────────────────────────────────── */
     #screen-explore {
@@ -1380,13 +1412,15 @@
     </div>
   </div>
 
-  <div id="onboarding">
-    <div id="ob-emoji"></div>
-    <div id="ob-title"></div>
-    <div id="ob-body"></div>
-    <div id="ob-dots"></div>
-    <button id="ob-btn" onclick="obNext()"></button>
-    <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
+  <div id="onboarding-overlay">
+    <div id="ob-dim"></div>
+    <div id="ob-sheet">
+      <div id="ob-counter"></div>
+      <div id="ob-title"></div>
+      <div id="ob-subtitle"></div>
+      <button id="ob-next" onclick="obNext()">Nästa</button>
+      <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
+    </div>
   </div>
 
   <script>
@@ -2607,26 +2641,71 @@
 
     // ── Onboarding ───────────────────────────────────────────────────────────
     var OB = [
-      { emoji: '🗺️', title: 'Se kön i realtid', body: 'Kartan visar köläget utanför alla barer och klubbar just nu.' },
-      { emoji: '✏️', title: 'Rapportera på 5 sek', body: 'Är du utanför en bar? Tryck rapportera och välj kölängd.' },
-      { emoji: '📡', title: 'Vad händer just nu', body: 'Live-feeden visar de senaste rapporterna från folk som är ute.' },
-      { emoji: '♥',  title: 'Följ dina favoriter', body: 'Spara dina favoritbarer för snabbare koll på köläget.' }
+      { screen: 'home',    title: 'Se läget, välj stället', subtitle: 'Hitta bland Stockholms krogar — just nu' },
+      { screen: 'explore', title: 'Välj rätt ställe',        subtitle: 'Aldrig chansa med kön igen' },
+      { screen: 'live',    title: 'Direkt från kön',         subtitle: 'Från de som är ute just nu' },
+      { screen: 'profile', title: 'Profil',                  subtitle: 'Håll koll på dina krogar' }
     ];
     var obStep = 0;
 
-    function showOnboarding() { document.getElementById('onboarding').style.display = 'flex'; obStep = 0; obRender(); }
-    function obRender() {
-      var s = OB[obStep];
-      document.getElementById('ob-emoji').textContent = s.emoji;
-      document.getElementById('ob-title').textContent = s.title;
-      document.getElementById('ob-body').textContent = s.body;
-      document.getElementById('ob-btn').textContent = obStep === OB.length - 1 ? 'Kom igång' : 'Nästa';
-      document.getElementById('ob-dots').innerHTML = OB.map(function(_, i) {
-        return '<span class="ob-dot' + (i === obStep ? ' active' : '') + '"></span>';
-      }).join('');
+    function showOnboarding() {
+      var overlay = document.getElementById('onboarding-overlay');
+      if (!overlay) return;
+      obStep = 0;
+      obRenderScreen();
+      overlay.classList.add('active');
+      obRenderSheet();
     }
-    function obNext() { if (obStep < OB.length - 1) { obStep++; obRender(); } else obSkip(); }
-    function obSkip() { localStorage.setItem('qb_onboarding_done', 'true'); document.getElementById('onboarding').style.display = 'none'; }
+
+    function obRenderScreen() {
+      var s = OB[obStep];
+      document.querySelectorAll('.screen').forEach(function(el) {
+        el.classList.toggle('active', el.id === 'screen-' + s.screen);
+      });
+      if (s.screen === 'home' && map) setTimeout(function() { map.resize(); }, 50);
+    }
+
+    function obRenderSheet() {
+      var s = OB[obStep];
+      document.getElementById('ob-counter').textContent = (obStep + 1) + ' / ' + OB.length;
+      document.getElementById('ob-title').textContent = s.title;
+      document.getElementById('ob-subtitle').textContent = s.subtitle;
+      document.getElementById('ob-next').textContent = obStep === OB.length - 1 ? 'Kom igång' : 'Nästa';
+    }
+
+    function obNext() {
+      if (obStep < OB.length - 1) {
+        obStep++;
+        obRenderScreen();
+        var sheet = document.getElementById('ob-sheet');
+        sheet.style.opacity = '0';
+        sheet.style.transform = 'translateY(10px)';
+        sheet.style.transition = 'opacity 120ms ease, transform 120ms ease';
+        setTimeout(function() {
+          obRenderSheet();
+          sheet.style.opacity = '1';
+          sheet.style.transform = 'translateY(0)';
+          setTimeout(function() { sheet.style.transition = ''; }, 200);
+        }, 130);
+      } else {
+        obSkip();
+      }
+    }
+
+    function obSkip() {
+      localStorage.setItem('qb_onboarding_done', 'true');
+      var overlay = document.getElementById('onboarding-overlay');
+      if (overlay) {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 250ms ease';
+        setTimeout(function() {
+          overlay.classList.remove('active');
+          overlay.style.opacity = '';
+          overlay.style.transition = '';
+          showScreen('home');
+        }, 260);
+      }
+    }
 
     // ── Dataradering ─────────────────────────────────────────────────────────
     async function deleteAllUserData() {
