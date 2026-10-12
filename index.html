@@ -531,94 +531,122 @@
     .consent-accept:active { transform: scale(0.98); }
     .consent-decline { width: 100%; background: none; border: 0; font-family: var(--font-base); font-size: 14px; color: var(--text-muted); cursor: pointer; padding: 8px 0; }
 
-    /* ── Onboarding — car + bubble ─────────────────────────────────────── */
+    /* ── Onboarding — tooltip bubble ─────────────────────────────────── */
     #onboarding-overlay {
       position: fixed; inset: 0; z-index: 200;
-      display: none; flex-direction: column;
+      display: none;
     }
-    #onboarding-overlay.active { display: flex; }
+    #onboarding-overlay.active { display: block; }
     #ob-dim {
-      flex: 1;
-      background: rgba(8,9,15,0.68);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-    }
-    #ob-stage {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 20px 24px calc(104px + env(safe-area-inset-bottom));
-      background: rgba(8,9,15,0.68);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
+      position: absolute; inset: 0;
+      background: rgba(8,9,15,0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
     }
     #ob-bubble {
-      width: 100%; max-width: 440px; position: relative;
-      background: rgba(10,11,18,0.95);
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 20px;
-      padding: 24px 24px 20px;
-      transform-origin: bottom center;
+      position: absolute; z-index: 1;
+      width: 196px;
+      background: rgba(10,11,18,0.97);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 12px;
+      padding: 16px 18px 14px;
       opacity: 0;
     }
     #ob-bubble.ob-visible {
-      animation: obBubbleIn 380ms cubic-bezier(0.22,1,0.36,1) forwards;
+      animation: obBubbleIn 280ms cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    #ob-bubble.ob-hiding {
+      animation: obBubbleOut 160ms ease forwards;
     }
     @keyframes obBubbleIn {
-      from { transform: scale(0.88); opacity: 0; }
+      from { transform: scale(0.90); opacity: 0; }
       to   { transform: scale(1);    opacity: 1; }
     }
-    #ob-tail {
-      position: absolute; bottom: -7px; left: 50%;
-      transform: translateX(-50%) rotate(45deg);
-      width: 14px; height: 14px;
-      background: rgba(10,11,18,0.95);
-      border-right: 1px solid rgba(255,255,255,0.12);
-      border-bottom: 1px solid rgba(255,255,255,0.12);
+    @keyframes obBubbleOut {
+      from { transform: scale(1);    opacity: 1; }
+      to   { transform: scale(0.90); opacity: 0; }
+    }
+    #ob-bubble.arr-d::before {
+      content: ''; position: absolute;
+      bottom: -9px; left: var(--ax, 22px); transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 8px solid transparent; border-right: 8px solid transparent;
+      border-top: 9px solid rgba(255,255,255,0.13);
+    }
+    #ob-bubble.arr-d::after {
+      content: ''; position: absolute;
+      bottom: -8px; left: var(--ax, 22px); transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 7px solid transparent; border-right: 7px solid transparent;
+      border-top: 8px solid rgba(10,11,18,0.97);
+    }
+    #ob-bubble.arr-u::before {
+      content: ''; position: absolute;
+      top: -9px; left: var(--ax, 22px); transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 8px solid transparent; border-right: 8px solid transparent;
+      border-bottom: 9px solid rgba(255,255,255,0.13);
+    }
+    #ob-bubble.arr-u::after {
+      content: ''; position: absolute;
+      top: -8px; left: var(--ax, 22px); transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 7px solid transparent; border-right: 7px solid transparent;
+      border-bottom: 8px solid rgba(10,11,18,0.97);
+    }
+    #ob-bubble.arr-l::before {
+      content: ''; position: absolute;
+      left: -9px; top: var(--ay, 18px); transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+      border-right: 9px solid rgba(255,255,255,0.13);
+    }
+    #ob-bubble.arr-l::after {
+      content: ''; position: absolute;
+      left: -8px; top: var(--ay, 18px); transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+      border-right: 8px solid rgba(10,11,18,0.97);
+    }
+    #ob-bubble.arr-r::before {
+      content: ''; position: absolute;
+      right: -9px; top: var(--ay, 18px); transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+      border-left: 9px solid rgba(255,255,255,0.13);
+    }
+    #ob-bubble.arr-r::after {
+      content: ''; position: absolute;
+      right: -8px; top: var(--ay, 18px); transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+      border-left: 8px solid rgba(10,11,18,0.97);
     }
     #ob-counter {
-      font-family: var(--font-mono);
-      font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px;
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.10em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 9px;
     }
     #ob-title {
-      font-size: 22px; font-weight: 600; letter-spacing: -0.03em;
-      color: var(--text-primary); margin-bottom: 8px; line-height: 1.2;
+      font-size: 15px; font-weight: 600; letter-spacing: -0.02em;
+      color: var(--text-primary); margin-bottom: 4px; line-height: 1.2;
     }
     #ob-subtitle {
-      font-size: 15px; font-weight: 400; color: var(--text-secondary);
-      line-height: 1.5; margin-bottom: 24px;
+      font-size: 11px; color: var(--text-secondary); line-height: 1.4;
+    }
+    #ob-actions {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 11px; padding-top: 9px;
+      border-top: 1px solid rgba(255,255,255,0.07);
     }
     #ob-next {
-      width: 100%; height: 48px;
-      background: rgba(255,255,255,0.10); color: var(--text-primary);
-      border: 1px solid rgba(255,255,255,0.18); border-radius: var(--radius-md);
-      font-family: var(--font-base); font-size: 15px; font-weight: 600;
-      letter-spacing: -0.01em; cursor: pointer;
-      transition: background var(--dur-fast) ease;
-      margin-bottom: 10px;
+      background: none; border: none; padding: 0;
+      font-family: var(--font-base); font-size: 12px; font-weight: 600;
+      letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer;
     }
-    #ob-next:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
     #ob-skip {
-      display: block; width: 100%; text-align: center;
-      background: none; border: 0; font-family: var(--font-base);
-      font-size: 14px; font-weight: 400; color: var(--text-muted);
-      cursor: pointer; padding: 4px 0;
-    }
-    #ob-car { margin-top: 8px; transform: translateX(-140%); }
-    #ob-car svg { display: block; }
-    #ob-car.ob-driving {
-      animation: obCarIn 520ms cubic-bezier(0.16,1,0.3,1) forwards;
-    }
-    #ob-car.ob-leaving {
-      animation: obCarOut 340ms cubic-bezier(0.55,0,0.85,0.06) forwards;
-    }
-    @keyframes obCarIn {
-      from { transform: translateX(-140%); }
-      to   { transform: translateX(0); }
-    }
-    @keyframes obCarOut {
-      from { transform: translateX(0); }
-      to   { transform: translateX(140%); }
+      background: none; border: none; padding: 0;
+      font-family: var(--font-base); font-size: 11px;
+      color: var(--text-muted); cursor: pointer;
     }
 
     /* ── Utforska — sticky header ──────────────────────────────────────── */
@@ -1450,30 +1478,14 @@
   </div>
 
   <div id="onboarding-overlay">
-    <div id="ob-dim"></div>
-    <div id="ob-stage">
-      <div id="ob-bubble">
-        <div id="ob-inner">
-          <div id="ob-counter"></div>
-          <div id="ob-title"></div>
-          <div id="ob-subtitle"></div>
-          <button id="ob-next" onclick="obNext()">Nästa</button>
-          <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
-        </div>
-        <div id="ob-tail"></div>
-      </div>
-      <div id="ob-car">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 48" width="100" height="48" fill="none">
-          <circle cx="26" cy="40" r="8" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" fill="rgba(255,255,255,0.06)"/>
-          <circle cx="26" cy="40" r="3" fill="rgba(255,255,255,0.20)"/>
-          <circle cx="74" cy="40" r="8" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" fill="rgba(255,255,255,0.06)"/>
-          <circle cx="74" cy="40" r="3" fill="rgba(255,255,255,0.20)"/>
-          <rect x="6" y="24" width="88" height="14" rx="4" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
-          <path d="M26 24 L34 10 L66 10 L74 24Z" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M36 23 L42 13 L58 13 L64 23Z" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
-          <rect x="91" y="26" width="5" height="5" rx="1.5" fill="#FFD166" opacity="0.9"/>
-          <rect x="4" y="26" width="4" height="5" rx="1" fill="rgba(255,80,80,0.65)"/>
-        </svg>
+    <div id="ob-dim" onclick="obSkip()"></div>
+    <div id="ob-bubble">
+      <div id="ob-counter"></div>
+      <div id="ob-title"></div>
+      <div id="ob-subtitle"></div>
+      <div id="ob-actions">
+        <button id="ob-next" onclick="obNext()">Nästa →</button>
+        <button id="ob-skip" onclick="obSkip()">Hoppa över</button>
       </div>
     </div>
   </div>
@@ -2696,12 +2708,50 @@
 
     // ── Onboarding ───────────────────────────────────────────────────────────
     var OB = [
-      { screen: 'home',    title: 'Se läget, välj stället', subtitle: 'Hitta bland Stockholms krogar — just nu' },
-      { screen: 'explore', title: 'Välj rätt ställe',        subtitle: 'Aldrig chansa med kön igen' },
-      { screen: 'live',    title: 'Direkt från kön',         subtitle: 'Från de som är ute just nu' },
-      { screen: 'profile', title: 'Profil',                  subtitle: 'Håll koll på dina krogar' }
+      {
+        screen: 'home',
+        title: 'Se läget, välj stället',
+        subtitle: 'Varje prick är en krog — just nu',
+        pos: { top: '18%', right: '16px' },
+        arrow: 'arr-d', arrowX: '80%'
+      },
+      {
+        screen: 'explore',
+        title: 'Välj rätt ställe',
+        subtitle: 'Aldrig chansa med kön igen',
+        pos: { top: '28%', right: '12px' },
+        arrow: 'arr-l', arrowY: '24px'
+      },
+      {
+        screen: 'live',
+        title: 'Direkt från kön',
+        subtitle: 'Från de som är ute just nu',
+        pos: { bottom: 'calc(88px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)' },
+        arrow: 'arr-d', arrowX: '50%'
+      },
+      {
+        screen: 'profile',
+        title: 'Din profil',
+        subtitle: 'Håll koll på dina krogar',
+        pos: { top: '18%', left: '16px' },
+        arrow: 'arr-d', arrowX: '22px'
+      }
     ];
     var obStep = 0;
+
+    function obPositionBubble(s) {
+      var bubble = document.getElementById('ob-bubble');
+      bubble.style.top = ''; bubble.style.bottom = '';
+      bubble.style.left = ''; bubble.style.right = '';
+      bubble.style.transform = '';
+      bubble.classList.remove('arr-d', 'arr-u', 'arr-l', 'arr-r');
+      bubble.style.removeProperty('--ax');
+      bubble.style.removeProperty('--ay');
+      Object.keys(s.pos).forEach(function(k) { bubble.style[k] = s.pos[k]; });
+      bubble.classList.add(s.arrow);
+      if (s.arrowX) bubble.style.setProperty('--ax', s.arrowX);
+      if (s.arrowY) bubble.style.setProperty('--ay', s.arrowY);
+    }
 
     function showOnboarding() {
       var overlay = document.getElementById('onboarding-overlay');
@@ -2709,17 +2759,13 @@
       obStep = 0;
       obRenderScreen();
       obRenderContent();
+      obPositionBubble(OB[obStep]);
       overlay.classList.add('active');
-      // Car drives in from left
-      var car = document.getElementById('ob-car');
-      car.classList.remove('ob-leaving', 'ob-driving');
-      void car.offsetWidth;
-      car.classList.add('ob-driving');
-      // Bubble pops up after car settles
       setTimeout(function() {
         var bubble = document.getElementById('ob-bubble');
+        bubble.classList.remove('ob-hiding');
         bubble.classList.add('ob-visible');
-      }, 560);
+      }, 60);
     }
 
     function obRenderScreen() {
@@ -2732,41 +2778,25 @@
 
     function obRenderContent() {
       var s = OB[obStep];
-      document.getElementById('ob-counter').textContent = (obStep + 1) + ' / ' + OB.length;
+      document.getElementById('ob-counter').textContent = '0' + (obStep + 1) + ' — 0' + OB.length;
       document.getElementById('ob-title').textContent = s.title;
       document.getElementById('ob-subtitle').textContent = s.subtitle;
-      document.getElementById('ob-next').textContent = obStep === OB.length - 1 ? 'Kom igång' : 'Nästa';
+      document.getElementById('ob-next').textContent = obStep === OB.length - 1 ? 'Kom igång' : 'Nästa →';
     }
 
     function obNext() {
       if (obStep < OB.length - 1) {
-        obStep++;
-        obRenderScreen();
-        // Car pulses forward (right = direction it's driving)
-        var car = document.getElementById('ob-car');
-        car.style.transition = 'transform 90ms cubic-bezier(0.55,0,0.85,0.06)';
-        car.style.transform = 'translateX(10px)';
+        var bubble = document.getElementById('ob-bubble');
+        bubble.classList.remove('ob-visible');
+        bubble.classList.add('ob-hiding');
         setTimeout(function() {
-          car.style.transition = 'transform 200ms cubic-bezier(0.22,1,0.36,1)';
-          car.style.transform = 'translateX(0)';
-          setTimeout(function() { car.style.transition = ''; }, 210);
-        }, 90);
-        // Bubble content slides out left, new content slides in from right
-        var inner = document.getElementById('ob-inner');
-        inner.style.transition = 'opacity 130ms ease, transform 130ms ease';
-        inner.style.opacity = '0';
-        inner.style.transform = 'translateX(-14px)';
-        setTimeout(function() {
-          inner.style.transition = 'none';
+          obStep++;
+          obRenderScreen();
           obRenderContent();
-          inner.style.opacity = '0';
-          inner.style.transform = 'translateX(14px)';
-          void inner.offsetWidth;
-          inner.style.transition = 'opacity 160ms ease, transform 160ms ease';
-          inner.style.opacity = '1';
-          inner.style.transform = 'translateX(0)';
-          setTimeout(function() { inner.style.transition = ''; }, 170);
-        }, 140);
+          obPositionBubble(OB[obStep]);
+          bubble.classList.remove('ob-hiding');
+          bubble.classList.add('ob-visible');
+        }, 180);
       } else {
         obSkip();
       }
@@ -2777,33 +2807,18 @@
       var overlay = document.getElementById('onboarding-overlay');
       if (!overlay) return;
       var bubble = document.getElementById('ob-bubble');
-      var car = document.getElementById('ob-car');
-      // Bubble shrinks and fades
-      bubble.style.transition = 'transform 200ms cubic-bezier(0.55,0,0.85,0.06), opacity 200ms ease';
-      bubble.style.transform = 'scale(0.88)';
-      bubble.style.opacity = '0';
-      // Car drives off right after bubble starts collapsing
+      bubble.classList.remove('ob-visible');
+      bubble.classList.add('ob-hiding');
       setTimeout(function() {
-        car.style.transition = '';
-        car.classList.remove('ob-driving');
-        car.classList.add('ob-leaving');
-      }, 80);
-      // Fade overlay and clean up
-      setTimeout(function() {
-        overlay.style.transition = 'opacity 220ms ease';
+        overlay.style.transition = 'opacity 200ms ease';
         overlay.style.opacity = '0';
         setTimeout(function() {
           overlay.classList.remove('active');
           overlay.style.opacity = '';
           overlay.style.transition = '';
-          bubble.style.transition = '';
-          bubble.style.transform = '';
-          bubble.style.opacity = '';
-          bubble.classList.remove('ob-visible');
-          car.classList.remove('ob-leaving', 'ob-driving');
-          car.style.transform = '';
+          bubble.classList.remove('ob-hiding', 'ob-visible');
           showScreen('home');
-        }, 230);
+        }, 210);
       }, 160);
     }
 
