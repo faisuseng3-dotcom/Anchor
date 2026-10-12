@@ -122,16 +122,12 @@
       width: 340px; height: 340px;
       background: rgba(255,255,255,0.02);
       top: -80px; right: -60px;
-      animation: orbFloat1 18s ease-in-out infinite;
     }
     .bg-orb-2 {
       width: 280px; height: 280px;
       background: rgba(14,165,233,0.04);
       bottom: -60px; left: -80px;
-      animation: orbFloat2 22s ease-in-out infinite;
     }
-    @keyframes orbFloat1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-20px,30px) scale(1.1)} }
-    @keyframes orbFloat2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,-20px) scale(1.08)} }
 
     #app {
       position: relative;
@@ -162,8 +158,8 @@
 
     /* ── Typografi ─────────────────────────────────────────────────────── */
     .screen-title {
-      font-size: 32px; font-weight: 900; letter-spacing: 0; line-height: 1;
-      text-transform: uppercase; color: var(--text-primary);
+      font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25;
+      color: var(--text-primary);
       margin-bottom: var(--space-2); flex-shrink: 0;
     }
     .section-label {
@@ -223,7 +219,7 @@
       transition: width var(--dur-mid) var(--ease-out);
     }
     .tab.active .icon::after { width: 20px; }
-    .live-dot { position: absolute; top: -2px; right: -4px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); border: 1.5px solid var(--bg-primary); }
+    .live-dot { position: absolute; top: -2px; right: -4px; width: 6px; height: 6px; border-radius: 50%; background: var(--success); border: 1.5px solid var(--bg-primary); }
 
     /* ── Karta (helskärm) ──────────────────────────────────────────────── */
     #screen-home {
@@ -308,9 +304,10 @@
     #nearby-sheet {
       position: absolute; bottom: calc(64px + env(safe-area-inset-bottom));
       left: 0; right: 0; z-index: 5;
-      background: #FFFFFF;
+      background: var(--bg-secondary);
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+      border-top: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.45);
       transition: transform var(--dur-slow) var(--ease-out);
       will-change: transform;
       touch-action: none;
@@ -344,8 +341,8 @@
     .vcrow:active { background: var(--surface-hover); }
     .vcrow-dot {
       width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-      border: 2px solid #FFFFFF;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      border: 2px solid var(--bg-secondary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
     }
     .vcrow-info { flex: 1; min-width: 0; }
     .vcrow-name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -409,11 +406,11 @@
       font-size: 12px; font-weight: 500;
       font-variant-numeric: tabular-nums; margin-bottom: 4px;
     }
-    .vcard-status-badge.free   { background: #F0F0F0; color: #000000; }
-    .vcard-status-badge.short  { background: #F0F0F0; color: #000000; }
-    .vcard-status-badge.medium { background: #F0F0F0; color: #000000; }
-    .vcard-status-badge.long   { background: rgba(204,0,0,0.08); color: #CC0000; }
-    .vcard-status-badge.unknown{ background: #F0F0F0; color: #AAAAAA; }
+    .vcard-status-badge.free   { background: rgba(0,230,118,0.12);  color: #00C060; }
+    .vcard-status-badge.short  { background: rgba(255,179,0,0.12);   color: #CC8800; }
+    .vcard-status-badge.medium { background: rgba(255,112,67,0.12);  color: #CC5500; }
+    .vcard-status-badge.long   { background: rgba(255,59,59,0.12);   color: #EF4444; }
+    .vcard-status-badge.unknown{ background: rgba(255,255,255,0.06); color: var(--text-muted); }
     .vcard-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .free   .vcard-status-dot { background: #22C55E; }
     .short  .vcard-status-dot { background: #F59E0B; }
@@ -869,7 +866,7 @@
     .live-wait { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
     .live-cat { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
     .live-right { text-align: right; }
-    .live-name { font-size: 13px; font-weight: 900; text-transform: uppercase; color: var(--text-primary); line-height: 1.25; letter-spacing: 0.03em; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .live-name { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.25; letter-spacing: -0.01em; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
     .live-meta { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
     .type-badge {
       font-size: 8px; font-weight: 800; letter-spacing: 0.08em;
@@ -1629,7 +1626,7 @@
     }
 
     function getStatusColor(status) {
-      return { none: '#16A34A', short: '#D97706', medium: '#D97706', long: '#DC2626', unknown: '#9CA3AF' }[status] || '#9CA3AF';
+      return { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: '#9CA3AF' }[status] || '#9CA3AF';
     }
 
     function getStatusClass(status) {
@@ -3408,7 +3405,7 @@
     function _liveRowHtml(r, isSub) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
       var liveTimes  = { short: '15 min', medium: '25 min', long: '30+ min' };
-      var liveColors = { none: '#16A34A', free: '#16A34A', short: '#D97706', medium: '#D97706', long: '#DC2626' };
+      var liveColors = { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
       var qs = r.queue_status;
       var descriptor = liveDescriptors[qs];
       if (!descriptor) return '';
