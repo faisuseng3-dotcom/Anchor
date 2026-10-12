@@ -1993,7 +1993,7 @@
         map.touchZoomRotate.disableRotation();
 
         function addMapIcon(map, name, drawFn) {
-          var size = 20;
+          var size = 28;
           var canvas = document.createElement('canvas');
           canvas.width = size; canvas.height = size;
           var ctx = canvas.getContext('2d');
@@ -2005,34 +2005,46 @@
         map.on('load', function() {
           console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
 
-          addMapIcon(map, 'icon-bar', function(ctx) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-            ctx.lineWidth = 1.5;
+          addMapIcon(map, 'icon-bar', function(ctx, s) {
+            // Shadow pass for contrast against any marker color
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 2;
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2.2;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
+            // Martini glass scaled to 28px canvas: rim 4→24, bowl tip at 14,17, stem to 21, base 10→18
             ctx.beginPath();
-            ctx.moveTo(3, 4); ctx.lineTo(10, 11);
-            ctx.moveTo(17, 4); ctx.lineTo(10, 11);
-            ctx.moveTo(3, 4); ctx.lineTo(17, 4);
-            ctx.moveTo(10, 11); ctx.lineTo(10, 17);
-            ctx.moveTo(7, 17); ctx.lineTo(13, 17);
+            ctx.moveTo(4, 5); ctx.lineTo(14, 17);   // left rim to stem top
+            ctx.moveTo(24, 5); ctx.lineTo(14, 17);   // right rim to stem top
+            ctx.moveTo(4, 5); ctx.lineTo(24, 5);     // rim top bar
+            ctx.moveTo(14, 17); ctx.lineTo(14, 23);  // stem
+            ctx.moveTo(10, 23); ctx.lineTo(18, 23);  // base
             ctx.stroke();
           });
 
-          addMapIcon(map, 'icon-klubb', function(ctx) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-            ctx.lineWidth = 1.5;
+          addMapIcon(map, 'icon-klubb', function(ctx, s) {
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 2;
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2.2;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
+            // Music note scaled to 28px: stem 10→23 vertical, flag at top right
             ctx.beginPath();
-            ctx.moveTo(8, 16); ctx.lineTo(8, 6); ctx.lineTo(16, 4); ctx.lineTo(16, 14);
+            ctx.moveTo(11, 22); ctx.lineTo(11, 7);   // stem
+            ctx.lineTo(21, 5); ctx.lineTo(21, 18);   // flag line
             ctx.stroke();
+            // Note head (filled circle at stem bottom)
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
-            ctx.arc(6, 16, 2.5, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.arc(9, 22, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Second note head at flag bottom
             ctx.beginPath();
-            ctx.arc(14, 14, 2.5, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.arc(19, 18, 3.5, 0, Math.PI * 2);
+            ctx.fill();
           });
 
           map.addSource('venues', {
@@ -2124,7 +2136,7 @@
             filter: ['!', ['has', 'point_count']],
             layout: {
               'icon-image': ['match', ['get', 'type'], 'bar', 'icon-bar', 'icon-klubb'],
-              'icon-size': 1,
+              'icon-size': 0.9,
               'icon-allow-overlap': true,
               'icon-anchor': 'center',
               'icon-offset': [0, 0]
