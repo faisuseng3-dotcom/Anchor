@@ -2115,7 +2115,9 @@
           pitch: 0,
           bearing: 0,
           pitchWithRotate: false,
-          dragRotate: false
+          dragRotate: false,
+          logoPosition: 'bottom-right',
+          attributionControl: false
         });
         map.touchZoomRotate.disableRotation();
 
@@ -2128,6 +2130,8 @@
           var imageData = ctx.getImageData(0, 0, size, size);
           map.addImage(name, { width: size, height: size, data: imageData.data });
         }
+
+        map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
         map.on('load', function() {
           console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
