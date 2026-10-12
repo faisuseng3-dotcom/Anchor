@@ -12,7 +12,7 @@ Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `ma
 - **Screens**: `#screen-home` (map), `#screen-explore` (list), `#screen-live` (feed), `#screen-profile`
 - **Data flow**: `loadReports()` → `allReports` → all renders. `injectTestData()` always runs (offline + Supabase) for dev.
 - **Test mode**: `?testdata=true` in URL (or supabase=null) injects 52 test reports for 17 venues.
-- **Font**: Zilla Slab (Google Fonts) — serif. CSS var: `--font-base: 'Zilla Slab', Georgia, serif`.
+- **Font**: Plus Jakarta Sans (Google Fonts) — sans-serif. CSS var: `--font-base: 'Plus Jakarta Sans', sans-serif`.
 - **Map**: Mapbox GL JS v3.9.4, style `streets-v12`, center Stockholm `[18.0686, 59.3293]`.
 
 ## Product thinking (applies to all tasks)
@@ -39,17 +39,19 @@ These apply whether the task is a feature, a bug fix, a spacing change, or a ref
 3. **SIFFROR ÄR KUNG** — metrics in 22px+/700, labels in 10-12px
 4. **KONSISTENS** — match existing patterns before inventing new ones
 5. **REDUNDANS ÄR FÖRBJUDEN** — if two elements show the same info, remove one
-6. **BORDER INTE SKUGGA** — fintech aesthetic: `1px solid #E5E7EB`, no box-shadow on cards
+6. **BORDER INTE SKUGGA** — dark system uses `1px solid rgba(255,255,255,0.09)` on surfaces, `border-color` for hover states, no box-shadow on cards. See `/premium-design` for full design system values.
 
 ## Color system (status)
 
-| Status  | Background tint           | Hero color | Left bar   |
-|---------|--------------------------|------------|------------|
-| long    | rgba(239,68,68,0.04)     | #DC2626    | #EF4444    |
-| medium  | #FFFFFF                  | #D97706    | #F59E0B    |
-| short   | #FFFFFF                  | #D97706    | #F59E0B    |
-| free    | rgba(34,197,94,0.03)     | #16A34A    | #22C55E    |
-| empty   | #FAFAFA, opacity 0.55    | #D1D5DB    | #F0F0F0    |
+| Status  | Hero color | Left bar   |
+|---------|------------|------------|
+| long    | #FF3B3B    | #EF4444    |
+| medium  | #FF7043    | #F59E0B    |
+| short   | #FFB300    | #F59E0B    |
+| free    | #00E676    | #22C55E    |
+| empty   | #D1D5DB    | rgba(255,255,255,0.08) |
+
+Full status color system and dark-palette values: `/premium-design`.
 
 ## Key CSS classes
 
@@ -58,7 +60,7 @@ These apply whether the task is a feature, a bug fix, a spacing change, or a ref
 - `.erow--long/--free` — level backgrounds
 - `.erow-pulse-dot` — blinking 6px red dot for long queue
 - `.exsum` — "Stockholm just nu" summary widget
-- `.venue-group` — white card container with border
+- `.venue-group` — grouped container with `1px solid rgba(255,255,255,0.09)` border
 
 ## Key JS globals
 
