@@ -542,12 +542,26 @@
       background: rgba(8,9,15,0.68);
       backdrop-filter: blur(5px);
       -webkit-backdrop-filter: blur(5px);
+    }
+    #ob-dim.dim-circle {
       -webkit-mask-image: radial-gradient(circle at var(--sx,-200px) var(--sy,-200px), transparent var(--sr,0px), black calc(var(--sr,0px) + 16px));
       mask-image: radial-gradient(circle at var(--sx,-200px) var(--sy,-200px), transparent var(--sr,0px), black calc(var(--sr,0px) + 16px));
     }
+    #ob-dim.dim-rect {
+      -webkit-mask-image: linear-gradient(black, black), linear-gradient(black, black);
+      -webkit-mask-position: 0 0, var(--hx,-9999px) var(--hy,-9999px);
+      -webkit-mask-size: 100% 100%, var(--hw,0px) var(--hh,0px);
+      -webkit-mask-repeat: no-repeat;
+      -webkit-mask-composite: xor;
+      mask-image: linear-gradient(black, black), linear-gradient(black, black);
+      mask-position: 0 0, var(--hx,-9999px) var(--hy,-9999px);
+      mask-size: 100% 100%, var(--hw,0px) var(--hh,0px);
+      mask-repeat: no-repeat;
+      mask-composite: exclude;
+    }
     #ob-spotlight {
       position: absolute; z-index: 1;
-      border-radius: 16px;
+      border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.22);
       box-shadow: 0 0 0 5px rgba(255,255,255,0.04), 0 0 48px rgba(255,255,255,0.07);
       display: none;
@@ -2750,20 +2764,64 @@
     ];
     var obStep = 0;
 
-    function obPlaceSpotRing(bubble) {
+    function obGetTarget(screen) {
+      if (screen === 'explore') {
+        return document.querySelector('#explore-list .erow:not(.erow--empty)') ||
+               document.querySelector('#explore-list .erow');
+      } else if (screen === 'live') {
+        return document.querySelector('#live-feed > *');
+      } else if (screen === 'profile') {
+        return document.querySelector('.pf-head');
+      }
+      return null;
+    }
+
+    function obPlaceSpotRing(el) {
       var spot = document.getElementById('ob-spotlight');
       if (!spot) return;
-      setTimeout(function() {
-        var br = bubble.getBoundingClientRect();
-        if (br.width > 0) {
-          var pad = 7;
-          spot.style.left = (br.left - pad) + 'px';
-          spot.style.top = (br.top - pad) + 'px';
-          spot.style.width = (br.width + pad * 2) + 'px';
-          spot.style.height = (br.height + pad * 2) + 'px';
-          spot.style.display = 'block';
-        }
-      }, 60);
+      var pad = 8;
+      var r = el.getBoundingClientRect();
+      spot.style.left = (r.left - pad) + 'px';
+      spot.style.top = (r.top - pad) + 'px';
+      spot.style.width = (r.width + pad * 2) + 'px';
+      spot.style.height = (r.height + pad * 2) + 'px';
+      spot.style.display = 'block';
+    }
+
+    function obApplyWidgetSpot(dim, spot, bubble, target, ar, BW, EDGE) {
+      var tr = target.getBoundingClientRect();
+      if (tr.width === 0) return;
+      var PAD = 12;
+      var GAP = 14;
+      var navH = 80;
+
+      // Rectangular hole in the dim overlay at the target widget
+      dim.classList.add('dim-rect');
+      dim.style.setProperty('--hx', (tr.left - PAD) + 'px');
+      dim.style.setProperty('--hy', (tr.top - PAD) + 'px');
+      dim.style.setProperty('--hw', (tr.width + PAD * 2) + 'px');
+      dim.style.setProperty('--hh', (tr.height + PAD * 2) + 'px');
+
+      // Spotlight ring on the target widget
+      obPlaceSpotRing(target);
+
+      // Bubble centered below (or above if near bottom)
+      var bLeft = Math.max(ar.left + EDGE, Math.min(ar.right - BW - EDGE, tr.left + tr.width / 2 - BW / 2));
+      var ax = Math.max(14, Math.min(BW - 14, tr.left + tr.width / 2 - bLeft));
+      bubble.style.left = bLeft + 'px';
+      bubble.style.setProperty('--ax', ax + 'px');
+
+      if ((tr.bottom + GAP + 130) < (ar.bottom - navH)) {
+        bubble.classList.add('arr-u');
+        bubble.style.top = (tr.bottom + GAP) + 'px';
+      } else {
+        bubble.classList.add('arr-d');
+        bubble.style.top = (tr.top - GAP - 120) + 'px';
+        setTimeout(function() {
+          var bh = bubble.getBoundingClientRect().height;
+          if (bh > 0) bubble.style.top = (tr.top - GAP - bh) + 'px';
+        }, 30);
+      }
     }
 
     function obSetupStep(s) {
@@ -2774,16 +2832,16 @@
       var BW = 196;
       var EDGE = 14;
 
-      // Reset all positioning
+      // Reset
       bubble.style.top = ''; bubble.style.bottom = '';
       bubble.style.left = ''; bubble.style.right = '';
       bubble.style.transform = '';
       bubble.classList.remove('arr-d', 'arr-u', 'arr-l', 'arr-r');
       bubble.style.removeProperty('--ax');
       bubble.style.removeProperty('--ay');
-      dim.style.removeProperty('--sx');
-      dim.style.removeProperty('--sy');
-      dim.style.removeProperty('--sr');
+      dim.classList.remove('dim-circle', 'dim-rect');
+      dim.style.removeProperty('--sx'); dim.style.removeProperty('--sy'); dim.style.removeProperty('--sr');
+      dim.style.removeProperty('--hx'); dim.style.removeProperty('--hy'); dim.style.removeProperty('--hw'); dim.style.removeProperty('--hh');
       if (spot) spot.style.display = 'none';
 
       var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
@@ -2796,6 +2854,7 @@
           var x = Math.round(cr.left + px.x);
           var y = Math.round(cr.top + px.y);
           if (px.x >= -20 && px.x <= cr.width + 20 && px.y >= -20 && px.y <= cr.height + 20) {
+            dim.classList.add('dim-circle');
             dim.style.setProperty('--sx', x + 'px');
             dim.style.setProperty('--sy', y + 'px');
             dim.style.setProperty('--sr', '22px');
@@ -2821,40 +2880,14 @@
         }
       }
 
-      // All other steps: app-relative positioning + spotlight ring
-      var navH = 80; // nav bar + gap
-      if (s.screen === 'explore') {
-        var bLeft = Math.max(ar.left + EDGE, ar.right - BW - EDGE);
-        bubble.style.left = bLeft + 'px';
-        bubble.style.top = (ar.top + ar.height * 0.22) + 'px';
-        bubble.classList.add('arr-l');
-        bubble.style.setProperty('--ay', '22px');
-        obPlaceSpotRing(bubble);
-
-      } else if (s.screen === 'live') {
-        var bLeft = Math.max(ar.left + EDGE, Math.min(ar.right - BW - EDGE, ar.left + (ar.width - BW) / 2));
-        bubble.style.left = bLeft + 'px';
-        bubble.classList.add('arr-d');
-        bubble.style.setProperty('--ax', (BW / 2) + 'px');
-        bubble.style.top = (ar.bottom - navH - 112) + 'px';
-        setTimeout(function() {
-          var bh = bubble.getBoundingClientRect().height;
-          if (bh > 0) bubble.style.top = (ar.bottom - navH - bh - 12) + 'px';
-          obPlaceSpotRing(bubble);
-        }, 30);
-
-      } else if (s.screen === 'profile') {
-        var bLeft = Math.max(ar.left + EDGE, ar.right - BW - EDGE);
-        bubble.style.left = bLeft + 'px';
-        bubble.classList.add('arr-d');
-        bubble.style.setProperty('--ax', (BW * 0.75) + 'px');
-        bubble.style.top = (ar.bottom - navH - 112) + 'px';
-        setTimeout(function() {
-          var bh = bubble.getBoundingClientRect().height;
-          if (bh > 0) bubble.style.top = (ar.bottom - navH - bh - 12) + 'px';
-          obPlaceSpotRing(bubble);
-        }, 30);
-      }
+      // Steps 2-4: spotlight the target widget, bubble adjacent to it
+      var _dim = dim; var _spot = spot; var _bubble = bubble; var _ar = ar;
+      setTimeout(function() {
+        var target = obGetTarget(s.screen);
+        if (target) {
+          obApplyWidgetSpot(_dim, _spot, _bubble, target, _ar, BW, EDGE);
+        }
+      }, 80);
     }
 
     function showOnboarding() {
@@ -2922,9 +2955,9 @@
           overlay.style.transition = '';
           bubble.classList.remove('ob-hiding', 'ob-visible');
           var dim = document.getElementById('ob-dim');
-          dim.style.removeProperty('--sx');
-          dim.style.removeProperty('--sy');
-          dim.style.removeProperty('--sr');
+          dim.classList.remove('dim-circle', 'dim-rect');
+          dim.style.removeProperty('--sx'); dim.style.removeProperty('--sy'); dim.style.removeProperty('--sr');
+          dim.style.removeProperty('--hx'); dim.style.removeProperty('--hy'); dim.style.removeProperty('--hw'); dim.style.removeProperty('--hh');
           var spot = document.getElementById('ob-spotlight');
           if (spot) spot.style.display = 'none';
           showScreen('home');
