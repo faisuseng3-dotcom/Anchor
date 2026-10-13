@@ -1840,13 +1840,17 @@
     function computeStatus(venueId, reports) {
       var venueReports = reports.filter(function(r) { return r.venue_id === venueId; });
       if (!venueReports.length) return 'unknown';
+      var freshCutoff = Date.now() - 45 * 60 * 1000;
+      var fresh = venueReports.filter(function(r) { return new Date(r.created_at).getTime() > freshCutoff; });
+      // Fall back to most recent single report when no fresh data exists
+      var pool = fresh.length ? fresh : [venueReports.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0]];
       var counts = { none: 0, short: 0, medium: 0, long: 0 };
-      venueReports.forEach(function(r) { if (counts[r.queue_status] !== undefined) counts[r.queue_status]++; });
+      pool.forEach(function(r) { if (counts[r.queue_status] !== undefined) counts[r.queue_status]++; });
       return Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; })[0][0];
     }
 
     function getStatusLabel(status) {
-      return { none: 'Ingen kö', short: '15 min', medium: '25 min', long: '30+ min', unknown: '' }[status] || '';
+      return { none: 'Ingen kö', short: '~15 min', medium: '~25 min', long: '30+ min', unknown: '' }[status] || '';
     }
 
     function getStatusColor(status) {
@@ -2498,7 +2502,7 @@
             id: 'venues-status', type: 'symbol', source: 'venues',
             filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
             layout: {
-              'text-field': ['match', ['get', 'status'], 'none', 'Ingen kö', 'short', '15 min', 'medium', '25 min', 'long', '30+ min', ''],
+              'text-field': ['match', ['get', 'status'], 'none', 'Ingen kö', 'short', '~15 min', 'medium', '~25 min', 'long', '30+ min', ''],
               'text-size': 10, 'text-offset': ['literal', [0, 0.5]], 'text-anchor': 'top', 'text-allow-overlap': true,
               'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
             },
@@ -3418,7 +3422,7 @@
         heroText = '–'; heroColor = '#D1D5DB';
       } else {
         var mins = { none: 0, free: 0, short: 15, medium: 25, long: 30 }[status];
-        heroText = (status === 'free' || status === 'none') ? 'Fri' : (mins === 30 ? '30+ min' : mins + ' min');
+        heroText = (status === 'free' || status === 'none') ? 'Fri' : (mins === 30 ? '30+ min' : '~' + mins + ' min');
         // Per-level hero color for better contrast
         var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
         heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
@@ -3503,6 +3507,18 @@
                 return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
               }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
               var commentHtml = recentWithComment ? '<div class="erow-comment">"' + recentWithComment.comment + '"</div>' : '';
+              var closingSoonHtml = '';
+              if (venue.closing) {
+                var cParts = venue.closing.split(':');
+                var cH = parseInt(cParts[0]), cM = parseInt(cParts[1] || 0);
+                var cTotal = cH < 6 ? (cH + 24) * 60 + cM : cH * 60 + cM;
+                var nowD = new Date(); var nowAdj = nowD.getHours() * 60 + nowD.getMinutes();
+                if (nowAdj < 12 * 60) nowAdj += 1440;
+                var minsLeft = cTotal - nowAdj;
+                if (minsLeft > 0 && minsLeft <= 90) {
+                  closingSoonHtml = '<span class="erow-tertiary-sep">·</span><span style="color:#FF7043;font-weight:600">Stänger ' + venue.closing + '</span>';
+                }
+              }
               var tertiaryHtml = hasData
                 ? '<div class="erow-tertiary">' +
                     confHtml +
@@ -3510,10 +3526,11 @@
                     '<span class="erow-tertiary-sep">·</span>' +
                     '<span>senast ' + lastTime + '</span>' +
                     (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
+                    closingSoonHtml +
                   '</div>'
                 : (patHtml
-                    ? '<div class="erow-tertiary">' + patHtml + '</div>'
-                    : '<div class="erow-tertiary"><span class="erow-empty-cta">Ingen data — var den första att rapportera</span></div>');
+                    ? '<div class="erow-tertiary">' + patHtml + closingSoonHtml + '</div>'
+                    : '<div class="erow-tertiary"><span class="erow-empty-cta">Ingen data — var den första att rapportera</span>' + closingSoonHtml + '</div>');
               return tertiaryHtml + commentHtml;
             })() +
           '</div>' +
@@ -3615,7 +3632,7 @@
     }
 
     function showEveningPlan(scored) {
-      var STATUS_LABEL = { free: 'Fri ingång', short: 'Ca 15 min', medium: 'Ca 25 min', long: '30+ min', none: 'Okänd kö' };
+      var STATUS_LABEL = { free: 'Fri ingång', short: '~15 min', medium: '~25 min', long: '30+ min', none: 'Okänd kö' };
       var STATUS_COLOR = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', none: 'rgba(255,255,255,0.3)' };
 
       var items = scored.map(function(s, i) {
@@ -3864,7 +3881,7 @@
 
     function _liveRowHtml(r, isSub) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
-      var liveTimes  = { short: '15 min', medium: '25 min', long: '30+ min' };
+      var liveTimes  = { short: '~15 min', medium: '~25 min', long: '30+ min' };
       var liveColors = { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
       var qs = r.queue_status;
       var descriptor = liveDescriptors[qs];
