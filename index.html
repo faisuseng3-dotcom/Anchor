@@ -2750,89 +2750,111 @@
     ];
     var obStep = 0;
 
-    function obUpdateSpotlight(s) {
-      var dim = document.getElementById('ob-dim');
+    function obPlaceSpotRing(bubble) {
       var spot = document.getElementById('ob-spotlight');
-      var bubble = document.getElementById('ob-bubble');
-      if (s.screen !== 'home' || !map || typeof map.project !== 'function') {
-        dim.style.removeProperty('--sx');
-        dim.style.removeProperty('--sy');
-        dim.style.removeProperty('--sr');
-        if (spot) spot.style.display = 'none';
-        return;
-      }
-      var venue = VENUES.find(function(v) { return v.id === 'spy-bar'; });
-      if (!venue) return;
-      var px = map.project([venue.lng, venue.lat]);
-      var cr = map.getContainer().getBoundingClientRect();
-      var x = Math.round(cr.left + px.x);
-      var y = Math.round(cr.top + px.y);
-      var vw = window.innerWidth;
-      var vh = window.innerHeight;
-      if (px.x < -20 || px.x > cr.width + 20 || px.y < -20 || px.y > cr.height + 20) {
-        if (spot) spot.style.display = 'none';
-        return;
-      }
-      // Mask cutout on pin — keeps pin sharp through the blur
-      dim.style.setProperty('--sx', x + 'px');
-      dim.style.setProperty('--sy', y + 'px');
-      dim.style.setProperty('--sr', '22px');
-      // Place bubble close to the pin
-      var BW = 196;
-      var ARROW = 12;
-      var GAP = 8;
-      var EDGE = 14;
-      var bLeft = Math.max(EDGE, Math.min(vw - BW - EDGE, x - BW / 2));
-      var ax = Math.max(14, Math.min(BW - 14, x - bLeft));
-      var useAbove = y > vh * 0.38;
-      bubble.style.top = '';
-      bubble.style.bottom = '';
-      bubble.style.left = bLeft + 'px';
-      bubble.style.right = '';
-      bubble.style.transform = '';
-      bubble.classList.remove('arr-d', 'arr-u', 'arr-l', 'arr-r');
-      bubble.style.removeProperty('--ax');
-      bubble.style.removeProperty('--ay');
-      bubble.style.setProperty('--ax', ax + 'px');
-      if (useAbove) {
-        bubble.classList.add('arr-d');
-        bubble.style.top = (y - ARROW - GAP - 100) + 'px';
-        setTimeout(function() {
-          var bh = bubble.getBoundingClientRect().height;
-          if (bh > 0) bubble.style.top = (y - ARROW - GAP - bh) + 'px';
-        }, 30);
-      } else {
-        bubble.classList.add('arr-u');
-        bubble.style.top = (y + ARROW + GAP) + 'px';
-      }
-      // Spotlight ring over the bubble (positioned after layout)
-      if (spot) {
-        setTimeout(function() {
-          var br = bubble.getBoundingClientRect();
-          if (br.width > 0) {
-            var pad = 7;
-            spot.style.left = (br.left - pad) + 'px';
-            spot.style.top = (br.top - pad) + 'px';
-            spot.style.width = (br.width + pad * 2) + 'px';
-            spot.style.height = (br.height + pad * 2) + 'px';
-            spot.style.display = 'block';
-          }
-        }, 50);
-      }
+      if (!spot) return;
+      setTimeout(function() {
+        var br = bubble.getBoundingClientRect();
+        if (br.width > 0) {
+          var pad = 7;
+          spot.style.left = (br.left - pad) + 'px';
+          spot.style.top = (br.top - pad) + 'px';
+          spot.style.width = (br.width + pad * 2) + 'px';
+          spot.style.height = (br.height + pad * 2) + 'px';
+          spot.style.display = 'block';
+        }
+      }, 60);
     }
 
-    function obPositionBubble(s) {
+    function obSetupStep(s) {
       var bubble = document.getElementById('ob-bubble');
+      var dim = document.getElementById('ob-dim');
+      var spot = document.getElementById('ob-spotlight');
+      var app = document.getElementById('app');
+      var BW = 196;
+      var EDGE = 14;
+
+      // Reset all positioning
       bubble.style.top = ''; bubble.style.bottom = '';
       bubble.style.left = ''; bubble.style.right = '';
       bubble.style.transform = '';
       bubble.classList.remove('arr-d', 'arr-u', 'arr-l', 'arr-r');
       bubble.style.removeProperty('--ax');
       bubble.style.removeProperty('--ay');
-      Object.keys(s.pos).forEach(function(k) { bubble.style[k] = s.pos[k]; });
-      bubble.classList.add(s.arrow);
-      if (s.arrowX) bubble.style.setProperty('--ax', s.arrowX);
-      if (s.arrowY) bubble.style.setProperty('--ay', s.arrowY);
+      dim.style.removeProperty('--sx');
+      dim.style.removeProperty('--sy');
+      dim.style.removeProperty('--sr');
+      if (spot) spot.style.display = 'none';
+
+      var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
+
+      if (s.screen === 'home' && map && typeof map.project === 'function') {
+        var venue = VENUES.find(function(v) { return v.id === 'spy-bar'; });
+        if (venue) {
+          var px = map.project([venue.lng, venue.lat]);
+          var cr = map.getContainer().getBoundingClientRect();
+          var x = Math.round(cr.left + px.x);
+          var y = Math.round(cr.top + px.y);
+          if (px.x >= -20 && px.x <= cr.width + 20 && px.y >= -20 && px.y <= cr.height + 20) {
+            dim.style.setProperty('--sx', x + 'px');
+            dim.style.setProperty('--sy', y + 'px');
+            dim.style.setProperty('--sr', '22px');
+            var bLeft = Math.max(ar.left + EDGE, Math.min(ar.right - BW - EDGE, x - BW / 2));
+            var ax = Math.max(14, Math.min(BW - 14, x - bLeft));
+            bubble.style.left = bLeft + 'px';
+            bubble.style.setProperty('--ax', ax + 'px');
+            if (y > (ar.top + ar.height * 0.38)) {
+              bubble.classList.add('arr-d');
+              bubble.style.top = (y - 20 - 100) + 'px';
+              setTimeout(function() {
+                var bh = bubble.getBoundingClientRect().height;
+                if (bh > 0) bubble.style.top = (y - 20 - bh) + 'px';
+                obPlaceSpotRing(bubble);
+              }, 30);
+            } else {
+              bubble.classList.add('arr-u');
+              bubble.style.top = (y + 20) + 'px';
+              obPlaceSpotRing(bubble);
+            }
+            return;
+          }
+        }
+      }
+
+      // All other steps: app-relative positioning + spotlight ring
+      var navH = 80; // nav bar + gap
+      if (s.screen === 'explore') {
+        var bLeft = Math.max(ar.left + EDGE, ar.right - BW - EDGE);
+        bubble.style.left = bLeft + 'px';
+        bubble.style.top = (ar.top + ar.height * 0.22) + 'px';
+        bubble.classList.add('arr-l');
+        bubble.style.setProperty('--ay', '22px');
+        obPlaceSpotRing(bubble);
+
+      } else if (s.screen === 'live') {
+        var bLeft = Math.max(ar.left + EDGE, Math.min(ar.right - BW - EDGE, ar.left + (ar.width - BW) / 2));
+        bubble.style.left = bLeft + 'px';
+        bubble.classList.add('arr-d');
+        bubble.style.setProperty('--ax', (BW / 2) + 'px');
+        bubble.style.top = (ar.bottom - navH - 112) + 'px';
+        setTimeout(function() {
+          var bh = bubble.getBoundingClientRect().height;
+          if (bh > 0) bubble.style.top = (ar.bottom - navH - bh - 12) + 'px';
+          obPlaceSpotRing(bubble);
+        }, 30);
+
+      } else if (s.screen === 'profile') {
+        var bLeft = Math.max(ar.left + EDGE, ar.right - BW - EDGE);
+        bubble.style.left = bLeft + 'px';
+        bubble.classList.add('arr-d');
+        bubble.style.setProperty('--ax', (BW * 0.75) + 'px');
+        bubble.style.top = (ar.bottom - navH - 112) + 'px';
+        setTimeout(function() {
+          var bh = bubble.getBoundingClientRect().height;
+          if (bh > 0) bubble.style.top = (ar.bottom - navH - bh - 12) + 'px';
+          obPlaceSpotRing(bubble);
+        }, 30);
+      }
     }
 
     function showOnboarding() {
@@ -2841,9 +2863,8 @@
       obStep = 0;
       obRenderScreen();
       obRenderContent();
-      obPositionBubble(OB[obStep]);
       overlay.classList.add('active');
-      obUpdateSpotlight(OB[obStep]);
+      obSetupStep(OB[obStep]);
       setTimeout(function() {
         var bubble = document.getElementById('ob-bubble');
         bubble.classList.remove('ob-hiding');
@@ -2876,8 +2897,7 @@
           obStep++;
           obRenderScreen();
           obRenderContent();
-          obPositionBubble(OB[obStep]);
-          obUpdateSpotlight(OB[obStep]);
+          obSetupStep(OB[obStep]);
           bubble.classList.remove('ob-hiding');
           bubble.classList.add('ob-visible');
         }, 180);
