@@ -899,6 +899,7 @@
       flex-wrap: nowrap; overflow: hidden;
     }
     .erow-tertiary-sep { color: #D1D5DB; flex-shrink: 0; }
+    .erow-empty-cta { font-size: 10px; color: rgba(255,255,255,0.22); font-style: italic; }
     .conf-bars {
       display: inline-flex;
       align-items: flex-end;
@@ -3410,7 +3411,7 @@
       var levelBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', empty: 'rgba(255,255,255,0.02)' }[level];
       var stateClass = isEmpty ? ' erow--empty' : '';
       var agingStyle = isAging ? ' opacity:0.7;' : '';
-      var barColor = isEmpty ? '#F0F0F0' : color;
+      var barColor = isEmpty ? 'rgba(255,255,255,0.08)' : color;
 
       // Hero number
       var heroText, heroColor;
@@ -3511,7 +3512,9 @@
                     '<span>senast ' + lastTime + '</span>' +
                     (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
                   '</div>'
-                : (patHtml ? '<div class="erow-tertiary">' + patHtml + '</div>' : '');
+                : (patHtml
+                    ? '<div class="erow-tertiary">' + patHtml + '</div>'
+                    : '<div class="erow-tertiary"><span class="erow-empty-cta">Ingen data — var den första att rapportera</span></div>');
               return tertiaryHtml + commentHtml;
             })() +
           '</div>' +
