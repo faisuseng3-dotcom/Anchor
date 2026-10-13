@@ -510,6 +510,10 @@
       from { transform: translateX(-50%) translateY(100%); }
       to   { transform: translateX(-50%) translateY(0); }
     }
+    @keyframes slideDown {
+      from { transform: translateX(-50%) translateY(0); }
+      to   { transform: translateX(-50%) translateY(110%); }
+    }
 
     /* Drag handle */
     .vc-handle {
@@ -2024,9 +2028,14 @@
     }
 
     function closeVenueCard() {
+      var card = document.getElementById('venue-card');
+      card.style.animation = 'slideDown 0.2s cubic-bezier(0.36,0,0.66,0) forwards';
       document.getElementById('vc-overlay').style.display = 'none';
-      document.getElementById('venue-card').style.display = 'none';
-      activeVenue = null;
+      setTimeout(function() {
+        card.style.display = 'none';
+        card.style.animation = '';
+        activeVenue = null;
+      }, 200);
     }
 
     function goToReport() {
@@ -3486,7 +3495,7 @@
         : (_planningMode ? '<div class="plan-badge plan-badge--empty" style="margin-right:8px"></div>' : '');
       var rowOnClick = _planningMode
         ? 'togglePlanVenue(\'' + venue.id + '\')'
-        : 'goToVenueOnMap(getVenueById(\'' + venue.id + '\'))';
+        : 'openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')';
 
       return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';' + agingStyle + '" onclick="' + rowOnClick + '">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
@@ -4087,15 +4096,17 @@
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
         showFloatingPoints(10);
-        showToast('Rapport skickad — tack!');
         document.getElementById('rs2').style.display = 'none';
-        document.getElementById('rs1').style.display = 'block';
-        document.getElementById('rs-search').value = '';
+        document.getElementById('rs3').style.display = 'flex';
+        var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
         selectedRV = null;
-        filterReportList();
-        if (prevScreen && prevScreen !== 'report') {
-          showScreen(prevScreen);
-        }
+        setTimeout(function() {
+          document.getElementById('rs3').style.display = 'none';
+          document.getElementById('rs1').style.display = 'block';
+          document.getElementById('rs-search').value = '';
+          filterReportList();
+          if (dest) showScreen(dest);
+        }, 1500);
       } catch(err) { showToast('Fel — försök igen'); }
     }
 
@@ -4115,9 +4126,13 @@
     function closeQuickReport() {
       document.getElementById('qr-overlay').style.display = 'none';
       var sheet = document.getElementById('qr-sheet');
-      sheet.style.display = 'none';
-      sheet.classList.remove('visible');
-      qrVenue = null;
+      sheet.style.animation = 'slideDown 0.2s cubic-bezier(0.36,0,0.66,0) forwards';
+      setTimeout(function() {
+        sheet.style.display = 'none';
+        sheet.classList.remove('visible');
+        sheet.style.animation = '';
+        qrVenue = null;
+      }, 200);
     }
 
     async function quickPickQueue(status) {
