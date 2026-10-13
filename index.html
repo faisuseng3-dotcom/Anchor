@@ -187,6 +187,58 @@
       border-radius: var(--radius-md);
     }
     .skeleton-card.skeleton { /* shimmer already applied */ }
+    .skeleton-erow {
+      display: flex; align-items: stretch;
+      min-height: 80px; margin-bottom: 6px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .skeleton-erow::before {
+      content: ''; display: block; width: 3px;
+      background: rgba(255,255,255,0.08); flex-shrink: 0;
+    }
+    .skeleton-erow::after {
+      content: ''; display: block; flex: 1;
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.5s infinite linear;
+      margin: 16px;
+      border-radius: var(--radius-sm);
+    }
+    .explore-error-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 24px 32px; text-align: center; gap: 6px;
+    }
+    .explore-err-icon { width: 36px; height: 36px; color: rgba(255,255,255,0.2); margin-bottom: 4px; }
+    .explore-err-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .explore-err-sub { font-size: 13px; color: var(--text-muted); }
+    .explore-err-btn {
+      margin-top: 14px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px; padding: 8px 22px;
+      font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer;
+      transition: background 150ms ease;
+    }
+    .explore-err-btn:hover { background: rgba(255,255,255,0.12); }
+    @keyframes fpFloat {
+      0%   { transform: translateY(0) scale(1); opacity: 1; }
+      20%  { transform: translateY(-12px) scale(1.15); opacity: 1; }
+      100% { transform: translateY(-72px) scale(0.9); opacity: 0; }
+    }
+    .fp-float {
+      position: fixed; z-index: 9999;
+      font-size: 22px; font-weight: 800;
+      color: #00E676; pointer-events: none; user-select: none;
+      text-shadow: 0 0 24px rgba(0,230,118,0.45);
+      animation: fpFloat 1.4s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    .pf-b2b-eyebrow { font-size: 9px; letter-spacing: 0.10em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
+    .pf-b2b-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+    .pf-b2b-body { font-size: 12px; color: var(--text-secondary); line-height: 1.65; margin-bottom: 10px; }
+    .pf-b2b-link { font-size: 12px; font-weight: 600; color: var(--text-primary); text-decoration: none; }
+    .pf-b2b-link:hover { text-decoration: underline; }
 
     /* ── Bottom Nav ────────────────────────────────────────────────────── */
     #bottom-nav {
@@ -1424,6 +1476,15 @@
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span><span class="arrow">→</span></button>
         </div>
       </div>
+
+      <div class="pf-section">
+        <div class="pf-card pf-b2b">
+          <div class="pf-b2b-eyebrow">För krogar</div>
+          <div class="pf-b2b-title">Äger du ett ställe?</div>
+          <div class="pf-b2b-body">Realtidsdata om din kö · Se när gäster väljer bort dig</div>
+          <a class="pf-b2b-link" href="mailto:hello@queuebar.se">hello@queuebar.se →</a>
+        </div>
+      </div>
     </section>
 
     <div id="qr-overlay" onclick="closeQuickReport()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);"></div>
@@ -2485,6 +2546,35 @@
           }).join('');
         }
       });
+      var exploreList = document.getElementById('explore-list');
+      if (exploreList && !exploreList.querySelector('.erow')) {
+        exploreList.innerHTML = '<div class="venue-group">' + [1,2,3,4,5].map(function() {
+          return '<div class="skeleton-erow"></div>';
+        }).join('') + '</div>';
+      }
+    }
+
+    function showExploreError() {
+      var el = document.getElementById('explore-list');
+      if (!el) return;
+      el.innerHTML = '<div class="explore-error-state">' +
+        '<svg class="explore-err-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '<div class="explore-err-title">Kunde inte ladda data</div>' +
+        '<div class="explore-err-sub">Kontrollera anslutningen</div>' +
+        '<button class="explore-err-btn" onclick="loadReports()">Försök igen</button>' +
+        '</div>';
+    }
+
+    function showFloatingPoints(pts) {
+      var app = document.getElementById('app');
+      var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+      var el = document.createElement('div');
+      el.className = 'fp-float';
+      el.textContent = '+' + (pts || 10) + ' poäng';
+      el.style.left = (ar.left + ar.width / 2 - 50) + 'px';
+      el.style.top = (ar.top + ar.height * 0.6) + 'px';
+      document.body.appendChild(el);
+      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 1500);
     }
 
     var STATUS_COLORS = {
@@ -2513,6 +2603,7 @@
           '| error:', result.error || 'ingen');
         if (result.error) {
           console.error('[QueueBar] loadReports Supabase-fel (fullt objekt):', JSON.stringify(result.error));
+          showExploreError();
         }
         if (result.data) {
           allReports = result.data;
@@ -2527,6 +2618,7 @@
         }
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
+        showExploreError();
       }
     }
 
@@ -2552,10 +2644,12 @@
 
     function injectTestData() {
       var now = Date.now();
+      var _testUsers = ['usr-a1b2', 'usr-c3d4', 'usr-e5f6', 'usr-g7h8', 'usr-i9j0', 'usr-k1l2', 'usr-m3n4', 'usr-o5p6'];
+      var _tIdx = 0;
       function ago(mins) { return new Date(now - mins * 60 * 1000).toISOString(); }
       function r(venueId, minsAgo, status) {
         return { id: 'test-' + venueId + '-' + minsAgo, venue_id: venueId, queue_status: status,
-                 created_at: ago(minsAgo), expires_at: ago(-45), user_id: 'test-user' };
+                 created_at: ago(minsAgo), expires_at: ago(-45), user_id: _testUsers[_tIdx++ % _testUsers.length] };
       }
       var testReports = [
         // spy-bar
@@ -3327,6 +3421,7 @@
 
       // Tertiary row
       var reportCount = venueReports.length;
+      var uniqueReporters = new Set(venueReports.map(function(r) { return r.user_id; })).size;
       var lastTime = latestReport ? formatAbsTime(latestReport.created_at) : '–';
       var confLevel = hasData ? computeConfidence(venueReports) : 0;
       var confHtml = '';
@@ -3382,7 +3477,7 @@
               var tertiaryHtml = hasData
                 ? '<div class="erow-tertiary">' +
                     confHtml +
-                    '<span>' + reportCount + ' rapport' + (reportCount !== 1 ? 'er' : '') + '</span>' +
+                    '<span>' + uniqueReporters + ' pers bekräftade</span>' +
                     '<span class="erow-tertiary-sep">·</span>' +
                     '<span>senast ' + lastTime + '</span>' +
                     (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
@@ -3976,6 +4071,7 @@
         await submitReport(selectedRV.id, selectedRV.name, status, comment);
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
+        showFloatingPoints(10);
         showToast('Rapport skickad — tack!');
         document.getElementById('rs2').style.display = 'none';
         document.getElementById('rs1').style.display = 'block';
@@ -4016,6 +4112,7 @@
       try {
         await submitReport(v.id, v.name, status);
         maybeShowInstallPrompt();
+        showFloatingPoints(10);
         showToast('Rapport skickad — tack!');
         loadReports();
       } catch(e) {
