@@ -933,6 +933,12 @@
     .erow-trend--stable { font-weight: 600; color: var(--text-muted); }
     .erow-trend--single { font-weight: 400; color: var(--text-muted); }
     .erow-comment { font-size: 11px; color: rgba(255,255,255,0.38); font-style: italic; padding: 4px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .erow-spark { display: flex; gap: 3px; align-items: flex-end; margin-top: 3px; }
+    .spark-blk { width: 5px; border-radius: 2px; flex-shrink: 0; }
+    .spark-blk--free   { background: #00E676; height: 5px;  opacity: 0.7; }
+    .spark-blk--short  { background: #FFB300; height: 8px;  opacity: 0.7; }
+    .spark-blk--medium { background: #FF7043; height: 11px; opacity: 0.7; }
+    .spark-blk--long   { background: #FF3B3B; height: 15px; opacity: 0.85; }
 
     /* ── Kvällsplanering ────────────────────────────────────────────────── */
     .plan-badge {
@@ -3507,6 +3513,15 @@
           '<div class="erow-right">' +
             '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + heroText + '</span>' +
             trendHtml +
+            (function() {
+              if (venueReports.length < 2) return '';
+              var STATUS_H = { free: 'free', short: 'short', medium: 'medium', long: 'long', none: 'free' };
+              var recent = venueReports.slice(0, 4).reverse();
+              return '<div class="erow-spark">' + recent.map(function(r) {
+                var cls = STATUS_H[r.queue_status] || 'free';
+                return '<span class="spark-blk spark-blk--' + cls + '"></span>';
+              }).join('') + '</div>';
+            })() +
           '</div>' +
           '<button class="erow-report-btn" onclick="event.stopPropagation();openQuickReport(\'' + venue.id + '\')" aria-label="Rapportera"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
         '</div>' +
