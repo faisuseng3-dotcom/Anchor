@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@frontman-ai/vite": "^2.0.1",
     "@supabase/supabase-js": "^2.45.4",
     "mapbox-gl": "^3.9.4"
   },

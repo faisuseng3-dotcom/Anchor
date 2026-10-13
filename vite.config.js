@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
+import { frontmanPlugin } from '@frontman-ai/vite';
 
 export default defineConfig({
+  plugins: [frontmanPlugin()],
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
