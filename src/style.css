@@ -1024,18 +1024,24 @@
     #live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: livePulse 1.5s ease-in-out infinite; flex-shrink: 0; }
     .live-row {
       display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-      background: #111113; border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 6px; padding: 12px var(--space-2);
-      margin-bottom: var(--space-1); flex-shrink: 0;
-      transition: background var(--dur-fast) ease;
+      /* Flat list row — !important overrides inline status tint from main.js */
+      background: none !important; border: 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-radius: 0; box-shadow: none; padding: 12px 0;
+      margin-bottom: 0; flex-shrink: 0;
     }
     /* live-row is display-only — no hover state */
-    .live-status { display: flex; flex-direction: column; gap: 2px; }
-    .live-wait { font-family: var(--font-mono); font-size: 36px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
-    .live-cat { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; line-height: 1; }
-    .live-right { text-align: right; }
-    .live-name { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.25; letter-spacing: -0.02em; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-    .live-meta { font-size: 11px; font-weight: 400; color: rgba(255,255,255,0.45); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .live-status { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+    .live-wait { font-family: var(--font-mono); font-size: 36px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .live-cat {
+      align-self: flex-start;
+      padding: 2px 6px; border-radius: 3px;
+      background: color-mix(in srgb, currentColor 12%, transparent);
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; white-space: nowrap;
+    }
+    .live-right { flex: 1; text-align: right; min-width: 0; }
+    .live-name { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.25; letter-spacing: -0.02em; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px; }
+    .live-meta { font-size: 11px; font-weight: 400; color: #FFFFFF; opacity: 0.45; text-align: right; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .type-badge {
       font-size: 8px; font-weight: 800; letter-spacing: 0.08em;
       color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06);
@@ -1047,16 +1053,16 @@
       display: block; width: 100%; text-align: left;
       font-family: var(--font-base); font-size: 11px; font-weight: 600;
       color: var(--text-muted); letter-spacing: 0.02em;
-      background: none; border: none; border-top: 1px solid var(--border);
-      padding: 7px var(--space-2); cursor: pointer; margin-bottom: var(--space-1);
+      background: none; border: none;
+      padding: 7px 0; cursor: pointer; margin-bottom: var(--space-1);
     }
     .live-expand-btn:hover { color: var(--text-primary); }
     .live-sub-row {
       display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-      background: var(--surface); border: 1px solid var(--border); border-top: none;
-      padding: 9px var(--space-2); opacity: 0.6;
+      background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 9px 0; opacity: 0.6;
     }
-    .live-sub-row:last-child { border-radius: 0 0 6px 6px; margin-bottom: var(--space-1); }
+    .live-sub-row:last-child { margin-bottom: var(--space-1); }
     .live-sub-wait { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
     .live-sub-meta { font-size: 11px; color: rgba(255,255,255,0.45); font-variant-numeric: tabular-nums; }
 
