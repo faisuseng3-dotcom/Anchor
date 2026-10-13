@@ -852,6 +852,7 @@
     /* State — stale: partial opacity on bar + hero only */
     .erow--stale .erow-left-bar { opacity: 0.4; }
     .erow--stale .erow-hero     { opacity: 0.5; }
+    .erow-stale-label { color: rgba(255,255,255,0.28); font-style: italic; }
     /* Level backgrounds — set via inline style, transition handled by .erow transition */
     @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
     @keyframes ripplePulse { 0%{box-shadow:0 0 0 0 rgba(255,59,59,0.7)} 70%{box-shadow:0 0 0 7px rgba(255,59,59,0)} 100%{box-shadow:0 0 0 0 rgba(255,59,59,0)} }
@@ -3421,8 +3422,8 @@
       }
 
       var levelBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', empty: 'rgba(255,255,255,0.02)' }[level];
-      var stateClass = isEmpty ? ' erow--empty' : '';
-      var agingStyle = isAging ? ' opacity:0.7;' : '';
+      var stateClass = isEmpty ? ' erow--empty' : (isAging ? ' erow--stale' : '');
+      var agingStyle = '';
       var barColor = isEmpty ? 'rgba(255,255,255,0.08)' : color;
 
       // Hero number
@@ -3497,7 +3498,7 @@
         ? 'togglePlanVenue(\'' + venue.id + '\')'
         : 'openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')';
 
-      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';' + agingStyle + '" onclick="' + rowOnClick + '">' +
+      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
           planBadge +
@@ -3536,6 +3537,7 @@
                     '<span>senast ' + lastTime + '</span>' +
                     (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
                     closingSoonHtml +
+                    (isAging ? '<span class="erow-tertiary-sep">·</span><span class="erow-stale-label">Kan vara gammal</span>' : '') +
                   '</div>'
                 : (patHtml
                     ? '<div class="erow-tertiary">' + patHtml + closingSoonHtml + '</div>'
