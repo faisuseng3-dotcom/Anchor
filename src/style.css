@@ -791,11 +791,12 @@
     .erow {
       position: relative;
       display: flex; align-items: stretch;
-      min-height: 80px;
+      min-height: 52px;
       cursor: pointer;
       background: #111113;
       border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 6px;
+      border-left: 0; /* .erow-left-bar is the 3px status edge */
+      border-radius: 0 6px 6px 0;
       opacity: 0;
       margin-bottom: 6px;
       animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both;
@@ -823,15 +824,18 @@
     .erow--stale .erow-left-bar { opacity: 0.4; }
     .erow--stale .erow-hero     { opacity: 0.5; }
     .erow-stale-label { color: rgba(255,255,255,0.28); font-style: italic; }
+    /* Cap long-queue tint at 4% — overrides inline 0.06 from main.js (kept there for check.js) */
+    .erow--long:not(.erow--empty) { background-color: rgba(255,59,59,0.04) !important; }
     /* Level backgrounds — set via inline style, transition handled by .erow transition */
     @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
     .erow-pulse-dot { display: inline-flex; width: 6px; height: 6px; border-radius: 50%; background: #FF3B3B; flex-shrink: 0; animation: pulseDot 2s ease-in-out infinite; align-self: center; margin-right: 5px; }
     @keyframes heroCountUp { from { opacity: 0; transform: translateY(4px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .erow-hero--animate { animation: heroCountUp 400ms cubic-bezier(0.16,1,0.3,1) forwards; }
 
-    /* 1 — 3px left color bar */
+    /* 1 — 3px left color bar (acts as border-left; color set inline per status) */
     .erow-left-bar {
-      width: 4px; flex-shrink: 0;
+      width: 3px; flex-shrink: 0;
+      border-radius: 0;
       transition: opacity 150ms ease;
     }
 
@@ -846,12 +850,12 @@
     /* Layer 1 — name */
     .erow-name-row { display: flex; align-items: center; min-width: 0; }
     .erow-name {
-      font-size: 16px; font-weight: 600; letter-spacing: -0.03em; color: var(--text-primary);
+      font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       line-height: 1.25; padding-right: 8px;
     }
     /* Layer 2 — area + distance */
-    .erow-meta { font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 400; letter-spacing: -0.01em; line-height: 1.45; }
+    .erow-meta { display: block; margin-top: 2px; font-size: 11px; color: #FFFFFF; opacity: 0.45; font-weight: 400; letter-spacing: -0.01em; line-height: 1.45; }
 
     /* Layer 3 — report count · last time · sparkline */
     .erow-tertiary {
@@ -887,16 +891,16 @@
     }
     /* 2 — hero number */
     .erow-hero {
-      font-family: var(--font-mono); font-size: 36px; font-weight: 700; letter-spacing: -0.04em;
-      font-variant-numeric: tabular-nums; line-height: 1;
+      font-family: var(--font-mono); font-size: 22px; font-weight: 700; letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums; line-height: 1; text-align: right;
       transition: opacity 150ms ease; white-space: nowrap;
     }
     /* .erow-badge removed — replaced by .erow-trend (trendindikator) */
-    .erow-trend { font-size: 11px; line-height: 1; white-space: nowrap; }
-    .erow-trend--up     { font-weight: 700; color: #FF7043; }
-    .erow-trend--down   { font-weight: 700; color: #00E676; }
-    .erow-trend--stable { font-weight: 600; color: var(--text-muted); }
-    .erow-trend--single { font-weight: 400; color: var(--text-muted); }
+    .erow-trend { font-size: 10px; opacity: 0.45; line-height: 1; white-space: nowrap; }
+    .erow-trend--up     { font-weight: 600; color: #FF7043; }
+    .erow-trend--down   { font-weight: 600; color: #00E676; }
+    .erow-trend--stable { font-weight: 500; color: #FFFFFF; }
+    .erow-trend--single { font-weight: 400; color: #FFFFFF; }
     .erow-comment { font-size: 11px; color: rgba(255,255,255,0.38); font-style: italic; padding: 4px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .erow-spark { display: flex; gap: 3px; align-items: flex-end; margin-top: 3px; }
     .spark-blk { width: 5px; border-radius: 2px; flex-shrink: 0; }
