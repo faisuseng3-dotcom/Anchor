@@ -547,10 +547,9 @@
     }
     #ob-spotlight {
       position: absolute; z-index: 1;
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(255,255,255,0.30);
-      transform: translate(-50%, -50%);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 0 0 5px rgba(255,255,255,0.04), 0 0 48px rgba(255,255,255,0.07);
       display: none;
       pointer-events: none;
     }
@@ -2774,15 +2773,10 @@
         if (spot) spot.style.display = 'none';
         return;
       }
-      // Spotlight mask + ring
+      // Mask cutout on pin — keeps pin sharp through the blur
       dim.style.setProperty('--sx', x + 'px');
       dim.style.setProperty('--sy', y + 'px');
       dim.style.setProperty('--sr', '22px');
-      if (spot) {
-        spot.style.display = 'block';
-        spot.style.left = x + 'px';
-        spot.style.top = y + 'px';
-      }
       // Place bubble close to the pin
       var BW = 196;
       var ARROW = 12;
@@ -2810,6 +2804,20 @@
       } else {
         bubble.classList.add('arr-u');
         bubble.style.top = (y + ARROW + GAP) + 'px';
+      }
+      // Spotlight ring over the bubble (positioned after layout)
+      if (spot) {
+        setTimeout(function() {
+          var br = bubble.getBoundingClientRect();
+          if (br.width > 0) {
+            var pad = 7;
+            spot.style.left = (br.left - pad) + 'px';
+            spot.style.top = (br.top - pad) + 'px';
+            spot.style.width = (br.width + pad * 2) + 'px';
+            spot.style.height = (br.height + pad * 2) + 'px';
+            spot.style.display = 'block';
+          }
+        }, 50);
       }
     }
 
