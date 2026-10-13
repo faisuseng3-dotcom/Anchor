@@ -1258,6 +1258,8 @@
     }
     .pf-stat b { display: block; font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1.25; }
     .pf-stat span { font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); line-height: 1.0; }
+    .streak-warm { color: #FF7043 !important; }
+    .streak-fire { color: #FFB300 !important; }
     .pf-card {
       flex-shrink: 0; padding: var(--space-2); margin-bottom: var(--space-1);
       background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
@@ -1468,7 +1470,7 @@
       <div class="pf-stats">
         <div class="pf-stat"><b id="stat-r">0</b><span>Rapporter</span></div>
         <div class="pf-stat"><b id="stat-p">0</b><span>Poäng</span></div>
-        <div class="pf-stat"><b id="stat-d" class="days-count">1</b><span>Dagar</span></div>
+        <div class="pf-stat"><b id="stat-d" class="days-count">0</b><span>Streak</span></div>
       </div>
 
       <div class="pf-card">
@@ -4156,6 +4158,22 @@
     filterReportList();
 
     // ── Profil ────────────────────────────────────────────────────────────────
+    function computeStreak(reports) {
+      if (!reports.length) return 0;
+      var dates = new Set(reports.map(function(r) { return r.created_at.slice(0, 10); }));
+      var today = new Date();
+      var todayStr = today.toISOString().slice(0, 10);
+      var yestStr = new Date(today - 86400000).toISOString().slice(0, 10);
+      if (!dates.has(todayStr) && !dates.has(yestStr)) return 0;
+      var cursor = dates.has(todayStr) ? today : new Date(today - 86400000);
+      var count = 0;
+      while (dates.has(cursor.toISOString().slice(0, 10))) {
+        count++;
+        cursor = new Date(cursor - 86400000);
+      }
+      return count;
+    }
+
     function updateProfileStats() {
       var userId = getUserId();
       var mine = userHistory.length > 0
@@ -4188,10 +4206,12 @@
       if (pb) pb.style.width = pct + '%';
 
       var daysEl = document.querySelector('#screen-profile .days-count');
-      if (daysEl && mine.length > 0) {
-        var first = new Date(mine[mine.length - 1].created_at);
-        var days = Math.max(1, Math.ceil((new Date() - first) / 86400000));
-        daysEl.textContent = days;
+      if (daysEl) {
+        var streak = computeStreak(mine);
+        daysEl.textContent = streak;
+        daysEl.classList.remove('streak-warm', 'streak-fire');
+        if (streak >= 7) daysEl.classList.add('streak-fire');
+        else if (streak >= 3) daysEl.classList.add('streak-warm');
       }
 
       var badgeRow = document.querySelector('#screen-profile .badges-row');
