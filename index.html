@@ -858,11 +858,9 @@
     .erow-pulse-dot { display: inline-flex; width: 6px; height: 6px; border-radius: 50%; background: #FF3B3B; box-shadow: 0 0 0 0 rgba(255,59,59,0.6); flex-shrink: 0; animation: ripplePulse 2s ease-out infinite; align-self: center; margin-right: 5px; }
     .erow--long   { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheRed    4s ease-in-out infinite !important; }
     .erow--medium { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheOrange 4s ease-in-out infinite !important; }
-    .erow--short  { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheAmber  4s ease-in-out infinite !important; }
     .erow--free   { animation: fadeSlideUp 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both, breatheGreen  4s ease-in-out infinite !important; }
     .erow--long   .erow-left-bar { box-shadow: 0 4px 40px rgba(255,59,59,0.15); }
     .erow--medium .erow-left-bar { box-shadow: 0 4px 36px rgba(255,112,67,0.12); }
-    .erow--short  .erow-left-bar { box-shadow: 0 4px 36px rgba(255,179,0,0.10); }
     .erow--free   .erow-left-bar { box-shadow: 0 4px 36px rgba(0,230,118,0.10); }
     @keyframes heroCountUp { from { opacity: 0; transform: translateY(4px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .erow-hero--animate { animation: heroCountUp 400ms cubic-bezier(0.16,1,0.3,1) forwards; }
@@ -1278,6 +1276,7 @@
       border-radius: var(--radius-md); padding: var(--space-2); text-align: center;
     }
     .badge-item--on { border-color: rgba(59,130,246,0.20); background: rgba(59,130,246,0.04); }
+    .badge-item--locked { opacity: 0.3; filter: grayscale(1); }
     .badge-item-icon {
       width: 32px; height: 32px; background: var(--bg-secondary);
       border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
@@ -1737,7 +1736,7 @@
       if (!sticky) return;
       var banner = document.createElement('div');
       banner.id = 'explore-offline-banner';
-      banner.style.cssText = 'background:#EFF6FF;border-bottom:1px solid #BFDBFE;padding:8px 16px;font-size:13px;color:#1D4ED8;font-family:var(--font-base);';
+      banner.style.cssText = 'background:rgba(59,130,246,0.12);border-bottom:1px solid rgba(59,130,246,0.22);padding:8px 16px;font-size:13px;color:rgba(255,255,255,0.75);font-family:var(--font-base);';
       banner.textContent = 'Offline-läge — visar sparad data';
       sticky.parentNode.insertBefore(banner, sticky.nextSibling);
     }
@@ -3474,7 +3473,7 @@
       }
 
       var delay = (index * 75 + 340) + 'ms';
-      var levelClass = level === 'long' ? ' erow--long' : level === 'medium' ? ' erow--medium' : level === 'short' ? ' erow--short' : level === 'free' ? ' erow--free' : '';
+      var levelClass = level === 'long' ? ' erow--long' : level === 'medium' ? ' erow--medium' : level === 'free' ? ' erow--free' : '';
 
       // Planning mode
       var planIdx = _planVenues.indexOf(venue.id);
@@ -3713,48 +3712,6 @@
 
       candidates.sort(function(a, b) { return b.score - a.score; });
       return candidates[0] || null;
-    }
-
-    function renderBestNow() {
-      var el = document.getElementById('best-now');
-      if (!el) return;
-      var best = computeBestNow();
-      if (!best) { el.style.display = 'none'; return; }
-
-      var v = best.venue;
-      var status = best.status;
-      var barColor = status === 'free' ? '#00E676' : '#FFB300';
-      var timeText = status === 'free' ? 'Fri ingång' : 'Ca 15 min';
-
-      var reports = allReports.filter(function(r) { return r.venue_id === v.id; });
-      if (reports.length) {
-        var latest = reports.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); })[0];
-        if (latest.queue_status === 'free' || latest.queue_status === 'none') timeText = 'Fri ingång';
-        else if (latest.queue_status === 'short') timeText = 'Ca 15 min';
-        else if (latest.queue_status === 'medium') timeText = 'Ca 25 min';
-      }
-
-      var distText = '';
-      if (best.dist !== null) {
-        distText = best.dist < 1
-          ? Math.round(best.dist * 1000) + ' m bort · '
-          : best.dist.toFixed(1) + ' km bort · ';
-      }
-
-      el.style.display = 'block';
-      el.innerHTML =
-        '<div class="bn-label">Bäst just nu</div>' +
-        '<div class="bn-card" onclick="goToVenueOnMap(getVenueById(\'' + v.id + '\'))">' +
-          '<div class="bn-bar" style="background:' + barColor + ';box-shadow:0 0 8px ' + barColor + '66"></div>' +
-          '<div class="bn-body">' +
-            '<div class="bn-name">' + v.name + '</div>' +
-            '<div class="bn-meta">' + distText + v.area + ' · stänger ' + v.closing + '</div>' +
-          '</div>' +
-          '<div class="bn-right">' +
-            '<div class="bn-time" style="color:' + barColor + '">' + timeText + '</div>' +
-            '<div class="bn-detail">→ Visa på karta</div>' +
-          '</div>' +
-        '</div>';
     }
 
     var _exsumFirstRender = true;
@@ -4236,7 +4193,7 @@
         ];
         badgeRow.innerHTML = defs.map(function(b) {
           var on = mine.length >= b.req;
-          return '<div class="badge-item' + (on ? ' badge-item--on' : '') + '">' +
+          return '<div class="badge-item' + (on ? ' badge-item--on' : ' badge-item--locked') + '">' +
             '<div class="badge-item-icon">' + b.icon + '</div>' +
             '<div class="badge-item-label">' + b.name + '</div>' +
             '</div>';
