@@ -235,16 +235,14 @@ import './style.css';
       return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
     }
 
-    // En hastighet per kö-session: första och sista mätpunkten de senaste 45 min.
-    function measureQueueRates(venueId, reports) {
-      var cutoff = Date.now() - 45 * 60 * 1000;
+    // En hastighet per kö-session (första → sista mätpunkt). Samma regler för ikväll, historik och kalibrering.
+    function sessionRates(reports) {
       var sessions = {};
       reports.forEach(function(r) {
-        if (r.venue_id !== venueId || !r.queue_session || r.people_ahead == null) return;
-        if (new Date(r.created_at).getTime() < cutoff) return;
+        if (!r.queue_session || r.people_ahead == null) return;
         (sessions[r.queue_session] = sessions[r.queue_session] || []).push(r);
       });
-      var rates = [];
+      var out = [];
       Object.keys(sessions).forEach(function(id) {
         var s = sessions[id].sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
         if (s.length < 2) return;
@@ -252,31 +250,65 @@ import './style.css';
         var mins = (new Date(last.created_at) - new Date(first.created_at)) / 60000;
         var moved = first.people_ahead - last.people_ahead;
         if (mins < 4 || mins > 90 || moved < 0) return;
-        if (moved > 0) { rates.push(moved / mins); return; }
+        var rate = null;
+        if (moved > 0) rate = moved / mins;
         // Samma intervall båda gångerna: rörelsen är okänd men under intervallets bredd.
-        if (mins >= 10) rates.push((aheadBucket(first.people_ahead).width / 2) / mins);
+        else if (mins >= 10) rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+        if (rate !== null) out.push({ venueId: first.venue_id, rate: rate, startedAt: new Date(first.created_at).getTime() });
       });
-      return rates;
+      return out;
     }
 
-    function estimateWait(venueId, reports) {
-      var now = Date.now();
+    function measureQueueRates(venueId, reports, now) {
+      var cutoff = now - 45 * 60 * 1000;
+      return sessionRates(reports.filter(function(r) {
+        var t = new Date(r.created_at).getTime();
+        return r.venue_id === venueId && t >= cutoff && t <= now;
+      })).map(function(x) { return x.rate; });
+    }
+
+    // Kvällen räknas från 06:00, så fredag 00:30 hör till fredagskvällen.
+    function nightKey(t) {
+      return { dow: new Date(t - 6 * 3600 * 1000).getDay(), hour: new Date(t).getHours() };
+    }
+
+    // Dörrtakt från tidigare kvällar: samma ställe, samma veckodag, ±1 timme. Kvällen kring `at` räknas inte
+    // (den täcks av ikvällens mätningar). Kräver ≥3 sessioner.
+    var _historicalRates = {};
+    var _historicalRatesTest = {};
+
+    function historicalRateFor(venueId, rates, at) {
+      var key = nightKey(at);
+      var matching = rates.filter(function(x) {
+        if (x.venueId !== venueId || Math.abs(x.startedAt - at) < 12 * 3600 * 1000) return false;
+        var k = nightKey(x.startedAt);
+        var dh = Math.abs(k.hour - key.hour);
+        return k.dow === key.dow && Math.min(dh, 24 - dh) <= 1;
+      }).map(function(x) { return x.rate; });
+      return matching.length >= 3 ? { rate: median(matching), n: matching.length } : null;
+    }
+
+    // now/hist kan anges för att räkna om en tidigare tidpunkt (kalibrering); annars just nu.
+    function estimateWait(venueId, reports, now, hist) {
+      now = now || Date.now();
+      if (hist === undefined) hist = _historicalRates[venueId] || null;
       var counted = reports.filter(function(r) {
-        return r.venue_id === venueId && isQueueReport(r) && r.people_ahead != null &&
-          now - new Date(r.created_at).getTime() < 45 * 60 * 1000;
+        var age = now - new Date(r.created_at).getTime();
+        return r.venue_id === venueId && isQueueReport(r) && r.people_ahead != null && age >= 0 && age < 45 * 60 * 1000;
       }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       if (!counted.length) return null;
       var fresh = counted.filter(function(r) { return now - new Date(r.created_at).getTime() < 20 * 60 * 1000; });
       var ahead = median((fresh.length ? fresh : [counted[0]]).map(function(r) { return r.people_ahead; }));
 
+      // Lager: ikvällens mätningar → tidigare kvällar → startgissning per venue.pace.
       var venue = getVenueById(venueId);
-      var prior = PACE_RATE[(venue && venue.pace) || 'normal'];
-      var measured = measureQueueRates(venueId, reports);
+      var prior = hist ? hist.rate : PACE_RATE[(venue && venue.pace) || 'normal'];
+      var measured = measureQueueRates(venueId, reports, now);
       var n = measured.length;
       var measuredRate = n ? median(measured) : null;
       var rate = n ? (n * measuredRate + 2 * prior) / (n + 2) : prior;
 
-      var est = { ahead: ahead, rate: rate, source: n ? 'live' : 'estimate', full: false, mins: 0, low: 0, high: 0 };
+      var est = { ahead: ahead, rate: rate, source: n ? 'live' : hist ? 'history' : 'estimate', full: false, mins: 0, low: 0, high: 0 };
       if (ahead === 0) return est;
       est.full = n >= 2 && measuredRate < 0.3 && ahead >= 10;
       est.mins = ahead / rate;
@@ -530,7 +562,7 @@ import './style.css';
       var vcParts = [];
       if (est) vcParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
       if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · ' + timeAgo(reports[0].created_at));
-      if (est && !est.full && est.ahead && est.source === 'estimate') vcParts.push('uppskattning');
+      if (est && !est.full && est.ahead && est.source !== 'live') vcParts.push('uppskattning');
       var omwN = onMyWayCount(venue.id);
       if (omwN) vcParts.push('~' + omwN + ' på väg hit');
       document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join(' · ') : 'Ingen rapport ännu';
@@ -1252,6 +1284,9 @@ import './style.css';
       // Historical patterns for test mode — simulate typical Friday night data
       // Sturecompagniet under tröskeln (3) — ska inte visas.
       _omwTestCounts = { 'spy-bar': 5, 'berns': 3, 'sturecompagniet': 2 };
+      // Café Opera: ingen session ikväll men dörrtakt från tidigare fredagar.
+      _historicalRatesTest = { 'cafe-opera': { rate: 0.7, n: 6 } };
+      _historicalRates = Object.assign({}, _historicalRates, _historicalRatesTest);
       var testDow = new Date().getDay();
       var testHour = new Date().getHours();
       _historicalPatterns = {
@@ -1440,9 +1475,85 @@ import './style.css';
       } catch(e) {}
     }
 
+    // ── Historisk dörrtakt + kalibrering ─────────────────────────────────────
+    // Hämtar kö-sessioner 8 veckor bakåt. PostgREST ger max 1000 rader — flytta till en RPC när datan växer.
+    var _calibration = [];
+
+    async function loadHistoricalRates() {
+      if (!supabase) return;
+      var since = new Date(Date.now() - 8 * 7 * 24 * 3600 * 1000).toISOString();
+      var res = await supabase.from('reports')
+        .select('venue_id, queue_session, people_ahead, report_type, created_at')
+        .not('queue_session', 'is', null)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1000);
+      if (res.error || !res.data) {
+        if (res.error) console.warn('[QueueBar] loadHistoricalRates:', res.error.message);
+        return;
+      }
+      var rates = sessionRates(res.data);
+      var now = Date.now();
+      var next = {};
+      VENUES.forEach(function(v) {
+        var h = historicalRateFor(v.id, rates, now);
+        if (h) next[v.id] = h;
+      });
+      _historicalRates = Object.assign(next, _historicalRatesTest);
+      _calibration = computeCalibration(res.data, rates);
+      if (_calibration.length) console.log('[QueueBar] Kalibrering — skriv qbCalibration() i konsolen för tabellen');
+      renderExploreVenues();
+      updateMapStatuses();
+    }
+
+    // Jämför vad appen hade sagt när kön-sessionen startade med verklig tid till "Jag är inne".
+    // fel = verklig − förutsagd: plus betyder att appen lovade för kort väntan.
+    function computeCalibration(history, rates) {
+      var bySession = {};
+      history.forEach(function(r) { (bySession[r.queue_session] = bySession[r.queue_session] || []).push(r); });
+      var perVenue = {};
+      history.forEach(function(r) {
+        if (r.report_type !== 'entered') return;
+        var start = bySession[r.queue_session].reduce(function(a, b) { return new Date(a.created_at) <= new Date(b.created_at) ? a : b; });
+        if (start === r || !start.people_ahead) return;
+        var startAt = new Date(start.created_at).getTime();
+        var actual = (new Date(r.created_at).getTime() - startAt) / 60000;
+        if (actual < 1 || actual > 120) return;
+        var before = history.filter(function(x) { return x.venue_id === r.venue_id && new Date(x.created_at).getTime() <= startAt; });
+        var est = estimateWait(r.venue_id, before, startAt, historicalRateFor(r.venue_id, rates, startAt));
+        if (!est) return;
+        var range = setWaitRange({ mins: start.people_ahead / est.rate }, 0.35);
+        (perVenue[r.venue_id] = perVenue[r.venue_id] || []).push({
+          err: actual - range.mins, inRange: actual >= range.low && actual <= range.high
+        });
+      });
+      function summarize(name, rows) {
+        return {
+          venue: name, sessions: rows.length,
+          medianErrorMin: Math.round(median(rows.map(function(x) { return Math.abs(x.err); }))),
+          biasMin: Math.round(median(rows.map(function(x) { return x.err; }))),
+          inRangePct: Math.round(100 * rows.filter(function(x) { return x.inRange; }).length / rows.length)
+        };
+      }
+      var out = Object.keys(perVenue).map(function(vid) {
+        var v = getVenueById(vid);
+        return summarize(v ? v.name : vid, perVenue[vid]);
+      }).sort(function(a, b) { return b.sessions - a.sessions; });
+      var all = [].concat.apply([], Object.keys(perVenue).map(function(k) { return perVenue[k]; }));
+      if (all.length) out.unshift(summarize('Alla', all));
+      return out;
+    }
+
+    function qbCalibration() {
+      if (!_calibration.length) { console.log('[QueueBar] Ingen kalibrering än — kräver avslutade "Jag är inne"-sessioner.'); return []; }
+      console.table(_calibration);
+      return _calibration;
+    }
+
     // Fix 4 — loadReports alltid, oavsett karta
     console.log('[QueueBar] Startar initial datainläsning');
-    loadReports().then(loadHistoricalPatterns);
+    loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates);
+    setInterval(loadHistoricalRates, 30 * 60 * 1000);
     subscribeToReports();
     if (supabase) {
       setInterval(loadReports, 30000);
@@ -2135,7 +2246,7 @@ import './style.css';
               '<div class="erow-name">' + venue.name + (isWatching(venue.id) ? '<svg viewBox="0 0 24 24" width="10" height="10" fill="rgba(255,255,255,0.5)" style="vertical-align:middle;margin-left:4px;flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') + '</div>' +
             '</div>' +
             '<div class="erow-meta">' + metaText +
-              (est && est.ahead && !est.full && est.source === 'estimate' ? ' · <span class="erow-est-label">uppskattning</span>' : '') +
+              (est && est.ahead && !est.full && est.source !== 'live' ? ' · <span class="erow-est-label">uppskattning</span>' : '') +
             '</div>' +
             (function() {
               var pat = _historicalPatterns[venue.id];
@@ -3026,6 +3137,7 @@ Object.assign(window, {
   openVenueCard,
   pickAhead,
   pickRV,
+  qbCalibration,
   queueSessionEntered,
   queueSessionUpdate,
   quickPickAhead,

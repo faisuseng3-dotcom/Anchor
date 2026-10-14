@@ -95,6 +95,8 @@ check('På väg: arrival prompt leads to report', js.includes('function onMyWayR
 check('På väg: synced to server via RPC', js.includes("rpc('start_on_my_way'") && js.includes("rpc('stop_on_my_way'") && js.includes("rpc('on_my_way_counts'"));
 check('På väg: count hidden below 3', js.includes('return n >= 3 ? n : 0;'));
 check('Forecast requires ≥3 recent reports', js.includes('function forecastWait(') && js.includes('if (recent.length < 3) return null;'));
+check('History layer: same weekday ±1h, ≥3 sessions, tonight excluded', js.includes('function historicalRateFor(') && js.includes('matching.length >= 3') && js.includes('12 * 3600 * 1000'));
+check('Calibration: replay estimate at session start, exposed in console', js.includes('function computeCalibration(') && js.includes('estimateWait(r.venue_id, before, startAt') && /\n  qbCalibration,/.test(js));
 check('Queue session: banner + handlers exposed', js.includes('function renderQueueSessionBanner(') && /\n  queueSessionEntered,/.test(js) && /\n  queueSessionUpdate,/.test(js) && /\n  dismissQueueSession,/.test(js));
 
 // ── injectTestData ────────────────────────────────────────────────────────────

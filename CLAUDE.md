@@ -131,3 +131,5 @@ All checks must pass. If a check fails, fix it before committing.
 - "På väg" persists in localStorage `qb_on_my_way`; after arrival `#omw-banner` asks for a report for 30 min, then clears. A started queue session always replaces it
 - "På väg" counts come from Supabase RPC `on_my_way_counts()` (≥3 only, server-side); the client also hides <3. Table `on_my_way` has RLS with no policies — only the security-definer RPCs touch it
 - `forecastWait()` only shows with ≥3 initial reports in 30 min spanning ≥10 min — otherwise the banner falls back to "kön nu"
+- Rate layers in `estimateWait`: tonight's sessions → `_historicalRates` (same weekday ±1h, ≥3 sessions, tonight excluded) → `venue.pace`. All non-live sources show "uppskattning"
+- `qbCalibration()` in the console: median error, bias (+ = app promised too short) and % inside the shown range, replayed from "Jag är inne" sessions
