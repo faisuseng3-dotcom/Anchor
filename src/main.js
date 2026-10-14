@@ -918,63 +918,80 @@ import './style.css';
           map.addImage(name, { width: size, height: size, data: imageData.data });
         }
 
-        function addSdfPin(map, name, iconFn) {
-          var W = 32, H = 48;
-          var canvas = document.createElement('canvas');
-          canvas.width = W; canvas.height = H;
-          var ctx = canvas.getContext('2d');
-          var cx = W / 2, r = W / 2 - 2, cy = r + 2, tipY = H - 2;
-          ctx.fillStyle = '#FFFFFF';
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(cx - r * 0.55, cy + r * 0.6);
-          ctx.bezierCurveTo(cx - r * 0.25, tipY - 5, cx - 2, tipY - 2, cx, tipY);
-          ctx.bezierCurveTo(cx + 2, tipY - 2, cx + r * 0.25, tipY - 5, cx + r * 0.55, cy + r * 0.6);
-          ctx.closePath();
-          ctx.fill();
-          ctx.globalCompositeOperation = 'destination-out';
-          iconFn(ctx, cx, cy, r);
-          ctx.globalCompositeOperation = 'source-over';
-          var imageData = ctx.getImageData(0, 0, W, H);
-          map.addImage(name, { width: W, height: H, data: imageData.data }, { sdf: true });
+        // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
+        var PIN_STATUS_COLORS = {
+          none: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: '#6B7280'
+        };
+
+        // Ikoner i 24×24-viewBox. Bar = cocktailglas, klubb = musiknot.
+        function drawBarGlyph(ctx) {
+          ctx.lineWidth = 2.4;
+          ctx.stroke(new Path2D('M19 3l-7 8-7-8Z'));
+          ctx.fill(new Path2D('M7.6 6h8.8L12 11Z'));
+          ctx.stroke(new Path2D('M12 11v10 M8 21h8'));
+        }
+        function drawClubGlyph(ctx) {
+          ctx.lineWidth = 2.4;
+          ctx.stroke(new Path2D('M9 18V5l12-2v13'));
+          ctx.stroke(new Path2D('M9 9l12-2'));
+          ctx.beginPath(); ctx.arc(6, 18, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(18, 16, 3, 0, Math.PI * 2); ctx.fill();
         }
 
-        function drawMartiniCutout(ctx, cx, cy, r) {
-          var s = r * 0.6;
+        // Droppformad nål i statusfärg med vit typ-ikon. Ritas i 2x för skärpa.
+        function addTypePin(map, name, color, glyphFn) {
+          var PR = 2, W = 38, H = 48;
+          var canvas = document.createElement('canvas');
+          canvas.width = W * PR; canvas.height = H * PR;
+          var ctx = canvas.getContext('2d');
+          ctx.scale(PR, PR);
+          var cx = W / 2, r = 16, cy = r + 2, tipY = H - 3;
+
+          function pinPath() {
+            ctx.beginPath();
+            ctx.moveTo(cx, tipY);
+            ctx.bezierCurveTo(cx - 4, tipY - 8, cx - r, cy + r * 0.55, cx - r, cy);
+            ctx.arc(cx, cy, r, Math.PI, 0);
+            ctx.bezierCurveTo(cx + r, cy + r * 0.55, cx + 4, tipY - 8, cx, tipY);
+            ctx.closePath();
+          }
+
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.30)';
+          ctx.shadowBlur = 3;
+          ctx.shadowOffsetY = 1;
+          pinPath();
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.restore();
+
+          // Vit kant för kontrast mot alla kartfärger
+          pinPath();
+          ctx.lineWidth = 2;
           ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          var iconSize = 18, s = iconSize / 24;
+          ctx.save();
+          ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
+          ctx.scale(s, s);
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.fillStyle = '#FFFFFF';
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
-          ctx.beginPath();
-          ctx.moveTo(cx - s, cy - s * 0.6);
-          ctx.lineTo(cx, cy + s * 0.2);
-          ctx.lineTo(cx + s, cy - s * 0.6);
-          ctx.moveTo(cx - s, cy - s * 0.6);
-          ctx.lineTo(cx + s, cy - s * 0.6);
-          ctx.moveTo(cx, cy + s * 0.2);
-          ctx.lineTo(cx, cy + s * 0.75);
-          ctx.moveTo(cx - s * 0.5, cy + s * 0.75);
-          ctx.lineTo(cx + s * 0.5, cy + s * 0.75);
-          ctx.stroke();
+          glyphFn(ctx);
+          ctx.restore();
+
+          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (map.hasImage(name)) map.removeImage(name);
+          map.addImage(name, { width: canvas.width, height: canvas.height, data: imageData.data }, { pixelRatio: PR });
         }
 
-        function drawDiscoCutout(ctx, cx, cy, r) {
-          var br = r * 0.56;
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(cx, cy, br, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.lineWidth = 1.5;
-          var g = br * 0.55;
-          for (var i = -1; i <= 1; i++) {
-            var dy = i * g, hw = Math.sqrt(Math.max(0, br * br - dy * dy));
-            if (hw > 2) { ctx.beginPath(); ctx.moveTo(cx - hw, cy + dy); ctx.lineTo(cx + hw, cy + dy); ctx.stroke(); }
-            var dx = i * g, hh = Math.sqrt(Math.max(0, br * br - dx * dx));
-            if (hh > 2) { ctx.beginPath(); ctx.moveTo(cx + dx, cy - hh); ctx.lineTo(cx + dx, cy + hh); ctx.stroke(); }
-          }
+        function registerTypePins(map) {
+          Object.keys(PIN_STATUS_COLORS).forEach(function(status) {
+            addTypePin(map, 'pin-bar-' + status,  PIN_STATUS_COLORS[status], drawBarGlyph);
+            addTypePin(map, 'pin-club-' + status, PIN_STATUS_COLORS[status], drawClubGlyph);
+          });
         }
 
         map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
@@ -982,8 +999,7 @@ import './style.css';
         map.on('load', function() {
           console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
 
-          addSdfPin(map, 'pin-bar',  drawMartiniCutout);
-          addSdfPin(map, 'pin-club', drawDiscoCutout);
+          registerTypePins(map);
 
           map.addSource('venues', {
             type: 'geojson', data: venueGeoJSON,
@@ -1012,23 +1028,21 @@ import './style.css';
             id: 'venues-pins', type: 'symbol', source: 'venues',
             filter: ['!', ['has', 'point_count']],
             layout: {
-              'icon-image': ['match', ['get', 'type'], 'bar', 'pin-bar', 'pin-club'],
-              'icon-size': 1,
+              // Typ (bar/klubb) styr ikonen, status styr färgen
+              'icon-image': ['concat',
+                ['match', ['get', 'type'], 'bar', 'pin-bar-', 'pin-club-'],
+                ['match', ['get', 'status'], ['none', 'short', 'medium', 'long'], ['get', 'status'], 'unknown']
+              ],
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.1],
               'icon-anchor': 'bottom',
               'icon-allow-overlap': true,
-              'icon-ignore-placement': true
+              'icon-ignore-placement': true,
+              // Längre köer ritas överst när nålar överlappar
+              'symbol-sort-key': ['match', ['get', 'status'], 'long', 4, 'medium', 3, 'short', 2, 'none', 1, 0]
             },
             paint: {
-              'icon-color': [
-                'match', ['get', 'status'],
-                'none',   '#00E676',
-                'short',  '#FFB300',
-                'medium', '#FF7043',
-                'long',   '#FF3B3B',
-                '#6B7280'
-              ],
-              'icon-halo-color': 'rgba(255,255,255,0.9)',
-              'icon-halo-width': 1.5
+              // Ingen data = visuellt nedtonad
+              'icon-opacity': ['match', ['get', 'status'], 'unknown', 0.7, 1]
             }
           });
 
