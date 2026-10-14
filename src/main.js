@@ -414,6 +414,13 @@ import './style.css';
       return VENUES.find(function(v) { return v.id === id; });
     }
 
+    // All text som kommer från databasen (andras rapporter) måste gå genom den här innan den hamnar i HTML.
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
     function timeAgo(dateString) {
       var mins = Math.floor((new Date() - new Date(dateString)) / 60000);
       if (mins < 1) return 'nyss';
@@ -1190,7 +1197,8 @@ import './style.css';
           showExploreError();
         }
         if (result.data) {
-          allReports = result.data;
+          // Bara kända ställen: venue_id hamnar i onclick-attribut och okända id:n kan inte visas meningsfullt ändå.
+          allReports = result.data.filter(function(r) { return getVenueById(r.venue_id); });
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
           if (testDataEnabled()) injectTestData();
           updateMapStatuses();
@@ -2278,7 +2286,7 @@ import './style.css';
               var recentWithComment = venueReports.filter(function(r) {
                 return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
               }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
-              var commentHtml = recentWithComment ? '<div class="erow-comment">"' + recentWithComment.comment + '"</div>' : '';
+              var commentHtml = recentWithComment ? '<div class="erow-comment">"' + escapeHtml(recentWithComment.comment) + '"</div>' : '';
               var closingSoonHtml = '';
               if (venue.closing) {
                 var cParts = venue.closing.split(':');
@@ -2663,7 +2671,7 @@ import './style.css';
       if (waitTime === descriptor) waitTime = '';
       var color = liveColors[qs] || '#9CA3AF';
       var venue = getVenueById(r.venue_id);
-      var name = venue ? venue.name : (r.venue_name || r.venue_id);
+      var name = venue ? venue.name : escapeHtml(r.venue_name || r.venue_id);
       var area = venue ? venue.area : '';
       if (isSub) {
         var subLabel = descriptor;

@@ -79,6 +79,10 @@ const missingVenues = testVenueIds.filter(id => !js.includes("id: '" + id + "'")
 check('All 17 testdata venues present in VENUES array', missingVenues.length === 0);
 if (missingVenues.length > 0) console.error('   Missing: ' + missingVenues.join(', '));
 
+// ── XSS ───────────────────────────────────────────────────────────────────────
+check('XSS: report comments escaped before HTML', js.includes('escapeHtml(recentWithComment.comment)') && !js.includes("'\"' + recentWithComment.comment"));
+check('XSS: reports for unknown venues dropped on load', js.includes('result.data.filter(function(r) { return getVenueById(r.venue_id); })'));
+
 // ── Väntetidsmodell ───────────────────────────────────────────────────────────
 const venuesBlock = js.slice(js.indexOf('const VENUES = ['), js.indexOf('];', js.indexOf('const VENUES = [')));
 const venueCount = (venuesBlock.match(/\{ id: '/g) || []).length;
