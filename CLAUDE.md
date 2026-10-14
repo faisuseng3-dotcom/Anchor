@@ -129,3 +129,5 @@ All checks must pass. If a check fails, fix it before committing.
 - Queue session lives in localStorage `qb_queue_session`; `#omw-banner` shows it before "På väg". Followups need ≥4 min gap (server: 3) — never count them as reports or points
 - `.toast` text must use `var(--bg-primary)` — background is `--text-primary` (white)
 - "På väg" persists in localStorage `qb_on_my_way`; after arrival `#omw-banner` asks for a report for 30 min, then clears. A started queue session always replaces it
+- "På väg" counts come from Supabase RPC `on_my_way_counts()` (≥3 only, server-side); the client also hides <3. Table `on_my_way` has RLS with no policies — only the security-definer RPCs touch it
+- `forecastWait()` only shows with ≥3 initial reports in 30 min spanning ≥10 min — otherwise the banner falls back to "kön nu"

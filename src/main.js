@@ -280,10 +280,50 @@ import './style.css';
       if (ahead === 0) return est;
       est.full = n >= 2 && measuredRate < 0.3 && ahead >= 10;
       est.mins = ahead / rate;
-      var spread = n >= 3 ? 0.2 : 0.35;
+      return setWaitRange(est, n >= 3 ? 0.2 : 0.35);
+    }
+
+    function setWaitRange(est, spread) {
       est.low = Math.round(est.mins * (1 - spread) / 5) * 5;
       est.high = Math.max(5, Math.round(est.mins * (1 + spread) / 5) * 5);
       return est;
+    }
+
+    // Kö när du är framme: nuvarande kö + trenden i kvällens rapporter + andra som är på väg.
+    // Bara med ≥3 rapporter de senaste 30 min över ≥10 min — annars är trenden brus.
+    function forecastWait(venueId, minsAhead, othersOnWay) {
+      var est = estimateWait(venueId, allReports);
+      if (!est || est.full || minsAhead < 5) return null;
+      var now = Date.now();
+      var recent = allReports.filter(function(r) {
+        return r.venue_id === venueId && isQueueReport(r) && r.people_ahead != null &&
+          now - new Date(r.created_at).getTime() <= 30 * 60 * 1000;
+      }).sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+      if (recent.length < 3) return null;
+      var first = recent[0], last = recent[recent.length - 1];
+      var spanMins = (new Date(last.created_at) - new Date(first.created_at)) / 60000;
+      if (spanMins < 10) return null;
+      var growth = (last.people_ahead - first.people_ahead) / spanMins;
+      var ahead = Math.max(0, est.ahead + growth * minsAhead) + othersOnWay / 2;
+      var fc = { ahead: Math.round(ahead), rate: est.rate, source: est.source, full: false, mins: ahead / est.rate, low: 0, high: 0 };
+      return fc.ahead === 0 ? fc : setWaitRange(fc, 0.35);
+    }
+
+    // "På väg"-räknare: servern returnerar bara ställen med ≥3 aktiva (on_my_way_counts).
+    var _omwCounts = {};
+    var _omwTestCounts = {};
+
+    async function loadOnMyWayCounts() {
+      if (!supabase) return;
+      var res = await supabase.rpc('on_my_way_counts');
+      if (res.error) { console.warn('[QueueBar] on_my_way_counts:', res.error.message); return; }
+      _omwCounts = {};
+      (res.data || []).forEach(function(r) { _omwCounts[r.venue_id] = Number(r.n); });
+    }
+
+    function onMyWayCount(venueId) {
+      var n = (_omwCounts[venueId] || 0) + (_omwTestCounts[venueId] || 0);
+      return n >= 3 ? n : 0;
     }
 
     function formatWait(est) {
@@ -491,6 +531,8 @@ import './style.css';
       if (est) vcParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
       if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · ' + timeAgo(reports[0].created_at));
       if (est && !est.full && est.ahead && est.source === 'estimate') vcParts.push('uppskattning');
+      var omwN = onMyWayCount(venue.id);
+      if (omwN) vcParts.push('~' + omwN + ' på väg hit');
       document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join(' · ') : 'Ingen rapport ännu';
       document.getElementById('vc-closing').textContent = 'Stänger ' + venue.closing;
       document.getElementById('vc-area').textContent = venue.area;
@@ -1126,6 +1168,7 @@ import './style.css';
           if (typeof updateProfileStats === 'function') updateProfileStats();
           checkWatchedVenueAlerts();
           updateOnMyWayUI();
+          loadOnMyWayCounts().then(updateOnMyWayUI);
         }
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
@@ -1185,7 +1228,7 @@ import './style.css';
         r('drama', 6, 37),
         // uppskattning från dörrtakt (inga sessioner)
         r('cafe-opera', 35, 37), r('cafe-opera', 10, 60), r('cafe-opera', 2, 60, { comment: 'Fri entré t.o.m. 23:30' }),
-        r('berns', 30, 17), r('berns', 15, 37), r('berns', 3, 37),
+        r('berns', 28, 17), r('berns', 15, 37), r('berns', 3, 37),
         r('sturecompagniet', 40, 17), r('sturecompagniet', 20, 37), r('sturecompagniet', 5, 37),
         r('sturehof', 30, 5), r('sturehof', 10, 17),
         r('soap-bar', 40, 5), r('soap-bar', 15, 17), r('soap-bar', 3, 17),
@@ -1207,6 +1250,8 @@ import './style.css';
       console.log('[QueueBar] injectTestData: ' + testReports.length + ' testrap injicerade, totalt ' + allReports.length + ' rapporter för ' + VENUES.length + ' venues');
 
       // Historical patterns for test mode — simulate typical Friday night data
+      // Sturecompagniet under tröskeln (3) — ska inte visas.
+      _omwTestCounts = { 'spy-bar': 5, 'berns': 3, 'sturecompagniet': 2 };
       var testDow = new Date().getDay();
       var testHour = new Date().getHours();
       _historicalPatterns = {
@@ -2621,6 +2666,8 @@ import './style.css';
       _onMyWay = { venueId: venueId, arrivalTime: Date.now() + walkMins * 60 * 1000, walkMins: walkMins, timerId: null };
       scheduleArrival();
       saveOnMyWay();
+      if (supabase) supabase.rpc('start_on_my_way', { p_user_id: getUserId(), p_venue_id: venueId, p_minutes: walkMins })
+        .then(function(res) { if (res.error) console.warn('[QueueBar] start_on_my_way:', res.error.message); });
 
       showToast('På väg till ' + venue.name + ' — ca ' + walkMins + ' min');
       updateOnMyWayUI();
@@ -2629,6 +2676,8 @@ import './style.css';
 
     function cancelOnMyWay() {
       if (_onMyWay && _onMyWay.timerId) clearTimeout(_onMyWay.timerId);
+      if (_onMyWay && supabase) supabase.rpc('stop_on_my_way', { p_user_id: getUserId() })
+        .then(function(res) { if (res.error) console.warn('[QueueBar] stop_on_my_way:', res.error.message); });
       _onMyWay = null;
       saveOnMyWay();
       updateOnMyWayUI();
@@ -2678,7 +2727,10 @@ import './style.css';
         var waitNow = venueWaitText(_onMyWay.venueId);
         var pat = _historicalPatterns[_onMyWay.venueId];
         var hintMap = { free: 'brukar vara fri ingång nu', short: 'brukar vara kort kö nu', medium: 'brukar vara medel kö nu', long: 'brukar vara lång kö nu' };
-        var context = waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || '';
+        var fc = forecastWait(_onMyWay.venueId, minsLeft, Math.max(0, onMyWayCount(_onMyWay.venueId) - 1));
+        var fcText = fc ? formatWait(fc) : '';
+        var context = fc ? (fcText === 'Ingen kö' ? 'troligen ingen kö då' : 'troligen ' + fcText + ' kö då')
+          : waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || '';
         title = 'På väg · ' + name;
         sub = 'Framme om ca ' + minsLeft + ' min' + (context ? ' · ' + context : '');
         actions = '<button class="qs-btn" onclick="onMyWayArrived()">Jag är framme</button>';

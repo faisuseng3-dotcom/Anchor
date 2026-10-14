@@ -92,6 +92,9 @@ check('History reads queue_status (no level column)', !js.includes("select('venu
 check('Queue session: followup + entered reports', js.includes("submitSessionReport('followup'") && js.includes("submitSessionReport('entered'"));
 check('På väg: persisted + restored on load', js.includes("localStorage.setItem(OMW_KEY") && js.includes('restoreOnMyWay();'));
 check('På väg: arrival prompt leads to report', js.includes('function onMyWayReport(') && /\n  onMyWayReport,/.test(js) && /\n  onMyWayArrived,/.test(js));
+check('På väg: synced to server via RPC', js.includes("rpc('start_on_my_way'") && js.includes("rpc('stop_on_my_way'") && js.includes("rpc('on_my_way_counts'"));
+check('På väg: count hidden below 3', js.includes('return n >= 3 ? n : 0;'));
+check('Forecast requires ≥3 recent reports', js.includes('function forecastWait(') && js.includes('if (recent.length < 3) return null;'));
 check('Queue session: banner + handlers exposed', js.includes('function renderQueueSessionBanner(') && /\n  queueSessionEntered,/.test(js) && /\n  queueSessionUpdate,/.test(js) && /\n  dismissQueueSession,/.test(js));
 
 // ── injectTestData ────────────────────────────────────────────────────────────
