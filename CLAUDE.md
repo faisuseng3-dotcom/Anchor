@@ -10,8 +10,8 @@ Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `ma
 
 - **One file**: all HTML, CSS, JS in `index.html`. Never split into separate files without asking.
 - **Screens**: `#screen-home` (map), `#screen-explore` (list), `#screen-live` (feed), `#screen-profile`
-- **Data flow**: `loadReports()` → `allReports` → all renders. `injectTestData()` always runs (offline + Supabase) for dev.
-- **Test mode**: `?testdata=true` in URL (or supabase=null) injects 48 test reports for 17 venues (incl. queue sessions for live/full states).
+- **Data flow**: `loadReports()` → `allReports` → all renders. `injectTestData()` runs only when `testDataEnabled()`.
+- **Test mode**: `?testdata=true` in URL, or the secret key sequence 2 → x → Enter (toggles `qb_testdata` in localStorage and reloads), injects 48 test reports for 17 venues. Off by default — production never shows fake reports.
 - **Font**: Plus Jakarta Sans (Google Fonts) — sans-serif. CSS var: `--font-base: 'Plus Jakarta Sans', sans-serif`.
 - **Map**: Mapbox GL JS v3.9.4, style `streets-v12`, center Stockholm `[18.0686, 59.3293]`.
 

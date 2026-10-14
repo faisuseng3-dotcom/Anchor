@@ -1166,8 +1166,8 @@ import './style.css';
 
     async function loadReports() {
       if (!supabase) {
-        console.warn('[QueueBar] loadReports: supabase är null — kör testdata-only');
-        injectTestData();
+        console.warn('[QueueBar] loadReports: supabase är null');
+        if (testDataEnabled()) injectTestData();
         updateMapStatuses();
         renderHomeVenues();
         if (typeof renderExploreVenues === 'function') renderExploreVenues();
@@ -1192,7 +1192,7 @@ import './style.css';
         if (result.data) {
           allReports = result.data;
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
-          injectTestData();
+          if (testDataEnabled()) injectTestData();
           updateMapStatuses();
           renderHomeVenues();
           if (typeof renderExploreVenues === 'function') renderExploreVenues();
@@ -1230,6 +1230,28 @@ import './style.css';
       }).subscribe();
       console.log('[QueueBar] Prenumererar på realtidsuppdateringar');
     }
+
+    // Testdata visas bara med ?testdata=true eller efter den hemliga växlingen 2 → x → Enter.
+    var TESTDATA_KEY = 'qb_testdata';
+
+    function testDataEnabled() {
+      if (new URLSearchParams(location.search).get('testdata') === 'true') return true;
+      try { return localStorage.getItem(TESTDATA_KEY) === '1'; } catch(e) { return false; }
+    }
+
+    var _secretKeys = [];
+    document.addEventListener('keydown', function(e) {
+      var tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.repeat) return;
+      _secretKeys = _secretKeys.concat({ key: e.key.toLowerCase(), at: Date.now() }).slice(-3);
+      var seq = _secretKeys.map(function(k) { return k.key; }).join(',');
+      if (seq !== '2,x,enter' || _secretKeys[2].at - _secretKeys[0].at > 3000) return;
+      _secretKeys = [];
+      var turnOn = !testDataEnabled();
+      try { localStorage.setItem(TESTDATA_KEY, turnOn ? '1' : '0'); } catch(err) {}
+      // Ladda om utan ?testdata så att växlingen alltid gäller och ingen testdata ligger kvar i minnet.
+      location.href = location.pathname;
+    });
 
     function injectTestData() {
       var now = Date.now();
