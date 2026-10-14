@@ -89,6 +89,8 @@ check('Wait model: fixed wait strings only in getStatusLabel fallback', (js.matc
 check('Reports store people_ahead + report_type', js.includes('people_ahead: peopleAhead') && js.includes("report_type: 'initial'"));
 check('Report buttons ask for people ahead', html.includes('pickAhead(') && html.includes('quickPickAhead('));
 check('History reads queue_status (no level column)', !js.includes("select('venue_id, level"));
+check('Queue session: followup + entered reports', js.includes("submitSessionReport('followup'") && js.includes("submitSessionReport('entered'"));
+check('Queue session: banner + handlers exposed', js.includes('function renderQueueSessionBanner(') && /\n  queueSessionEntered,/.test(js) && /\n  queueSessionUpdate,/.test(js) && /\n  dismissQueueSession,/.test(js));
 
 // ── injectTestData ────────────────────────────────────────────────────────────
 check('injectTestData function defined', js.includes('function injectTestData()'));

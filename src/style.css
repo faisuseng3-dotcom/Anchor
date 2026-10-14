@@ -1123,6 +1123,18 @@
     .q-btn-sub { font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.45); }
     .erow-est-label { color: rgba(255,255,255,0.45); font-style: italic; }
 
+    /* Kö-session i toppraden (#omw-banner) */
+    .qs-row { display: flex; align-items: flex-start; gap: 12px; }
+    .qs-text { flex: 1; min-width: 0; }
+    .qs-title { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qs-sub { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+    .qs-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .qs-btn { flex: 1; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #fff; font-family: var(--font-base); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .qs-btn--primary { background: #fff; color: #0A0A0B; border-color: #fff; }
+    .qs-close { flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 0 4px 4px; }
+    .live-entered { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); padding: 0 0 12px; font-variant-numeric: tabular-nums; }
+    .qs-close { flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 0 4px 4px; }
+
     .rs-back { background: none; border: 0; margin-top: 4px; font-family: var(--font-base); font-size: 14px; color: var(--text-secondary); cursor: pointer; align-self: flex-start; padding: 4px 0; }
 
     /* ── Watch (Bevaka) button on each explore row ────────────────────── */
@@ -1298,7 +1310,7 @@
     /* ── Toast ─────────────────────────────────────────────────────────── */
     .toast {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-      background: var(--text-primary); color: #FFFFFF;
+      background: var(--text-primary); color: var(--bg-primary);
       border-radius: var(--radius-md); padding: 10px 20px;
       font-family: var(--font-base); font-size: 13px; font-weight: 500;
       z-index: 500; white-space: nowrap;

@@ -1173,7 +1173,7 @@ import './style.css';
       }
       var testReports = [
         // spy-bar — långsam dörr, uppmätt: 25–50 → 10–25 på 25 min
-        r('spy-bar', 40, 17), r('spy-bar', 30, 37, { session: 'ts-spy' }), r('spy-bar', 5, 17, { session: 'ts-spy', type: 'followup' }),
+        r('spy-bar', 40, 17), r('spy-bar', 30, 37, { session: 'ts-spy' }), r('spy-bar', 5, 17, { session: 'ts-spy', type: 'followup' }), r('spy-bar', 2, 0, { session: 'ts-spy', type: 'entered' }),
         r('spy-bar', 4, 37, { comment: 'VIP-kö öppen' }),
         // under-bron — snabb dörr, uppmätt: 25–50 → 1–10 på 10 min
         r('under-bron', 14, 37, { session: 'ts-ub' }), r('under-bron', 4, 5, { session: 'ts-ub', type: 'followup' }), r('under-bron', 8, 17),
@@ -1245,6 +1245,7 @@ import './style.css';
         }
       } catch(e) { result = { error: e }; }
       if (result.error) throw result.error;
+      startQueueSession({ id: insertObj.queue_session, venueId: venueId, venueName: venueName, ahead: peopleAhead, at: now.getTime() });
       await supabase.rpc('increment_points', { p_user_id: userId, p_points: 10 });
       await loadReports();
       return true;
@@ -1252,6 +1253,96 @@ import './style.css';
 
     function newQueueSessionId() {
       return 'qs-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function reportErrorText(err) {
+      var msg = (err && err.message) || '';
+      if (msg.indexOf('Vänta') === 0) return msg;
+      if (msg.indexOf('rate_limited') >= 0) return 'Du har redan rapporterat nyss — vänta en stund';
+      if (msg.indexOf('too_soon') >= 0) return 'Vänta några minuter innan du uppdaterar igen';
+      if (msg.indexOf('session_') >= 0) return 'Din kö-rapport har gått ut — rapportera på nytt';
+      return 'Fel — försök igen';
+    }
+
+    // ── Kö-session: "Står du kvar?" + "Jag är inne" ──────────────────────────
+    // Sparas i telefonen; varje uppföljning blir en mätpunkt för köns hastighet (measureQueueRates).
+    var QS_KEY = 'qb_queue_session';
+    var QS_MAX_AGE = 90 * 60 * 1000;
+    var QS_MIN_GAP = 4 * 60 * 1000;
+    var QS_MAX_FOLLOWUPS = 4;
+
+    function getQueueSession() {
+      var s = null;
+      try { s = JSON.parse(localStorage.getItem(QS_KEY) || 'null'); } catch(e) {}
+      if (s && Date.now() - s.startedAt > QS_MAX_AGE) { endQueueSession(); return null; }
+      return s;
+    }
+
+    function startQueueSession(r) {
+      if (_onMyWay) cancelOnMyWay();
+      var s = { id: r.id, venueId: r.venueId, venueName: r.venueName, startedAt: r.at, lastAhead: r.ahead, lastAt: r.at, followups: 0 };
+      try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
+      updateOnMyWayUI();
+    }
+
+    function endQueueSession() {
+      try { localStorage.removeItem(QS_KEY); } catch(e) {}
+      updateOnMyWayUI();
+    }
+
+    async function submitSessionReport(type, peopleAhead) {
+      var s = getQueueSession();
+      if (!s) throw new Error('session_expired');
+      if (!supabase) throw new Error('Supabase är inte tillgänglig');
+      var now = new Date();
+      var draft = { venue_id: s.venueId, people_ahead: peopleAhead, report_type: 'initial', created_at: now.toISOString() };
+      var rateContext = allReports.filter(function(r) { return r.venue_id !== s.venueId || !isQueueReport(r); });
+      var result = await supabase.from('reports').insert({
+        venue_id: s.venueId, venue_name: s.venueName, user_id: getUserId(),
+        queue_status: waitToStatus(estimateWait(s.venueId, [draft].concat(rateContext))),
+        people_ahead: peopleAhead, report_type: type, queue_session: s.id,
+        expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString()
+      });
+      if (result.error) throw result.error;
+      return { session: s, at: now.getTime() };
+    }
+
+    function queueSessionUpdate() {
+      var s = getQueueSession();
+      if (!s) return;
+      if (Date.now() - s.lastAt < QS_MIN_GAP) {
+        showToast('Vänta ' + Math.ceil((QS_MIN_GAP - (Date.now() - s.lastAt)) / 60000) + ' min innan du uppdaterar');
+        return;
+      }
+      openQuickReport(s.venueId, 'followup');
+    }
+
+    async function submitQueueFollowup(peopleAhead) {
+      try {
+        var res = await submitSessionReport('followup', peopleAhead);
+        var s = res.session;
+        s.lastAhead = peopleAhead; s.lastAt = res.at; s.followups++;
+        try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
+        showToast('Tack — nu vet vi hur snabbt kön rör sig');
+        updateOnMyWayUI();
+        loadReports();
+      } catch(err) { showToast(reportErrorText(err)); }
+    }
+
+    async function queueSessionEntered() {
+      try {
+        var res = await submitSessionReport('entered', 0);
+        var mins = Math.max(1, Math.round((res.at - res.session.startedAt) / 60000));
+        endQueueSession();
+        if (supabase) await supabase.rpc('increment_points', { p_user_id: getUserId(), p_points: 5 });
+        showFloatingPoints(5);
+        showToast('Inne efter ' + mins + ' min — tack!');
+        loadReports();
+      } catch(err) { showToast(reportErrorText(err)); }
+    }
+
+    function dismissQueueSession() {
+      endQueueSession();
     }
 
     // Geolocation (passiv, en gång — för avstånd i explore-rader)
@@ -2411,6 +2502,19 @@ import './style.css';
         '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
     }
 
+    // Senaste "Jag är inne" — verklig väntetid från en kö-session, inte en uppskattning.
+    function _liveEnteredHtml(venueId, cutoff) {
+      var entered = allReports.filter(function(r) {
+        return r.venue_id === venueId && r.report_type === 'entered' && r.queue_session && new Date(r.created_at).getTime() > cutoff;
+      }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+      if (!entered) return '';
+      var start = allReports.filter(function(r) { return r.queue_session === entered.queue_session; })
+        .reduce(function(min, r) { var t = new Date(r.created_at).getTime(); return t < min ? t : min; }, Infinity);
+      var mins = Math.round((new Date(entered.created_at).getTime() - start) / 60000);
+      if (!isFinite(mins) || mins < 1) return '';
+      return '<div class="live-entered">Någon kom in efter ' + mins + ' min · ' + timeAgo(entered.created_at) + '</div>';
+    }
+
     function toggleLiveVenue(venueId) {
       if (_liveExpanded.has(venueId)) { _liveExpanded.delete(venueId); } else { _liveExpanded.add(venueId); }
       renderLiveFeed();
@@ -2449,7 +2553,7 @@ import './style.css';
         var older = reports.slice(1);
         var mainRow = _liveRowHtml(latest, false);
         if (!mainRow) return '';
-        var html = mainRow;
+        var html = mainRow + _liveEnteredHtml(vid, cutoff);
         if (older.length) {
           var expanded = _liveExpanded.has(vid);
           if (expanded) {
@@ -2506,6 +2610,11 @@ import './style.css';
     function updateOnMyWayUI() {
       var banner = document.getElementById('omw-banner');
       if (!banner) return;
+      var qs = getQueueSession();
+      if (qs) {
+        renderQueueSessionBanner(banner, qs);
+        return;
+      }
       if (!_onMyWay) {
         banner.style.display = 'none';
         return;
@@ -2529,6 +2638,23 @@ import './style.css';
         + (hint ? ' · ' + hint : '')
         + '</div></div>'
         + '<button onclick="cancelOnMyWay()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;padding:4px 0 4px 12px;line-height:1">×</button>';
+    }
+
+    function renderQueueSessionBanner(banner, qs) {
+      var sinceLast = Date.now() - qs.lastAt;
+      var canUpdate = sinceLast >= QS_MIN_GAP && qs.followups < QS_MAX_FOLLOWUPS;
+      var sub = canUpdate
+        ? 'Står du kvar? Hur många är framför dig nu?'
+        : aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför dig' : '') + ' · ' + timeAgo(new Date(qs.lastAt).toISOString());
+      banner.style.display = 'block';
+      banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
+        + '<div class="qs-title">I kön · ' + qs.venueName + '</div>'
+        + '<div class="qs-sub">' + sub + '</div></div>'
+        + '<button class="qs-close" onclick="dismissQueueSession()" aria-label="Avsluta">×</button></div>'
+        + '<div class="qs-actions">'
+        + (canUpdate ? '<button class="qs-btn" onclick="queueSessionUpdate()">Uppdatera</button>' : '')
+        + '<button class="qs-btn qs-btn--primary" onclick="queueSessionEntered()">Jag är inne</button>'
+        + '</div>';
     }
 
     setInterval(updateOnMyWayUI, 60000);
@@ -2600,16 +2726,19 @@ import './style.css';
           filterReportList();
           if (dest) showScreen(dest);
         }, 1500);
-      } catch(err) { showToast('Fel — försök igen'); }
+      } catch(err) { showToast(reportErrorText(err)); }
     }
 
     // ── Snabbrapport (bottom sheet från Utforska) ────────────────────────────
     var qrVenue = null;
+    var qrMode = 'initial';
 
-    function openQuickReport(venueId) {
+    function openQuickReport(venueId, mode) {
       qrVenue = getVenueById(venueId);
       if (!qrVenue) return;
+      qrMode = mode === 'followup' ? 'followup' : 'initial';
       document.getElementById('qr-vname').textContent = qrVenue.name;
+      document.getElementById('qr-question').textContent = qrMode === 'followup' ? 'Hur många är framför dig nu?' : 'Hur många står framför dig?';
       document.getElementById('qr-overlay').style.display = 'block';
       var sheet = document.getElementById('qr-sheet');
       sheet.style.display = 'block';
@@ -2631,7 +2760,9 @@ import './style.css';
     async function quickPickAhead(peopleAhead) {
       if (!qrVenue) return;
       var v = qrVenue;
+      var mode = qrMode;
       closeQuickReport();
+      if (mode === 'followup') { submitQueueFollowup(peopleAhead); return; }
       try {
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
@@ -2639,7 +2770,7 @@ import './style.css';
         showToast('Rapport skickad — tack!');
         loadReports();
       } catch(e) {
-        showToast('Fel — försök igen');
+        showToast(reportErrorText(e));
       }
     }
 
@@ -2664,10 +2795,12 @@ import './style.css';
 
     function updateProfileStats() {
       var userId = getUserId();
-      var mine = userHistory.length > 0
+      var allMine = userHistory.length > 0
         ? userHistory
         : allReports.filter(function(r) { return r.user_id === userId; });
-      var pts = mine.length * 10;
+      var mine = allMine.filter(isQueueReport);
+      var enteredCount = allMine.filter(function(r) { return r.report_type === 'entered'; }).length;
+      var pts = mine.length * 10 + enteredCount * 5;
 
       var sr = document.getElementById('stat-r');
       var sp = document.getElementById('stat-p');
@@ -2769,6 +2902,7 @@ Object.assign(window, {
   declineConsent,
   debouncedFilterExplore,
   dismissInstall,
+  dismissQueueSession,
   filterReportList,
   getVenueById,
   goOnMyWay,
@@ -2785,6 +2919,8 @@ Object.assign(window, {
   openVenueCard,
   pickAhead,
   pickRV,
+  queueSessionEntered,
+  queueSessionUpdate,
   quickPickAhead,
   retrySupabase,
   selectMapSearchVenue,
