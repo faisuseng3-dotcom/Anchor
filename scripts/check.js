@@ -103,7 +103,7 @@ check('Queue session: banner + handlers exposed', js.includes('function renderQu
 check('injectTestData function defined', js.includes('function injectTestData()'));
 check('injectTestData: removes old test entries before inject', js.includes("startsWith('test-')"));
 check('loadReports calls injectTestData', js.includes('injectTestData()'));
-check('Test data off by default (URL or secret 2/s + x + Enter only)', js.includes('if (testDataEnabled()) injectTestData();') && !/\n\s+injectTestData\(\);/.test(js) && js.includes("KeyX: 'x'"));
+check('Test data off by default (URL or secret Alt + 2 only)', js.includes('if (testDataEnabled()) injectTestData();') && !/\n\s+injectTestData\(\);/.test(js) && js.includes("e.code !== 'Digit2' || !e.altKey"));
 
 // ── Result ────────────────────────────────────────────────────────────────────
 console.log('');

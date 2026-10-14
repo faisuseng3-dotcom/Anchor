@@ -1231,7 +1231,7 @@ import './style.css';
       console.log('[QueueBar] Prenumererar på realtidsuppdateringar');
     }
 
-    // Testdata visas bara med ?testdata=true eller efter den hemliga växlingen 2 → x → Enter.
+    // Testdata visas bara med ?testdata=true eller efter den hemliga växlingen Alt + 2.
     var TESTDATA_KEY = 'qb_testdata';
 
     function testDataEnabled() {
@@ -1239,38 +1239,20 @@ import './style.css';
       try { return localStorage.getItem(TESTDATA_KEY) === '1'; } catch(e) { return false; }
     }
 
-    // Tangenterna kan tryckas samtidigt i valfri ordning, eller snabbt efter varandra (inom 1,5 s).
-    // I textfält krävs att alla tre hålls nere samtidigt, så att vanligt skrivande aldrig utlöser växlingen.
-    var SECRET_SLOTS = { Digit2: 'a', Numpad2: 'a', KeyS: 'a', KeyX: 'x', Enter: 'enter', NumpadEnter: 'enter' };
-    var _secretHeld = {};
-    var _secretRecent = {};
-
     function toggleTestData() {
-      _secretHeld = {}; _secretRecent = {};
       try { localStorage.setItem(TESTDATA_KEY, testDataEnabled() ? '0' : '1'); } catch(err) {}
       // Ladda om utan ?testdata så att växlingen alltid gäller och ingen testdata ligger kvar i minnet.
       location.href = location.pathname;
     }
 
+    // Alt + 2 (Option + 2 på Mac). Inte i textfält — där skriver Option/AltGr + 2 "@".
     document.addEventListener('keydown', function(e) {
-      var slot = SECRET_SLOTS[e.code];
-      if (!slot) return;
-      _secretHeld[slot] = true;
-      if (!e.repeat) _secretRecent[slot] = Date.now();
+      if (e.code !== 'Digit2' || !e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
       var tag = e.target && e.target.tagName;
-      var inText = tag === 'INPUT' || tag === 'TEXTAREA';
-      var ready = ['a', 'x', 'enter'].every(function(k) {
-        return _secretHeld[k] || (!inText && Date.now() - (_secretRecent[k] || 0) < 1500);
-      });
-      if (!ready) return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       e.preventDefault();
       toggleTestData();
     });
-    document.addEventListener('keyup', function(e) {
-      var slot = SECRET_SLOTS[e.code];
-      if (slot) delete _secretHeld[slot];
-    });
-    window.addEventListener('blur', function() { _secretHeld = {}; });
 
     function injectTestData() {
       var now = Date.now();
