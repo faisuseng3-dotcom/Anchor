@@ -1239,19 +1239,38 @@ import './style.css';
       try { return localStorage.getItem(TESTDATA_KEY) === '1'; } catch(e) { return false; }
     }
 
-    var _secretKeys = [];
-    document.addEventListener('keydown', function(e) {
-      var tag = e.target && e.target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.repeat) return;
-      _secretKeys = _secretKeys.concat({ key: e.key.toLowerCase(), at: Date.now() }).slice(-3);
-      var seq = _secretKeys.map(function(k) { return k.key; }).join(',');
-      if (seq !== '2,x,enter' || _secretKeys[2].at - _secretKeys[0].at > 3000) return;
-      _secretKeys = [];
-      var turnOn = !testDataEnabled();
-      try { localStorage.setItem(TESTDATA_KEY, turnOn ? '1' : '0'); } catch(err) {}
+    // Tangenterna kan tryckas samtidigt i valfri ordning, eller snabbt efter varandra (inom 1,5 s).
+    // I textfält krävs att alla tre hålls nere samtidigt, så att vanligt skrivande aldrig utlöser växlingen.
+    var SECRET_SLOTS = { Digit2: 'a', Numpad2: 'a', KeyS: 'a', KeyX: 'x', Enter: 'enter', NumpadEnter: 'enter' };
+    var _secretHeld = {};
+    var _secretRecent = {};
+
+    function toggleTestData() {
+      _secretHeld = {}; _secretRecent = {};
+      try { localStorage.setItem(TESTDATA_KEY, testDataEnabled() ? '0' : '1'); } catch(err) {}
       // Ladda om utan ?testdata så att växlingen alltid gäller och ingen testdata ligger kvar i minnet.
       location.href = location.pathname;
+    }
+
+    document.addEventListener('keydown', function(e) {
+      var slot = SECRET_SLOTS[e.code];
+      if (!slot) return;
+      _secretHeld[slot] = true;
+      if (!e.repeat) _secretRecent[slot] = Date.now();
+      var tag = e.target && e.target.tagName;
+      var inText = tag === 'INPUT' || tag === 'TEXTAREA';
+      var ready = ['a', 'x', 'enter'].every(function(k) {
+        return _secretHeld[k] || (!inText && Date.now() - (_secretRecent[k] || 0) < 1500);
+      });
+      if (!ready) return;
+      e.preventDefault();
+      toggleTestData();
     });
+    document.addEventListener('keyup', function(e) {
+      var slot = SECRET_SLOTS[e.code];
+      if (slot) delete _secretHeld[slot];
+    });
+    window.addEventListener('blur', function() { _secretHeld = {}; });
 
     function injectTestData() {
       var now = Date.now();
