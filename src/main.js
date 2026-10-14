@@ -1100,6 +1100,7 @@ import './style.css';
         if (typeof renderLiveFeed === 'function') renderLiveFeed();
         if (typeof updateProfileStats === 'function') updateProfileStats();
         checkWatchedVenueAlerts();
+        updateOnMyWayUI();
         return;
       }
       showSkeletons();
@@ -1124,6 +1125,7 @@ import './style.css';
           if (typeof renderLiveFeed === 'function') renderLiveFeed();
           if (typeof updateProfileStats === 'function') updateProfileStats();
           checkWatchedVenueAlerts();
+          updateOnMyWayUI();
         }
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
@@ -2571,13 +2573,42 @@ import './style.css';
     setInterval(function() { if (typeof renderLiveFeed === 'function') renderLiveFeed(); }, 30000);
 
     // ── På väg ────────────────────────────────────────────────────────────────
-    var _onMyWay = null; // { venueId, arrivalTime, walkMins, timerId }
+    // Sparas i telefonen så att den överlever en omladdning. Vid framkomst blir den en fråga
+    // om kön, så att den som ändå går dit blir rapportör i rätt ögonblick.
+    var OMW_KEY = 'qb_on_my_way';
+    var OMW_PROMPT_WINDOW = 30 * 60 * 1000;
+    var _onMyWay = null; // { venueId, arrivalTime (ms), walkMins, timerId }
+
+    function saveOnMyWay() {
+      try {
+        if (_onMyWay) localStorage.setItem(OMW_KEY, JSON.stringify({ venueId: _onMyWay.venueId, arrivalTime: _onMyWay.arrivalTime, walkMins: _onMyWay.walkMins }));
+        else localStorage.removeItem(OMW_KEY);
+      } catch(e) {}
+    }
+
+    function scheduleArrival() {
+      if (_onMyWay.timerId) clearTimeout(_onMyWay.timerId);
+      var ms = _onMyWay.arrivalTime - Date.now();
+      _onMyWay.timerId = ms > 0 ? setTimeout(updateOnMyWayUI, ms) : null;
+    }
+
+    function restoreOnMyWay() {
+      var saved = null;
+      try { saved = JSON.parse(localStorage.getItem(OMW_KEY) || 'null'); } catch(e) {}
+      if (!saved || !getVenueById(saved.venueId) || Date.now() > saved.arrivalTime + OMW_PROMPT_WINDOW) {
+        try { localStorage.removeItem(OMW_KEY); } catch(e) {}
+        return;
+      }
+      _onMyWay = { venueId: saved.venueId, arrivalTime: saved.arrivalTime, walkMins: saved.walkMins, timerId: null };
+      scheduleArrival();
+    }
 
     function goOnMyWay(venueId) {
       var venue = getVenueById(venueId);
       if (!venue) return;
-
       if (_onMyWay && _onMyWay.timerId) clearTimeout(_onMyWay.timerId);
+      // Den som går till ett annat ställe står inte längre i sin gamla kö.
+      if (getQueueSession()) endQueueSession();
 
       var walkMins = 15;
       if (window._userPos) {
@@ -2587,14 +2618,9 @@ import './style.css';
         walkMins = Math.max(2, Math.round(distKm / (5 / 60)));
       }
 
-      var arrivalTime = new Date(Date.now() + walkMins * 60 * 1000);
-      var timerId = setTimeout(function() {
-        showToast('Dags! Du borde vara framme vid ' + venue.name + ' nu 👟');
-        _onMyWay = null;
-        updateOnMyWayUI();
-      }, walkMins * 60 * 1000);
-
-      _onMyWay = { venueId: venueId, arrivalTime: arrivalTime, walkMins: walkMins, timerId: timerId };
+      _onMyWay = { venueId: venueId, arrivalTime: Date.now() + walkMins * 60 * 1000, walkMins: walkMins, timerId: null };
+      scheduleArrival();
+      saveOnMyWay();
 
       showToast('På väg till ' + venue.name + ' — ca ' + walkMins + ' min');
       updateOnMyWayUI();
@@ -2604,7 +2630,21 @@ import './style.css';
     function cancelOnMyWay() {
       if (_onMyWay && _onMyWay.timerId) clearTimeout(_onMyWay.timerId);
       _onMyWay = null;
+      saveOnMyWay();
       updateOnMyWayUI();
+    }
+
+    function onMyWayArrived() {
+      if (!_onMyWay) return;
+      _onMyWay.arrivalTime = Date.now();
+      scheduleArrival();
+      saveOnMyWay();
+      updateOnMyWayUI();
+    }
+
+    function onMyWayReport() {
+      if (!_onMyWay) return;
+      openQuickReport(_onMyWay.venueId);
     }
 
     function updateOnMyWayUI() {
@@ -2615,29 +2655,40 @@ import './style.css';
         renderQueueSessionBanner(banner, qs);
         return;
       }
+      if (_onMyWay && Date.now() > _onMyWay.arrivalTime + OMW_PROMPT_WINDOW) {
+        _onMyWay = null;
+        saveOnMyWay();
+      }
       if (!_onMyWay) {
         banner.style.display = 'none';
         return;
       }
       var venue = getVenueById(_onMyWay.venueId);
       var name = venue ? venue.name : _onMyWay.venueId;
-      var minsLeft = Math.max(0, Math.round((_onMyWay.arrivalTime - Date.now()) / 60000));
+      var minsLeft = Math.round((_onMyWay.arrivalTime - Date.now()) / 60000);
+      var arrived = minsLeft <= 0;
 
-      var pat = _historicalPatterns[_onMyWay.venueId];
-      var hint = '';
-      if (pat) {
-        var hintMap = { free: 'Brukar vara fri ingång vid den här tiden', short: 'Brukar vara kort kö vid den här tiden', medium: 'Brukar vara medel kö vid den här tiden', long: 'Brukar vara lång kö vid den här tiden' };
-        hint = hintMap[pat.level] || '';
+      var title, sub, actions;
+      if (arrived) {
+        title = 'Framme vid ' + name + '?';
+        sub = 'Hur många står framför dig?';
+        actions = '<button class="qs-btn" onclick="cancelOnMyWay()">Kom inte dit</button>'
+          + '<button class="qs-btn qs-btn--primary" onclick="onMyWayReport()">Rapportera kön</button>';
+      } else {
+        var waitNow = venueWaitText(_onMyWay.venueId);
+        var pat = _historicalPatterns[_onMyWay.venueId];
+        var hintMap = { free: 'brukar vara fri ingång nu', short: 'brukar vara kort kö nu', medium: 'brukar vara medel kö nu', long: 'brukar vara lång kö nu' };
+        var context = waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || '';
+        title = 'På väg · ' + name;
+        sub = 'Framme om ca ' + minsLeft + ' min' + (context ? ' · ' + context : '');
+        actions = '<button class="qs-btn" onclick="onMyWayArrived()">Jag är framme</button>';
       }
-
-      banner.style.display = 'flex';
-      banner.innerHTML = '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:13px;font-weight:600;color:#fff">På väg till ' + name + '</div>'
-        + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px">'
-        + (minsLeft <= 0 ? 'Du borde vara framme nu' : 'Anländer om ca ' + minsLeft + ' min')
-        + (hint ? ' · ' + hint : '')
-        + '</div></div>'
-        + '<button onclick="cancelOnMyWay()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;padding:4px 0 4px 12px;line-height:1">×</button>';
+      banner.style.display = 'block';
+      banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
+        + '<div class="qs-title">' + title + '</div>'
+        + '<div class="qs-sub">' + sub + '</div></div>'
+        + '<button class="qs-close" onclick="cancelOnMyWay()" aria-label="Avbryt">×</button></div>'
+        + '<div class="qs-actions">' + actions + '</div>';
     }
 
     function renderQueueSessionBanner(banner, qs) {
@@ -2657,6 +2708,8 @@ import './style.css';
         + '</div>';
     }
 
+    restoreOnMyWay();
+    updateOnMyWayUI();
     setInterval(updateOnMyWayUI, 60000);
 
     // ── Rapportera ────────────────────────────────────────────────────────────
@@ -2909,6 +2962,8 @@ Object.assign(window, {
   goToReport,
   loadReports,
   obNext,
+  onMyWayArrived,
+  onMyWayReport,
   obSkip,
   onMapSearchBlur,
   onMapSearchFocus,

@@ -128,3 +128,4 @@ All checks must pass. If a check fails, fix it before committing.
 - "Fullt" requires ≥2 measured sessions — never infer it from the pace prior
 - Queue session lives in localStorage `qb_queue_session`; `#omw-banner` shows it before "På väg". Followups need ≥4 min gap (server: 3) — never count them as reports or points
 - `.toast` text must use `var(--bg-primary)` — background is `--text-primary` (white)
+- "På väg" persists in localStorage `qb_on_my_way`; after arrival `#omw-banner` asks for a report for 30 min, then clears. A started queue session always replaces it

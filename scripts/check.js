@@ -90,6 +90,8 @@ check('Reports store people_ahead + report_type', js.includes('people_ahead: peo
 check('Report buttons ask for people ahead', html.includes('pickAhead(') && html.includes('quickPickAhead('));
 check('History reads queue_status (no level column)', !js.includes("select('venue_id, level"));
 check('Queue session: followup + entered reports', js.includes("submitSessionReport('followup'") && js.includes("submitSessionReport('entered'"));
+check('På väg: persisted + restored on load', js.includes("localStorage.setItem(OMW_KEY") && js.includes('restoreOnMyWay();'));
+check('På väg: arrival prompt leads to report', js.includes('function onMyWayReport(') && /\n  onMyWayReport,/.test(js) && /\n  onMyWayArrived,/.test(js));
 check('Queue session: banner + handlers exposed', js.includes('function renderQueueSessionBanner(') && /\n  queueSessionEntered,/.test(js) && /\n  queueSessionUpdate,/.test(js) && /\n  dismissQueueSession,/.test(js));
 
 // ── injectTestData ────────────────────────────────────────────────────────────
