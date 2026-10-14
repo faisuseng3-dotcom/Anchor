@@ -700,7 +700,7 @@ import './style.css';
       mapEl.innerHTML = '<div class="map-error-inner"><span>' + (msg || 'Kartan kunde inte laddas') + '</span><small>Övriga funktioner fungerar normalt</small></div>';
     }
 
-    if (window.mapboxgl) {
+    if (mapboxgl) {
       console.log('[QueueBar] Initierar Mapbox-karta');
       try {
         map = new mapboxgl.Map({
