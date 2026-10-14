@@ -832,11 +832,11 @@ import './style.css';
             paint: {
               'icon-color': [
                 'match', ['get', 'status'],
-                'none',   '#22C55E',
-                'short',  '#F59E0B',
-                'medium', '#EA7300',
-                'long',   '#EF4444',
-                '#9CA3AF'
+                'none',   '#00E676',
+                'short',  '#FFB300',
+                'medium', '#FF7043',
+                'long',   '#FF3B3B',
+                '#6B7280'
               ],
               'icon-halo-color': 'rgba(255,255,255,0.9)',
               'icon-halo-width': 1.5
