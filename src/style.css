@@ -1117,6 +1117,12 @@
     .q-btn-medium { border-left-color: var(--status-medium); }
     .q-btn-long   { border-left-color: var(--status-long); }
 
+    /* Antal framför — neutral kant: antal ≠ väntetid, det avgör dörrens takt */
+    .q-btn-count { display: flex; align-items: center; justify-content: space-between; border-left-color: rgba(255,255,255,0.18); }
+    .q-btn-num { font-family: var(--font-mono); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .q-btn-sub { font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.45); }
+    .erow-est-label { color: rgba(255,255,255,0.45); font-style: italic; }
+
     .rs-back { background: none; border: 0; margin-top: 4px; font-family: var(--font-base); font-size: 14px; color: var(--text-secondary); cursor: pointer; align-self: flex-start; padding: 4px 0; }
 
     /* ── Watch (Bevaka) button on each explore row ────────────────────── */

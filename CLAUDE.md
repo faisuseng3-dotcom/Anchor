@@ -11,7 +11,7 @@ Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `ma
 - **One file**: all HTML, CSS, JS in `index.html`. Never split into separate files without asking.
 - **Screens**: `#screen-home` (map), `#screen-explore` (list), `#screen-live` (feed), `#screen-profile`
 - **Data flow**: `loadReports()` → `allReports` → all renders. `injectTestData()` always runs (offline + Supabase) for dev.
-- **Test mode**: `?testdata=true` in URL (or supabase=null) injects 52 test reports for 17 venues.
+- **Test mode**: `?testdata=true` in URL (or supabase=null) injects 47 test reports for 17 venues (incl. queue sessions for live/full states).
 - **Font**: Plus Jakarta Sans (Google Fonts) — sans-serif. CSS var: `--font-base: 'Plus Jakarta Sans', sans-serif`.
 - **Map**: Mapbox GL JS v3.9.4, style `streets-v12`, center Stockholm `[18.0686, 59.3293]`.
 
@@ -71,7 +71,9 @@ Full status color system and dark-palette values: `/premium-design`.
 - `STATUS_COLORS` — `{free, short, medium, long, unknown}` → hex
 - `renderExploreVenues()` — re-renders the explore list + summary widget
 - `renderExploreSummary(animate)` — updates "Stockholm just nu" widget
-- `injectTestData()` — 52 test reports for 17 venues
+- `injectTestData()` — 47 test reports for 17 venues
+- `estimateWait(venueId, reports)` — wait = people ahead ÷ queue rate (measured sessions blended with `venue.pace` prior)
+- `formatWait(est)` / `venueWaitText(venueId)` — the only source of wait text on every screen
 
 ## Engineering philosophy
 
@@ -121,3 +123,6 @@ All checks must pass. If a check fails, fix it before committing.
 - `computeExploreSummary()` uses 30-min staleness cutoff and 2-hour lookback window
 - `_exsumFirstRender` flag controls countUp animation — only animates on first render, not re-renders
 - Pulse animation: remove class → force reflow (`void el.offsetWidth`) → re-add class
+- Wait time is never a fixed string per status — always `venueWaitText()`; `getStatusLabel()` is only the fallback for reports without `people_ahead`
+- Only `report_type: 'initial'` reports measure queue length (`isQueueReport`); followups are positions in the queue, used only for rate
+- "Fullt" requires ≥2 measured sessions — never infer it from the pace prior

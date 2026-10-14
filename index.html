@@ -109,11 +109,12 @@
 
       <div id="rs2" style="display:none">
         <div id="rs-vname"></div>
-        <div class="rs-question">Hur lång är kön nu?</div>
-        <button class="q-btn q-btn-none"   onclick="pickQueue('none')">Ingen kö</button>
-        <button class="q-btn q-btn-short"  onclick="pickQueue('short')">Ca 15 min</button>
-        <button class="q-btn q-btn-medium" onclick="pickQueue('medium')">Ca 25 min</button>
-        <button class="q-btn q-btn-long"   onclick="pickQueue('long')">30+ min</button>
+        <div class="rs-question">Hur många står framför dig?</div>
+        <button class="q-btn q-btn-count" onclick="pickAhead(0)"><span class="q-btn-num">Ingen kö</span><span class="q-btn-sub">gå rakt in</span></button>
+        <button class="q-btn q-btn-count" onclick="pickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count" onclick="pickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count" onclick="pickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count" onclick="pickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
         <div style="margin-top:12px">
           <input id="rs-comment" type="text" maxlength="80" placeholder="Valfri kommentar: fri entré, dresscode, VIP-kö öppen…" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;font-size:14px;color:rgba(255,255,255,0.8);font-family:inherit;outline:none" />
         </div>
@@ -182,11 +183,12 @@
     <div id="qr-sheet" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:390px;background:#0D0F1A;border:1px solid rgba(255,255,255,0.09);border-bottom:none;border-radius:20px 20px 0 0;padding:20px 20px 48px;z-index:201;">
       <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 20px;"></div>
       <div id="qr-vname" style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;"></div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:20px;">Hur lång är kön nu?</div>
-      <button class="q-btn q-btn-none"   onclick="quickPickQueue('none')">Ingen kö</button>
-      <button class="q-btn q-btn-short"  onclick="quickPickQueue('short')">Ca 15 min</button>
-      <button class="q-btn q-btn-medium" onclick="quickPickQueue('medium')">Ca 25 min</button>
-      <button class="q-btn q-btn-long"   onclick="quickPickQueue('long')">30+ min</button>
+      <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:20px;">Hur många står framför dig?</div>
+      <button class="q-btn q-btn-count" onclick="quickPickAhead(0)"><span class="q-btn-num">Ingen kö</span><span class="q-btn-sub">gå rakt in</span></button>
+      <button class="q-btn q-btn-count" onclick="quickPickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count" onclick="quickPickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count" onclick="quickPickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count" onclick="quickPickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
     </div>
 
     <nav id="bottom-nav">

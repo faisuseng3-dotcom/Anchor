@@ -79,6 +79,17 @@ const missingVenues = testVenueIds.filter(id => !js.includes("id: '" + id + "'")
 check('All 17 testdata venues present in VENUES array', missingVenues.length === 0);
 if (missingVenues.length > 0) console.error('   Missing: ' + missingVenues.join(', '));
 
+// ── Väntetidsmodell ───────────────────────────────────────────────────────────
+const venuesBlock = js.slice(js.indexOf('const VENUES = ['), js.indexOf('];', js.indexOf('const VENUES = [')));
+const venueCount = (venuesBlock.match(/\{ id: '/g) || []).length;
+const paceCount = (venuesBlock.match(/pace: '(slow|normal|fast)'/g) || []).length;
+check('Wait model: every venue has pace slow/normal/fast', venueCount > 0 && paceCount === venueCount);
+check('Wait model: estimateWait + formatWait defined', js.includes('function estimateWait(') && js.includes('function formatWait('));
+check('Wait model: fixed wait strings only in getStatusLabel fallback', (js.match(/'~25 min'/g) || []).length === 1);
+check('Reports store people_ahead + report_type', js.includes('people_ahead: peopleAhead') && js.includes("report_type: 'initial'"));
+check('Report buttons ask for people ahead', html.includes('pickAhead(') && html.includes('quickPickAhead('));
+check('History reads queue_status (no level column)', !js.includes("select('venue_id, level"));
+
 // ── injectTestData ────────────────────────────────────────────────────────────
 check('injectTestData function defined', js.includes('function injectTestData()'));
 check('injectTestData: removes old test entries before inject', js.includes("startsWith('test-')"));

@@ -142,34 +142,34 @@ import './style.css';
     var userHistory = [];
 
     const VENUES = [
-      { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.3349, lng: 18.0735, closing: '03:00' },
-      { id: 'akkurat', name: 'Akkurat Bar & Restaurang', address: 'Hornsgatan 18', area: 'Slussen', type: 'bar', lat: 59.3190, lng: 18.0640, closing: '01:00' },
-      { id: 'tjoget', name: 'Tjoget', address: 'Hornsbruksgatan 24', area: 'Hornstull', type: 'bar', lat: 59.3157, lng: 18.0348, closing: '01:00' },
-      { id: 'sturehof', name: 'Sturehof', address: 'Stureplan 2', area: 'Östermalm', type: 'bar', lat: 59.3361, lng: 18.0733, closing: '02:00' },
-      { id: 'pelikan', name: 'Pelikan', address: 'Blekingegatan 40', area: 'Södermalm', type: 'bar', lat: 59.3121, lng: 18.0760, closing: '01:00' },
-      { id: 'morfar-ginko', name: 'Morfar Ginko', address: 'Swedenborgsgatan 13', area: 'Södermalm', type: 'bar', lat: 59.3150, lng: 18.0645, closing: '01:00' },
-      { id: 'spy-bar', name: 'Spy Bar', address: 'Birger Jarlsgatan 20', area: 'Östermalm', type: 'bar', lat: 59.3360, lng: 18.0730, closing: '05:00' },
-      { id: 'fasching', name: 'Fasching', address: 'Kungsgatan 63', area: 'Norrmalm', type: 'bar', lat: 59.3350, lng: 18.0620, closing: '03:00' },
-      { id: 'berns', name: 'Berns', address: 'Berzelii Park', area: 'Norrmalm', type: 'bar', lat: 59.3322, lng: 18.0739, closing: '03:00' },
-      { id: 'lounge-bar', name: 'The Lounge Bar', address: 'Sveavägen 45', area: 'Norrmalm', type: 'bar', lat: 59.3360, lng: 18.0620, closing: '01:00' },
-      { id: 'niva22', name: 'Nivå 22', address: 'Fridhemsgatan 17', area: 'Kungsholmen', type: 'bar', lat: 59.3420, lng: 18.0490, closing: '01:00' },
-      { id: 'cafe-opera', name: 'Café Opera', address: 'Karl XII:s torg 6', area: 'Kungsträdgården', type: 'klubb', lat: 59.3307, lng: 18.0715, closing: '05:00' },
-      { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3088, lng: 18.0812, closing: '05:00' },
-      { id: 'under-bron', name: 'Under Bron', address: 'Skansbron 4', area: 'Södermalm', type: 'klubb', lat: 59.3082, lng: 18.0798, closing: '05:00' },
-      { id: 'sturecompagniet', name: 'Sturecompagniet', address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.3365, lng: 18.0735, closing: '05:00' },
-      { id: 'kristall', name: 'Kristall', address: 'Regeringsgatan 12', area: 'Norrmalm', type: 'klubb', lat: 59.3340, lng: 18.0620, closing: '03:00' },
-      { id: 'golden-hits', name: 'Golden Hits', address: 'Kungsgatan 26', area: 'Norrmalm', type: 'klubb', lat: 59.3340, lng: 18.0630, closing: '03:00' },
-      { id: 'neu', name: 'Neu', address: 'Östgötagatan 8', area: 'Södermalm', type: 'klubb', lat: 59.3115, lng: 18.0780, closing: '05:00' },
-      { id: 'end-nightclub', name: 'END Nightclub', address: 'Jakobsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.3320, lng: 18.0640, closing: '05:00' },
-      { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.3360, lng: 18.0640, closing: '03:00' },
-      { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00' },
-      { id: 'patricia', name: 'Patricia', address: 'Stadsgårdskajen 152', area: 'Södermalm', type: 'klubb', lat: 59.3190, lng: 18.0650, closing: '05:00' },
-      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Hornstull', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00' },
-      { id: 'gro', name: 'Gro', address: 'Folkungagatan 84', area: 'Södermalm', type: 'bar', lat: 59.3135, lng: 18.0760, closing: '01:00' },
-      { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00' },
-      { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.3342, lng: 18.0656, closing: '02:00' },
-      { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00' },
-      { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: '05:00' }
+      { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.3349, lng: 18.0735, closing: '03:00', pace: 'fast' },
+      { id: 'akkurat', name: 'Akkurat Bar & Restaurang', address: 'Hornsgatan 18', area: 'Slussen', type: 'bar', lat: 59.3190, lng: 18.0640, closing: '01:00', pace: 'fast' },
+      { id: 'tjoget', name: 'Tjoget', address: 'Hornsbruksgatan 24', area: 'Hornstull', type: 'bar', lat: 59.3157, lng: 18.0348, closing: '01:00', pace: 'fast' },
+      { id: 'sturehof', name: 'Sturehof', address: 'Stureplan 2', area: 'Östermalm', type: 'bar', lat: 59.3361, lng: 18.0733, closing: '02:00', pace: 'fast' },
+      { id: 'pelikan', name: 'Pelikan', address: 'Blekingegatan 40', area: 'Södermalm', type: 'bar', lat: 59.3121, lng: 18.0760, closing: '01:00', pace: 'fast' },
+      { id: 'morfar-ginko', name: 'Morfar Ginko', address: 'Swedenborgsgatan 13', area: 'Södermalm', type: 'bar', lat: 59.3150, lng: 18.0645, closing: '01:00', pace: 'fast' },
+      { id: 'spy-bar', name: 'Spy Bar', address: 'Birger Jarlsgatan 20', area: 'Östermalm', type: 'bar', lat: 59.3360, lng: 18.0730, closing: '05:00', pace: 'slow' },
+      { id: 'fasching', name: 'Fasching', address: 'Kungsgatan 63', area: 'Norrmalm', type: 'bar', lat: 59.3350, lng: 18.0620, closing: '03:00', pace: 'fast' },
+      { id: 'berns', name: 'Berns', address: 'Berzelii Park', area: 'Norrmalm', type: 'bar', lat: 59.3322, lng: 18.0739, closing: '03:00', pace: 'slow' },
+      { id: 'lounge-bar', name: 'The Lounge Bar', address: 'Sveavägen 45', area: 'Norrmalm', type: 'bar', lat: 59.3360, lng: 18.0620, closing: '01:00', pace: 'fast' },
+      { id: 'niva22', name: 'Nivå 22', address: 'Fridhemsgatan 17', area: 'Kungsholmen', type: 'bar', lat: 59.3420, lng: 18.0490, closing: '01:00', pace: 'fast' },
+      { id: 'cafe-opera', name: 'Café Opera', address: 'Karl XII:s torg 6', area: 'Kungsträdgården', type: 'klubb', lat: 59.3307, lng: 18.0715, closing: '05:00', pace: 'slow' },
+      { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3088, lng: 18.0812, closing: '05:00', pace: 'fast' },
+      { id: 'under-bron', name: 'Under Bron', address: 'Skansbron 4', area: 'Södermalm', type: 'klubb', lat: 59.3082, lng: 18.0798, closing: '05:00', pace: 'fast' },
+      { id: 'sturecompagniet', name: 'Sturecompagniet', address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.3365, lng: 18.0735, closing: '05:00', pace: 'slow' },
+      { id: 'kristall', name: 'Kristall', address: 'Regeringsgatan 12', area: 'Norrmalm', type: 'klubb', lat: 59.3340, lng: 18.0620, closing: '03:00', pace: 'normal' },
+      { id: 'golden-hits', name: 'Golden Hits', address: 'Kungsgatan 26', area: 'Norrmalm', type: 'klubb', lat: 59.3340, lng: 18.0630, closing: '03:00', pace: 'normal' },
+      { id: 'neu', name: 'Neu', address: 'Östgötagatan 8', area: 'Södermalm', type: 'klubb', lat: 59.3115, lng: 18.0780, closing: '05:00', pace: 'normal' },
+      { id: 'end-nightclub', name: 'END Nightclub', address: 'Jakobsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.3320, lng: 18.0640, closing: '05:00', pace: 'normal' },
+      { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.3360, lng: 18.0640, closing: '03:00', pace: 'normal' },
+      { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00', pace: 'normal' },
+      { id: 'patricia', name: 'Patricia', address: 'Stadsgårdskajen 152', area: 'Södermalm', type: 'klubb', lat: 59.3190, lng: 18.0650, closing: '05:00', pace: 'normal' },
+      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Hornstull', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00', pace: 'normal' },
+      { id: 'gro', name: 'Gro', address: 'Folkungagatan 84', area: 'Södermalm', type: 'bar', lat: 59.3135, lng: 18.0760, closing: '01:00', pace: 'fast' },
+      { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00', pace: 'fast' },
+      { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.3342, lng: 18.0656, closing: '02:00', pace: 'fast' },
+      { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00', pace: 'slow' },
+      { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: '05:00', pace: 'normal' }
     ];
 
     function computeConfidence(venueReports) {
@@ -206,8 +206,116 @@ import './style.css';
       return 1;
     }
 
+    // ── Väntetid = kölängd ÷ köns hastighet ──────────────────────────────────
+    // Personer per minut som släpps in, startgissning per venue.pace tills kvällens mätningar finns.
+    var PACE_RATE = { slow: 1.0, normal: 2.0, fast: 3.0 };
+    // people_ahead lagras som knappens mittvärde; width används när någon står kvar i samma intervall.
+    var AHEAD_BUCKETS = [
+      { mid: 0,  width: 0,  label: 'Ingen kö' },
+      { mid: 5,  width: 9,  label: '1–10' },
+      { mid: 17, width: 15, label: '10–25' },
+      { mid: 37, width: 25, label: '25–50' },
+      { mid: 60, width: 30, label: '50+' }
+    ];
+
+    function aheadBucket(n) {
+      for (var i = AHEAD_BUCKETS.length - 1; i >= 0; i--) {
+        if (n >= AHEAD_BUCKETS[i].mid) return AHEAD_BUCKETS[i];
+      }
+      return AHEAD_BUCKETS[0];
+    }
+
+    function isQueueReport(r) {
+      return !r.report_type || r.report_type === 'initial';
+    }
+
+    function median(values) {
+      var s = values.slice().sort(function(a, b) { return a - b; });
+      var mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+    }
+
+    // En hastighet per kö-session: första och sista mätpunkten de senaste 45 min.
+    function measureQueueRates(venueId, reports) {
+      var cutoff = Date.now() - 45 * 60 * 1000;
+      var sessions = {};
+      reports.forEach(function(r) {
+        if (r.venue_id !== venueId || !r.queue_session || r.people_ahead == null) return;
+        if (new Date(r.created_at).getTime() < cutoff) return;
+        (sessions[r.queue_session] = sessions[r.queue_session] || []).push(r);
+      });
+      var rates = [];
+      Object.keys(sessions).forEach(function(id) {
+        var s = sessions[id].sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        if (s.length < 2) return;
+        var first = s[0], last = s[s.length - 1];
+        var mins = (new Date(last.created_at) - new Date(first.created_at)) / 60000;
+        var moved = first.people_ahead - last.people_ahead;
+        if (mins < 4 || mins > 90 || moved < 0) return;
+        if (moved > 0) { rates.push(moved / mins); return; }
+        // Samma intervall båda gångerna: rörelsen är okänd men under intervallets bredd.
+        if (mins >= 10) rates.push((aheadBucket(first.people_ahead).width / 2) / mins);
+      });
+      return rates;
+    }
+
+    function estimateWait(venueId, reports) {
+      var now = Date.now();
+      var counted = reports.filter(function(r) {
+        return r.venue_id === venueId && isQueueReport(r) && r.people_ahead != null &&
+          now - new Date(r.created_at).getTime() < 45 * 60 * 1000;
+      }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+      if (!counted.length) return null;
+      var fresh = counted.filter(function(r) { return now - new Date(r.created_at).getTime() < 20 * 60 * 1000; });
+      var ahead = median((fresh.length ? fresh : [counted[0]]).map(function(r) { return r.people_ahead; }));
+
+      var venue = getVenueById(venueId);
+      var prior = PACE_RATE[(venue && venue.pace) || 'normal'];
+      var measured = measureQueueRates(venueId, reports);
+      var n = measured.length;
+      var measuredRate = n ? median(measured) : null;
+      var rate = n ? (n * measuredRate + 2 * prior) / (n + 2) : prior;
+
+      var est = { ahead: ahead, rate: rate, source: n ? 'live' : 'estimate', full: false, mins: 0, low: 0, high: 0 };
+      if (ahead === 0) return est;
+      est.full = n >= 2 && measuredRate < 0.3 && ahead >= 10;
+      est.mins = ahead / rate;
+      var spread = n >= 3 ? 0.2 : 0.35;
+      est.low = Math.round(est.mins * (1 - spread) / 5) * 5;
+      est.high = Math.max(5, Math.round(est.mins * (1 + spread) / 5) * 5);
+      return est;
+    }
+
+    function formatWait(est) {
+      if (!est) return '';
+      if (est.full) return 'Fullt';
+      if (est.ahead === 0) return 'Ingen kö';
+      if (est.high <= 5) return '<5 min';
+      if (est.high > 60) return est.low + '+ min';
+      if (est.low < 5) return '<' + est.high + ' min';
+      if (est.low === est.high) return '~' + est.low + ' min';
+      return est.low + '–' + est.high + ' min';
+    }
+
+    function waitToStatus(est) {
+      if (est.full) return 'long';
+      if (est.ahead === 0 || est.mins < 3) return 'none';
+      if (est.mins < 18) return 'short';
+      if (est.mins < 30) return 'medium';
+      return 'long';
+    }
+
+    // Väntetidstext för en venue — samma källa för karta, Utforska, venue-kort, Live och kvällsplan.
+    function venueWaitText(venueId) {
+      var est = estimateWait(venueId, allReports);
+      if (est) return formatWait(est);
+      return getStatusLabel(computeStatus(venueId, allReports));
+    }
+
     function computeStatus(venueId, reports) {
-      var venueReports = reports.filter(function(r) { return r.venue_id === venueId; });
+      var est = estimateWait(venueId, reports);
+      if (est) return waitToStatus(est);
+      var venueReports = reports.filter(function(r) { return r.venue_id === venueId && isQueueReport(r); });
       if (!venueReports.length) return 'unknown';
       var freshCutoff = Date.now() - 45 * 60 * 1000;
       var fresh = venueReports.filter(function(r) { return new Date(r.created_at).getTime() > freshCutoff; });
@@ -253,13 +361,10 @@ import './style.css';
     function shareVenue(venueId) {
       var venue = getVenueById(venueId);
       if (!venue) return;
-      var status = computeStatus(venueId, allReports);
-      var statusText = {
-        long:   venue.name + ' — 30+ min kö just nu 🔴',
-        medium: venue.name + ' — ca 25 min kö just nu 🟠',
-        short:  venue.name + ' — ca 15 min kö just nu 🟡',
-        free:   venue.name + ' — fri ingång just nu 🟢'
-      }[status] || (venue.name + ' — ingen data just nu ⚪');
+      var waitText = venueWaitText(venueId);
+      var statusText = waitText
+        ? venue.name + ' — ' + (waitText === 'Ingen kö' || waitText === 'Fullt' ? waitText.toLowerCase() : waitText + ' kö') + ' just nu'
+        : venue.name + ' — ingen data just nu';
 
       if (navigator.share) {
         navigator.share({
@@ -375,15 +480,18 @@ import './style.css';
       }
       activeVenue = venue;
       var status = computeStatus(venue.id, allReports);
-      var reports = allReports.filter(function(r) { return r.venue_id === venue.id; })
+      var reports = allReports.filter(function(r) { return r.venue_id === venue.id && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       document.getElementById('vc-name').textContent = venue.name;
+      var est = estimateWait(venue.id, allReports);
       var vcStatus = document.getElementById('vc-status');
-      vcStatus.textContent = getStatusLabel(status) || 'Ingen rapport';
+      vcStatus.textContent = venueWaitText(venue.id) || 'Ingen rapport';
       vcStatus.style.color = getStatusColor(status);
-      document.getElementById('vc-info').textContent = reports.length > 0
-        ? reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + (reports[0] ? ' · ' + timeAgo(reports[0].created_at) : '')
-        : 'Ingen rapport ännu';
+      var vcParts = [];
+      if (est) vcParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
+      if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · ' + timeAgo(reports[0].created_at));
+      if (est && !est.full && est.ahead && est.source === 'estimate') vcParts.push('uppskattning');
+      document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join(' · ') : 'Ingen rapport ännu';
       document.getElementById('vc-closing').textContent = 'Stänger ' + venue.closing;
       document.getElementById('vc-area').textContent = venue.area;
       document.getElementById('vc-overlay').style.display = 'block';
@@ -422,9 +530,9 @@ import './style.css';
 
     function renderVenueCard(venue) {
       var status = computeStatus(venue.id, allReports);
-      var label = getStatusLabel(status);
+      var label = venueWaitText(venue.id);
       var cls = getStatusClass(status);
-      var reports = allReports.filter(function(r) { return r.venue_id === venue.id; });
+      var reports = allReports.filter(function(r) { return r.venue_id === venue.id && isQueueReport(r); });
       var badgeHtml = label
         ? '<span class="vcard-status-badge ' + cls + '">' +
             '<span class="vcard-status-dot"></span>' + label +
@@ -447,7 +555,7 @@ import './style.css';
 
     function renderCompactVenueRow(venue) {
       var status = computeStatus(venue.id, allReports);
-      var label = getStatusLabel(status);
+      var label = venueWaitText(venue.id);
       var cls = getStatusClass(status);
       var dotColor = { free: '#22C55E', short: '#F59E0B', medium: '#EA7300', long: '#EF4444', unknown: '#D1D5DB' }[cls] || '#D1D5DB';
       return '<div class="vcrow" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'), \'sheet\')">' +
@@ -685,7 +793,7 @@ import './style.css';
         return {
           type: 'Feature', id: v.id,
           geometry: { type: 'Point', coordinates: [v.lng, v.lat] },
-          properties: { id: v.id, name: v.name, type: v.type, status: 'unknown' }
+          properties: { id: v.id, name: v.name, type: v.type, status: 'unknown', wait_label: '' }
         };
       })
     };
@@ -876,7 +984,7 @@ import './style.css';
             id: 'venues-status', type: 'symbol', source: 'venues',
             filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
             layout: {
-              'text-field': ['match', ['get', 'status'], 'none', 'Ingen kö', 'short', '~15 min', 'medium', '~25 min', 'long', '30+ min', ''],
+              'text-field': ['get', 'wait_label'],
               'text-size': 10, 'text-offset': ['literal', [0, 0.5]], 'text-anchor': 'top', 'text-allow-overlap': true,
               'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
             },
@@ -1028,7 +1136,10 @@ import './style.css';
       if (!map.getSource('venues')) return;
       var updated = venueGeoJSON.features.map(function(f) {
         return Object.assign({}, f, {
-          properties: Object.assign({}, f.properties, { status: computeStatus(f.properties.id, allReports) })
+          properties: Object.assign({}, f.properties, {
+            status: computeStatus(f.properties.id, allReports),
+            wait_label: venueWaitText(f.properties.id)
+          })
         });
       });
       map.getSource('venues').setData({ type: 'FeatureCollection', features: updated });
@@ -1048,45 +1159,45 @@ import './style.css';
       var _testUsers = ['usr-a1b2', 'usr-c3d4', 'usr-e5f6', 'usr-g7h8', 'usr-i9j0', 'usr-k1l2', 'usr-m3n4', 'usr-o5p6'];
       var _tIdx = 0;
       function ago(mins) { return new Date(now - mins * 60 * 1000).toISOString(); }
-      function r(venueId, minsAgo, status) {
-        return { id: 'test-' + venueId + '-' + minsAgo, venue_id: venueId, queue_status: status,
-                 created_at: ago(minsAgo), expires_at: ago(-45), user_id: _testUsers[_tIdx++ % _testUsers.length] };
+      // ahead = knappens mittvärde (0, 5, 17, 37, 60). opts.session/type bygger kö-sessioner för uppmätt hastighet.
+      function r(venueId, minsAgo, ahead, opts) {
+        opts = opts || {};
+        var type = opts.type || 'initial';
+        var rep = { id: 'test-' + venueId + '-' + minsAgo + '-' + type, venue_id: venueId, people_ahead: ahead,
+                    report_type: type, queue_session: opts.session || null,
+                    created_at: ago(minsAgo), expires_at: ago(minsAgo - 45), user_id: _testUsers[_tIdx++ % _testUsers.length] };
+        if (opts.comment) rep.comment = opts.comment;
+        var v = getVenueById(venueId);
+        rep.queue_status = waitToStatus({ ahead: ahead, mins: ahead / PACE_RATE[v.pace], full: false });
+        return rep;
       }
       var testReports = [
-        // spy-bar
-        r('spy-bar', 45, 'short'), r('spy-bar', 20, 'medium'), Object.assign(r('spy-bar', 5, 'long'), { comment: 'VIP-kö öppen' }),
-        // sturehof
-        r('sturehof', 50, 'free'), r('sturehof', 30, 'short'), r('sturehof', 10, 'medium'),
-        // soap-bar
-        r('soap-bar', 40, 'short'), r('soap-bar', 15, 'short'), r('soap-bar', 3, 'medium'),
-        // tjoget
-        r('tjoget', 55, 'free'), r('tjoget', 25, 'free'), r('tjoget', 8, 'short'),
-        // pelikan
-        r('pelikan', 60, 'medium'), r('pelikan', 35, 'long'), r('pelikan', 12, 'long'),
-        // morfar-ginko
-        r('morfar-ginko', 30, 'free'), r('morfar-ginko', 10, 'free'),
-        // akkurat
-        r('akkurat', 45, 'short'), r('akkurat', 20, 'medium'), r('akkurat', 6, 'long'),
-        // berns
-        r('berns', 50, 'short'), r('berns', 30, 'medium'), r('berns', 15, 'long'), r('berns', 3, 'long'),
-        // sturecompagniet
-        r('sturecompagniet', 40, 'medium'), r('sturecompagniet', 20, 'long'), r('sturecompagniet', 5, 'long'),
-        // tradgarden
-        r('tradgarden', 55, 'free'), r('tradgarden', 35, 'short'), r('tradgarden', 18, 'medium'), r('tradgarden', 4, 'medium'),
-        // under-bron
-        r('under-bron', 45, 'free'), r('under-bron', 25, 'free'), r('under-bron', 8, 'short'),
-        // cafe-opera
-        r('cafe-opera', 60, 'medium'), r('cafe-opera', 35, 'long'), r('cafe-opera', 10, 'long'), Object.assign(r('cafe-opera', 2, 'long'), { comment: 'Fri entré t.o.m. 23:30' }),
-        // solidaritet
-        r('solidaritet', 30, 'free'), r('solidaritet', 10, 'free'),
-        // gro
-        r('gro', 50, 'short'), r('gro', 28, 'short'), r('gro', 7, 'free'),
-        // pharmarium
-        r('pharmarium', 40, 'short'), r('pharmarium', 15, 'medium'), r('pharmarium', 1, 'short'),
-        // tak
-        r('tak', 55, 'medium'), r('tak', 30, 'long'), r('tak', 12, 'long'), r('tak', 4, 'medium'),
-        // drama
-        r('drama', 35, 'long'), r('drama', 18, 'long'), r('drama', 6, 'long')
+        // spy-bar — långsam dörr, uppmätt: 25–50 → 10–25 på 25 min
+        r('spy-bar', 40, 17), r('spy-bar', 30, 37, { session: 'ts-spy' }), r('spy-bar', 5, 17, { session: 'ts-spy', type: 'followup' }),
+        r('spy-bar', 4, 37, { comment: 'VIP-kö öppen' }),
+        // under-bron — snabb dörr, uppmätt: 25–50 → 1–10 på 10 min
+        r('under-bron', 14, 37, { session: 'ts-ub' }), r('under-bron', 4, 5, { session: 'ts-ub', type: 'followup' }), r('under-bron', 8, 17),
+        // drama — fullt: två sessioner står kvar nära dörren (1–10) i ~20 min
+        r('drama', 20, 5, { session: 'ts-dr1' }), r('drama', 2, 5, { session: 'ts-dr1', type: 'followup' }),
+        r('drama', 22, 5, { session: 'ts-dr2' }), r('drama', 1, 5, { session: 'ts-dr2', type: 'followup' }),
+        r('drama', 6, 37),
+        // uppskattning från dörrtakt (inga sessioner)
+        r('cafe-opera', 35, 37), r('cafe-opera', 10, 60), r('cafe-opera', 2, 60, { comment: 'Fri entré t.o.m. 23:30' }),
+        r('berns', 30, 17), r('berns', 15, 37), r('berns', 3, 37),
+        r('sturecompagniet', 40, 17), r('sturecompagniet', 20, 37), r('sturecompagniet', 5, 37),
+        r('sturehof', 30, 5), r('sturehof', 10, 17),
+        r('soap-bar', 40, 5), r('soap-bar', 15, 17), r('soap-bar', 3, 17),
+        r('pelikan', 35, 17), r('pelikan', 12, 37),
+        r('akkurat', 20, 5), r('akkurat', 6, 17),
+        r('tradgarden', 35, 5), r('tradgarden', 18, 17), r('tradgarden', 4, 37),
+        r('tak', 30, 37), r('tak', 12, 37), r('tak', 4, 17),
+        r('pharmarium', 15, 17), r('pharmarium', 1, 5),
+        // ingen kö
+        r('tjoget', 25, 0), r('tjoget', 8, 0),
+        r('morfar-ginko', 30, 0), r('morfar-ginko', 10, 0),
+        r('solidaritet', 30, 0), r('solidaritet', 10, 0),
+        // gammal data (25 min) — visas som "kan vara gammal"
+        r('gro', 40, 5), r('gro', 25, 0)
       ];
       // Remove old test entries, then prepend fresh ones
       allReports = allReports.filter(function(r) { return !r.id || !String(r.id).startsWith('test-'); });
@@ -1105,16 +1216,24 @@ import './style.css';
       };
     }
 
-    async function submitReport(venueId, venueName, queueStatus, comment) {
+    async function submitReport(venueId, venueName, peopleAhead, comment) {
       if (!supabase) throw new Error('Supabase är inte tillgänglig');
       var userId = getUserId();
       var now = new Date();
-      var recent = allReports.filter(function(r) { return r.user_id === userId && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
+      var recent = allReports.filter(function(r) { return r.user_id === userId && isQueueReport(r) && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
       if (recent.length > 0) {
         var wait = Math.ceil(20 - (now - new Date(recent[0].created_at)) / 60000);
         throw new Error('Vänta ' + wait + ' minuter innan nästa rapport');
       }
-      var insertObj = { venue_id: venueId, venue_name: venueName, queue_status: queueStatus, user_id: userId, expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString() };
+      var draft = { venue_id: venueId, people_ahead: peopleAhead, report_type: 'initial', created_at: now.toISOString() };
+      // Status för just den här rapporten: dess antal + kvällens uppmätta hastighet, inte andras köantal.
+      var rateContext = allReports.filter(function(r) { return r.venue_id !== venueId || !isQueueReport(r); });
+      var queueStatus = waitToStatus(estimateWait(venueId, [draft].concat(rateContext)));
+      var insertObj = {
+        venue_id: venueId, venue_name: venueName, queue_status: queueStatus, user_id: userId,
+        people_ahead: peopleAhead, report_type: 'initial', queue_session: newQueueSessionId(),
+        expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString()
+      };
       if (comment) insertObj.comment = comment;
       var result;
       try {
@@ -1129,6 +1248,10 @@ import './style.css';
       await supabase.rpc('increment_points', { p_user_id: userId, p_points: 10 });
       await loadReports();
       return true;
+    }
+
+    function newQueueSessionId() {
+      return 'qs-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     }
 
     // Geolocation (passiv, en gång — för avstånd i explore-rader)
@@ -1152,9 +1275,10 @@ import './style.css';
         var eightWeeksAgo = new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString();
         var result = await supabase
           .from('reports')
-          .select('venue_id, level, created_at')
+          .select('venue_id, queue_status, created_at')
           .gte('created_at', eightWeeksAgo)
-          .not('level', 'eq', 'none');
+          .not('queue_status', 'eq', 'none')
+          .eq('report_type', 'initial');
         if (result.error || !result.data) return;
         var byVenue = {};
         result.data.forEach(function(r) {
@@ -1164,7 +1288,7 @@ import './style.css';
           if (rdow !== dow) return;
           if (Math.abs(rhour - hour) > 1) return;
           if (!byVenue[r.venue_id]) byVenue[r.venue_id] = {};
-          byVenue[r.venue_id][r.level] = (byVenue[r.venue_id][r.level] || 0) + 1;
+          byVenue[r.venue_id][r.queue_status] = (byVenue[r.venue_id][r.queue_status] || 0) + 1;
         });
         _historicalPatterns = {};
         Object.keys(byVenue).forEach(function(vid) {
@@ -1761,10 +1885,11 @@ import './style.css';
         else if (bestData.status === 'short') bastReason = 'Kortast kö';
       }
       var now = new Date();
-      var venueReports = allReports.filter(function(r) { return r.venue_id === venue.id; })
+      var venueReports = allReports.filter(function(r) { return r.venue_id === venue.id && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       var latestReport = venueReports[0] || null;
       var status = computeStatus(venue.id, allReports);
+      var est = estimateWait(venue.id, allReports);
       var cls = getStatusClass(status);
       var color = STATUS_COLORS[cls] || '#D1D5DB';
       var hasData = venueReports.length > 0;
@@ -1795,8 +1920,7 @@ import './style.css';
       if (!hasData) {
         heroText = '–'; heroColor = '#D1D5DB';
       } else {
-        var mins = { none: 0, free: 0, short: 15, medium: 25, long: 30 }[status];
-        heroText = (status === 'free' || status === 'none') ? 'Fri' : (mins === 30 ? '30+ min' : '~' + mins + ' min');
+        heroText = (est ? est.ahead === 0 : (status === 'free' || status === 'none')) ? 'Fri' : venueWaitText(venue.id);
         // Per-level hero color for better contrast
         var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
         heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
@@ -1872,7 +1996,9 @@ import './style.css';
               pulseHtml +
               '<div class="erow-name">' + venue.name + (isWatching(venue.id) ? '<svg viewBox="0 0 24 24" width="10" height="10" fill="rgba(255,255,255,0.5)" style="vertical-align:middle;margin-left:4px;flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') + '</div>' +
             '</div>' +
-            '<div class="erow-meta">' + metaText + '</div>' +
+            '<div class="erow-meta">' + metaText +
+              (est && est.ahead && !est.full && est.source === 'estimate' ? ' · <span class="erow-est-label">uppskattning</span>' : '') +
+            '</div>' +
             (function() {
               var pat = _historicalPatterns[venue.id];
               var patLabels = { long: 'Vanligtvis lång kö nu', medium: 'Vanligtvis medel kö nu', short: 'Vanligtvis kort kö nu', free: 'Vanligtvis fri ingång nu' };
@@ -2007,12 +2133,11 @@ import './style.css';
     }
 
     function showEveningPlan(scored) {
-      var STATUS_LABEL = { free: 'Fri ingång', short: '~15 min', medium: '~25 min', long: '30+ min', none: 'Okänd kö' };
       var STATUS_COLOR = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', none: 'rgba(255,255,255,0.3)' };
 
       var items = scored.map(function(s, i) {
         var color = STATUS_COLOR[s.status] || 'rgba(255,255,255,0.3)';
-        var label = STATUS_LABEL[s.status] || 'Okänd kö';
+        var label = venueWaitText(s.id) || 'Okänd kö';
         var closing = s.venue && s.venue.closing ? ' · Stänger ' + s.venue.closing : '';
         return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.07)">'
           + '<div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);flex-shrink:0">' + (i+1) + '</div>'
@@ -2256,18 +2381,20 @@ import './style.css';
 
     function _liveRowHtml(r, isSub) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
-      var liveTimes  = { short: '~15 min', medium: '~25 min', long: '30+ min' };
       var liveColors = { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
       var qs = r.queue_status;
       var descriptor = liveDescriptors[qs];
       if (!descriptor) return '';
-      var waitTime = liveTimes[qs] || '';
+      var hasCount = r.people_ahead != null;
+      if (hasCount) descriptor = aheadBucket(r.people_ahead).label + (r.people_ahead ? ' i kö' : '');
+      var waitTime = isSub ? '' : venueWaitText(r.venue_id);
+      if (waitTime === descriptor) waitTime = '';
       var color = liveColors[qs] || '#9CA3AF';
       var venue = getVenueById(r.venue_id);
       var name = venue ? venue.name : (r.venue_name || r.venue_id);
       var area = venue ? venue.area : '';
       if (isSub) {
-        var subLabel = waitTime || descriptor;
+        var subLabel = descriptor;
         return '<div class="live-sub-row">' +
           '<div class="live-sub-wait" style="color:' + color + '">' + subLabel + '</div>' +
           '<div class="live-sub-meta">' + timeAgo(r.created_at) + '</div></div>';
@@ -2298,7 +2425,7 @@ import './style.css';
       }
       var now = new Date();
       var cutoff = now - 45 * 60 * 1000;
-      var recent = allReports.filter(function(r) { return new Date(r.created_at).getTime() > cutoff; });
+      var recent = allReports.filter(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > cutoff; });
       if (!recent.length) {
         el.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p>Inga rapporter ännu.<br>Gå ut och rapportera!</p></div>';
         return;
@@ -2453,12 +2580,12 @@ import './style.css';
       document.getElementById('rs2').style.display = 'none';
     }
 
-    async function pickQueue(status) {
+    async function pickAhead(peopleAhead) {
       if (!selectedRV) return;
       var commentEl = document.getElementById('rs-comment');
       var comment = commentEl ? commentEl.value.trim().slice(0, 80) : '';
       try {
-        await submitReport(selectedRV.id, selectedRV.name, status, comment);
+        await submitReport(selectedRV.id, selectedRV.name, peopleAhead, comment);
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
         showFloatingPoints(10);
@@ -2501,12 +2628,12 @@ import './style.css';
       }, 200);
     }
 
-    async function quickPickQueue(status) {
+    async function quickPickAhead(peopleAhead) {
       if (!qrVenue) return;
       var v = qrVenue;
       closeQuickReport();
       try {
-        await submitReport(v.id, v.name, status);
+        await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
         showFloatingPoints(10);
         showToast('Rapport skickad — tack!');
@@ -2656,9 +2783,9 @@ Object.assign(window, {
   openDirections,
   openQuickReport,
   openVenueCard,
-  pickQueue,
+  pickAhead,
   pickRV,
-  quickPickQueue,
+  quickPickAhead,
   retrySupabase,
   selectMapSearchVenue,
   setExploreFilter,
