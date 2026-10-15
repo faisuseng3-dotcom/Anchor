@@ -50,13 +50,9 @@ check('animation-fill-mode forwards on rowIn keyframes', css.includes('forwards'
 // ── Explore screen ────────────────────────────────────────────────────────────
 check('explore-summary widget exists in HTML', html.includes('id="explore-summary"'));
 check('renderExploreSummary function defined', js.includes('function renderExploreSummary('));
-check('renderExploreSummary called in renderExploreVenues', js.includes('renderExploreSummary(_exsumFirstRender)'));
-check('_exsumFirstRender flag exists', js.includes('_exsumFirstRender'));
-check('Summary: KORT KÖ label', js.includes('KORT KÖ'));
-check('Summary: MEDEL KÖ label', js.includes('MEDEL KÖ'));
-check('Summary: LÅNG KÖ label', js.includes('LÅNG KÖ'));
-check('Summary: 30s interval for footer', js.includes('30000'));
-check('Summary: countUp ease-out cubic', js.includes('Math.pow(1 - p, 3)'));
+check('renderExploreSummary called in renderExploreVenues', js.includes('renderExploreSummary();'));
+check('Summary: freshness line replaces widget', js.includes('exsum-line'));
+check('Summary: 30s interval for freshness line', js.includes('30000'));
 check('No-data message in summary', js.includes('Inga rapporter än'));
 
 // ── Venue rows ────────────────────────────────────────────────────────────────
@@ -66,7 +62,8 @@ check('Level backgrounds: long rgba(255,77,94,0.06)', js.includes('rgba(255,77,9
 check('Level backgrounds: empty rgba(255,255,255,0.02)', js.includes('rgba(255,255,255,0.02)'));
 check('Hero color long: #FF4D5E', js.includes('#FF4D5E'));
 check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
-check('Trend indicator: ↑ Ökar / ↓ Minskar / → Stabil', js.includes('↑ Ökar') && js.includes('↓ Minskar') && js.includes('→ Stabil'));
+// "Stabil" visades på varje rad utan att säga något nytt — bara ändring visas nu.
+check('Trend indicator: ↑ Ökar / ↓ Minskar', js.includes('↑ Ökar') && js.includes('↓ Minskar'));
 check('Sorting: Swedish localeCompare for empty venues', js.includes("localeCompare(b.name, 'sv')"));
 check('Sorting: newest-report-first for venues with data', js.includes('bLatest - aLatest'));
 check('background-color transition 300ms', css.includes('background-color 300ms ease-out'));

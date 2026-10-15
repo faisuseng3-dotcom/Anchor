@@ -88,20 +88,28 @@
     </section>
 
     <section id="screen-live" class="screen">
-      <div class="live-header">
-        <h1 class="screen-title">Live</h1>
-        <span id="live-dot"></span>
+      <div class="explore-sticky" id="live-sticky">
+        <div class="screen-head">
+          <div class="live-titles">
+            <h1 class="explore-title">Live</h1>
+            <div class="live-sub"><span id="live-dot"></span><span id="live-sub-text">Senaste 45 min</span></div>
+          </div>
+          <button class="avatar-btn avatar-btn--sm" onclick="showScreen('profile')" aria-label="Profil">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+          </button>
+        </div>
       </div>
-      <div id="live-feed"></div>
+      <div id="live-list-wrap">
+        <div id="live-feed"></div>
+      </div>
     </section>
 
     <section id="screen-report" class="screen">
       <div class="rp-wrap">
-        <div class="rp-header-row">
-          <h1 class="screen-title">Rapportera</h1>
+        <div class="screen-head">
+          <h1 class="explore-title">Rapportera</h1>
           <span id="rp-step-counter" class="rp-step-counter" style="display:none">1 / 3</span>
         </div>
-        <p class="rp-sub">Hjälp andra — tar 5 sekunder</p>
       </div>
 
       <div id="rs1">
@@ -130,40 +138,23 @@
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div class="rs-thanks">Tack — kön är uppdaterad</div>
-        <div class="rs-points">+10 poäng</div>
         <p class="rs-next">Står du kvar? Vi frågar snart hur långt du kommit. Då kan vi mäta hur snabbt kön rör sig.</p>
       </div>
     </section>
 
     <section id="screen-profile" class="screen">
-      <div class="pf-head">
-        <div class="pf-avatar">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
-        </div>
+      <div class="screen-head">
         <div>
-          <div class="pf-name">Anonym Användare</div>
-          <span class="pf-level level-badge">Ny</span>
+          <h1 class="explore-title">Profil</h1>
+          <div class="pf-sub" id="pf-sub">Anonym · inget konto</div>
         </div>
-      </div>
-
-      <div class="pf-stats">
-        <div class="pf-stat"><b id="stat-r">0</b><span>Rapporter</span></div>
-        <div class="pf-stat"><b id="stat-p">0</b><span>Poäng</span></div>
-        <div class="pf-stat"><b id="stat-d" class="days-count">0</b><span>Streak</span></div>
-      </div>
-
-      <div class="pf-card">
-        <div id="plabel">0 / 50 poäng till nästa nivå</div>
-        <div class="pf-track"><div id="pbar"></div></div>
       </div>
 
       <div class="pf-section">
-        <div class="rs-label">Dina badges</div>
-        <div class="pf-badges badges-row">
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="badge-item-label">Första rapport</div></div>
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><div class="badge-item-label">10 rapporter</div></div>
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="badge-item-label">Stamgäst</div></div>
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="badge-item-label">Legend</div></div>
+        <div class="rs-label">Dina rapporter</div>
+        <div class="pf-card pf-reports">
+          <b id="stat-r">0</b>
+          <span id="pf-reports-text">Du har inte rapporterat någon kö än.</span>
         </div>
       </div>
 
@@ -171,17 +162,9 @@
         <div class="rs-label">Inställningar</div>
         <div class="pf-card" style="padding-top:0;padding-bottom:0">
           <a class="pf-row" href="mailto:support@queuebar.se"><span>Kontakta oss<small>support@queuebar.se</small></span><span class="arrow">→</span></a>
+          <a class="pf-row" href="mailto:hello@queuebar.se"><span>Äger du ett ställe?<small>hello@queuebar.se</small></span><span class="arrow">→</span></a>
           <button class="pf-row" onclick="showPrivacyPolicy()"><span>Integritetspolicy</span><span class="arrow">→</span></button>
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span><span class="arrow">→</span></button>
-        </div>
-      </div>
-
-      <div class="pf-section">
-        <div class="pf-card pf-b2b">
-          <div class="pf-b2b-eyebrow">För krogar</div>
-          <div class="pf-b2b-title">Äger du ett ställe?</div>
-          <div class="pf-b2b-body">Realtidsdata om din kö · Se när gäster väljer bort dig</div>
-          <a class="pf-b2b-link" href="mailto:hello@queuebar.se">hello@queuebar.se →</a>
         </div>
       </div>
     </section>

@@ -1232,18 +1232,6 @@ import './style.css';
         '</div>';
     }
 
-    function showFloatingPoints(pts) {
-      var app = document.getElementById('app');
-      var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-      var el = document.createElement('div');
-      el.className = 'fp-float';
-      el.textContent = '+' + (pts || 10) + ' poäng';
-      el.style.left = (ar.left + ar.width / 2 - 50) + 'px';
-      el.style.top = (ar.top + ar.height * 0.6) + 'px';
-      document.body.appendChild(el);
-      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 1500);
-    }
-
     var STATUS_COLORS = {
       free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#4A4F60'
     };
@@ -1525,7 +1513,6 @@ import './style.css';
         var mins = Math.max(1, Math.round((res.at - res.session.startedAt) / 60000));
         endQueueSession();
         if (supabase) await supabase.rpc('increment_points', { p_user_id: getUserId(), p_points: 5 });
-        showFloatingPoints(5);
         showToast('Inne efter ' + mins + ' min — tack!');
         loadReports();
       } catch(err) { showToast(reportErrorText(err)); }
@@ -1751,7 +1738,7 @@ import './style.css';
       } else if (screen === 'live') {
         return document.querySelector('#live-feed > *');
       } else if (screen === 'profile') {
-        return document.querySelector('.pf-head');
+        return document.querySelector('#screen-profile .screen-head');
       }
       return null;
     }
@@ -2098,153 +2085,56 @@ import './style.css';
     }
 
     var _exsumInterval = null;
-    var _exsumPrevCounts = null;
+
+    // Status bara om ett ställe har en kö-rapport från de senaste 45 min (samma gräns som "inaktuell" i listan).
+    function venueFreshStatus(venueId) {
+      var cutoff = Date.now() - 45 * 60 * 1000;
+      var fresh = allReports.some(function(r) {
+        return r.venue_id === venueId && isQueueReport(r) && new Date(r.created_at).getTime() > cutoff;
+      });
+      return fresh ? computeStatus(venueId, allReports) : 'unknown';
+    }
 
     function computeExploreSummary() {
-      var now = Date.now();
-      var cutoff30  = now - 30  * 60 * 1000;
-      var cutoff2h  = now - 120 * 60 * 1000;
-      // Latest report per venue within 2h
-      var venueLatest = {};
-      allReports.forEach(function(r) {
-        var t = new Date(r.created_at).getTime();
-        if (t < cutoff2h) return;
-        if (!venueLatest[r.venue_id] || t > new Date(venueLatest[r.venue_id].created_at).getTime()) {
-          venueLatest[r.venue_id] = r;
-        }
-      });
-      var freeCount = 0, medCount = 0, longCount = 0;
-      Object.keys(venueLatest).forEach(function(vid) {
-        var r = venueLatest[vid];
-        if (new Date(r.created_at).getTime() < cutoff30) return; // stale
-        var s = r.queue_status;
-        if (s === 'free' || s === 'none') freeCount++;
-        else if (s === 'short' || s === 'medium') medCount++;
-        else if (s === 'long') longCount++;
-      });
-      // Open venues (closing hour after current time)
-      var d = new Date();
-      var nowMins = d.getHours() * 60 + d.getMinutes();
-      var openCount = VENUES.filter(function(v) {
-        if (!v.closing) return true;
-        var parts = v.closing.split(':');
-        var close = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-        if (close < 360) close += 1440; // e.g. 02:00 → 1560 next-day
-        var open = 17 * 60; // assume bars open ~17:00
-        var cur = nowMins < 12 * 60 ? nowMins + 1440 : nowMins;
-        return cur >= open && cur < close;
-      }).length;
-      // Reports since 18:00 tonight
-      var today18 = new Date(d); today18.setHours(18, 0, 0, 0);
-      if (d.getHours() < 18) today18.setDate(today18.getDate() - 1);
-      var since18 = allReports.filter(function(r) {
-        return new Date(r.created_at).getTime() >= today18.getTime();
-      }).length;
-      // Last report time
+      var fresh = VENUES.filter(function(v) { return venueFreshStatus(v.id) !== 'unknown'; }).length;
       var lastTs = null;
       allReports.forEach(function(r) {
+        if (!isQueueReport(r)) return;
         var t = new Date(r.created_at).getTime();
         if (!lastTs || t > lastTs) lastTs = t;
       });
-      return { freeCount: freeCount, medCount: medCount, longCount: longCount,
-               openCount: openCount, since18: since18, lastTs: lastTs, total: allReports.length };
+      return { fresh: fresh, venueTotal: VENUES.length, lastTs: lastTs, total: allReports.length };
     }
 
     function exsumTimeSince(ms) {
       if (!ms) return null;
       var mins = Math.round((Date.now() - ms) / 60000);
-      if (mins < 1) return 'just nu';
+      if (mins < 1) return 'nyss';
       return mins + ' min sedan';
     }
 
-    function exsumCountUp(el, target) {
-      if (!el || target === 0) { if (el) el.textContent = '0'; return; }
-      var start = performance.now();
-      var dur = 500;
-      function step(now) {
-        var p = Math.min((now - start) / dur, 1);
-        var eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(target * eased);
-        if (p < 1) requestAnimationFrame(step);
-        else el.textContent = target;
-      }
-      el.textContent = '0';
-      requestAnimationFrame(step);
+    // ── Färskhetsrad ──────────────────────────────────────────────────────────
+    // Ersätter den gamla "Stockholm just nu"-widgeten: antalen per status finns redan i filterchipsen,
+    // så här visas bara det chipsen inte säger — hur färsk datan är.
+    function exsumText(d) {
+      if (d.total === 0) return 'Inga rapporter än — bli först att rapportera';
+      var since = exsumTimeSince(d.lastTs);
+      return d.fresh + ' av ' + d.venueTotal + ' ställen har färsk rapport' + (since ? ' · senast ' + since : '');
     }
 
-    function pulseSummaryNum(index) {
-      var el = document.getElementById('exsum-n' + index);
-      if (!el) return;
-      el.classList.remove('exsum-num--pulse');
-      void el.offsetWidth; // reflow
-      el.classList.add('exsum-num--pulse');
-      el.addEventListener('animationend', function() { el.classList.remove('exsum-num--pulse'); }, { once: true });
-    }
-
-    function renderExploreSummary(animate) {
+    function renderExploreSummary() {
       var el = document.getElementById('explore-summary');
       if (!el) return;
       el.style.display = 'block';
-      var data = computeExploreSummary();
-      var noData = data.total === 0;
-      var counted = data.freeCount + data.medCount + data.longCount;
-      function seg(n, color) {
-        return n ? '<span class="exsum-seg" style="flex:' + n + ';background:' + color + '"></span>' : '';
-      }
-      var footerText = exsumFooterText(data);
+      el.innerHTML = '<div class="exsum-line" id="exsum-line">' + exsumText(computeExploreSummary()) + '</div>';
 
-      el.innerHTML =
-        '<div class="exsum">' +
-          '<div class="exsum-head">' +
-            '<span class="exsum-title"><span class="exsum-live"></span>Stockholm just nu</span>' +
-            '<span class="exsum-footer" id="exsum-footer">' + footerText + '</span>' +
-          '</div>' +
-          (counted
-            ? '<div class="exsum-bar">' + seg(data.freeCount, getStatusColor('free')) + seg(data.medCount, getStatusColor('short')) + seg(data.longCount, getStatusColor('long')) + '</div>'
-            : '<div class="exsum-bar exsum-bar--empty"></div>') +
-          '<div class="exsum-stats">' +
-            '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n0" style="color:' + getStatusColor('free') + '">0</span>' +
-              '<span class="exsum-label">INGEN KÖ</span>' +
-            '</div>' +
-            '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n1" style="color:' + getStatusColor('short') + '">0</span>' +
-              '<span class="exsum-label">KORT KÖ · MEDEL KÖ</span>' +
-            '</div>' +
-            '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n2" style="color:' + getStatusColor('long') + '">0</span>' +
-              '<span class="exsum-label">LÅNG KÖ</span>' +
-            '</div>' +
-          '</div>' +
-          (noData ? '<div class="exsum-empty">Inga rapporter än — bli först att rapportera</div>' : '') +
-        '</div>';
-
-      var targets = [data.freeCount, data.medCount, data.longCount];
-      targets.forEach(function(t, i) {
-        var numEl = document.getElementById('exsum-n' + i);
-        if (animate) {
-          exsumCountUp(numEl, t);
-        } else {
-          if (numEl) numEl.textContent = t;
-          // Pulse changed bucket if re-render after new data
-          if (_exsumPrevCounts && _exsumPrevCounts[i] !== t) pulseSummaryNum(i);
-        }
-      });
-      _exsumPrevCounts = targets;
-
-      // 30s footer refresh — "senaste rapport X min sedan" åldras även utan ny data
+      // Åldras även utan ny data
       clearInterval(_exsumInterval);
       _exsumInterval = setInterval(function() {
-        var footer = document.getElementById('exsum-footer');
-        if (!footer) { clearInterval(_exsumInterval); return; }
-        footer.textContent = exsumFooterText(computeExploreSummary());
+        var line = document.getElementById('exsum-line');
+        if (!line) { clearInterval(_exsumInterval); return; }
+        line.textContent = exsumText(computeExploreSummary());
       }, 30000);
-    }
-
-    function exsumFooterText(d) {
-      if (d.total === 0) return 'inga rapporter';
-      var since = exsumTimeSince(d.lastTs);
-      return since ? 'senaste ' + since : '';
     }
 
     function renderExploreVenueRow(venue, index, bestData) {
@@ -2313,8 +2203,6 @@ import './style.css';
           trendHtml = '<span class="erow-trend erow-trend--up">↑ Ökar</span>';
         } else if (rank1 < rank2) {
           trendHtml = '<span class="erow-trend erow-trend--down">↓ Minskar</span>';
-        } else {
-          trendHtml = '<span class="erow-trend erow-trend--stable">→ Stabil</span>';
         }
       }
 
@@ -2382,8 +2270,7 @@ import './style.css';
                 ? '<div class="erow-tertiary">' +
                     '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
                     '<span class="erow-tertiary-sep">·</span>' +
-                    '<span' + (isAging ? ' class="erow-stale-label"' : '') + '>' + timeAgo(latestReport.created_at) + '</span>' +
-                    (isAging ? '<span class="erow-tertiary-sep">·</span><span class="erow-stale-label">kan vara gammal</span>' : '') +
+                    '<span' + (isAging ? ' class="erow-stale-label"' : '') + '>' + timeAgo(latestReport.created_at) + (isAging ? ' · äldre' : '') + '</span>' +
                     estHtml +
                     closingSoonHtml +
                   '</div>'
@@ -2398,7 +2285,6 @@ import './style.css';
             '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + heroText + '</span>' +
             (isStale ? '' : trendHtml) +
           '</div>' +
-          '<button class="erow-report-btn" onclick="event.stopPropagation();openQuickReport(\'' + venue.id + '\')" aria-label="Rapportera ' + venue.name + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
         '</div>' +
         '</div>';
     }
@@ -2580,10 +2466,8 @@ import './style.css';
       return candidates[0] || null;
     }
 
-    var _exsumFirstRender = true;
-    function renderExploreVenues() {
-      renderExploreSummary(_exsumFirstRender);
-      _exsumFirstRender = false;
+        function renderExploreVenues() {
+      renderExploreSummary();
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
@@ -2728,7 +2612,7 @@ import './style.css';
     // ── Live-feed ─────────────────────────────────────────────────────────────
     var _liveExpanded = new Set();
 
-    function _liveRowHtml(r, isSub) {
+    function _liveRowHtml(r, isSub, olderCount) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
       var qs = r.queue_status;
       var descriptor = liveDescriptors[qs];
@@ -2738,26 +2622,40 @@ import './style.css';
       var color = getStatusColor(qs);
       var d = new Date(r.created_at);
       var clock = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      if (isSub) {
+        return '<div class="lv-old"><span class="lv-old-time">' + clock + '</span>' +
+          '<span class="lv-old-val" style="color:' + color + '">' + descriptor + '</span>' +
+          (r.comment ? '<span class="lv-old-note">"' + escapeHtml(r.comment) + '"</span>' : '') + '</div>';
+      }
       var venue = getVenueById(r.venue_id);
       var name = venue ? venue.name : escapeHtml(r.venue_name || r.venue_id);
-      var commentHtml = r.comment ? '<div class="tl-comment">"' + escapeHtml(r.comment) + '"</div>' : '';
-      if (isSub) {
-        return '<div class="tl-row tl-row--sub">' +
-          '<div class="tl-time">' + clock + '</div>' +
-          '<div class="tl-body"><div class="tl-report" style="color:' + color + '">' + descriptor + '</div>' + commentHtml + '</div></div>';
-      }
       var nowWait = venueWaitText(r.venue_id);
       var area = venue ? venue.area + ' · ' + venueTypeLabel(venue.type) : '';
-      return '<div class="tl-row" onclick="openVenueCard(\'' + r.venue_id + '\')">' +
-        '<div class="tl-time">' + clock + '</div>' +
-        '<div class="tl-dot" style="background:' + color + '"></div>' +
-        '<div class="tl-body">' +
-          '<div class="tl-head"><span class="tl-name">' + name + '</span><span class="tl-ago">' + timeAgo(r.created_at) + '</span></div>' +
-          '<div class="tl-report" style="color:' + color + '">' + descriptor + '</div>' +
-          commentHtml +
-          '<div class="tl-meta">' + (area ? '<span>' + area + '</span>' : '') +
-            (nowWait ? '<span class="tl-now">nu ' + nowWait + '</span>' : '') + '</div>' +
-        '</div></div>';
+      // Hjälten är rapporterat antal; "framför" som enhet. Ren text (t.ex. "Kort kö") får ingen enhet.
+      var hasCount = r.people_ahead != null && r.people_ahead > 0;
+      var heroText = hasCount ? aheadBucket(r.people_ahead).label : (r.people_ahead === 0 ? 'Ingen kö' : descriptor);
+      var heroSmall = !hasCount ? ' style="color:' + color + ';font-size:18px;letter-spacing:-0.03em"' : ' style="color:' + color + '"';
+      var subParts = [timeAgo(r.created_at)];
+      if (nowWait) subParts.push('nu ' + nowWait);
+      var olderBtn = '';
+      if (olderCount) {
+        var open = _liveExpanded.has(r.venue_id);
+        olderBtn = '<button class="lv-more' + (open ? ' lv-more--open' : '') + '" aria-expanded="' + open + '" ' +
+          'aria-label="' + (open ? 'Dölj tidigare rapporter' : olderCount + ' tidigare ' + (olderCount === 1 ? 'rapport' : 'rapporter')) + '" ' +
+          'onclick="event.stopPropagation();toggleLiveVenue(\'' + r.venue_id + '\')">' +
+          '<span>' + (open ? 'Dölj' : '+' + olderCount + ' tidigare') + '</span>' +
+          '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>';
+      }
+      return '<div class="lv-row" role="button" tabindex="0" onclick="openVenueCard(\'' + r.venue_id + '\')">' +
+        '<span class="lv-bar" style="background:' + color + '"></span>' +
+        '<div class="lv-inner"><div class="lv-body">' +
+          '<div class="lv-name">' + name + '</div>' +
+          (area ? '<div class="lv-meta">' + area + '</div>' : '') +
+          (r.comment ? '<div class="lv-comment">"' + escapeHtml(r.comment) + '"</div>' : '') +
+          '<div class="lv-sub">' + subParts.join(' · ') + '</div>' +
+        '</div>' +
+        '<div class="lv-right"><span class="lv-hero"' + heroSmall + '>' + heroText + '</span>' +
+          (hasCount ? '<span class="lv-unit">framför</span>' : '') + olderBtn + '</div></div></div>';
     }
 
     // Senaste "Jag är inne" — verklig väntetid från en kö-session, inte en uppskattning.
@@ -2770,9 +2668,8 @@ import './style.css';
         .reduce(function(min, r) { var t = new Date(r.created_at).getTime(); return t < min ? t : min; }, Infinity);
       var mins = Math.round((new Date(entered.created_at).getTime() - start) / 60000);
       if (!isFinite(mins) || mins < 1) return '';
-      return '<div class="tl-row tl-row--entered"><div class="tl-time"></div>' +
-        '<div class="tl-body"><div class="tl-entered"><span class="tl-check">✓</span>Någon kom in efter <b>' + mins + ' min</b></div>' +
-        '<div class="tl-meta"><span>uppmätt väntetid · ' + timeAgo(entered.created_at) + '</span></div></div></div>';
+      return '<div class="lv-entered"><span class="lv-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>' +
+        '<span>Någon kom in efter <b>' + mins + ' min</b></span><small>uppmätt · ' + timeAgo(entered.created_at) + '</small></div>';
     }
 
     function toggleLiveVenue(venueId) {
@@ -2783,15 +2680,21 @@ import './style.css';
     function renderLiveFeed() {
       var el = document.getElementById('live-feed');
       if (!el) return;
+      var subText = document.getElementById('live-sub-text');
       if (!supabase) {
-        el.innerHTML = '<div class="empty"><p>Livedata är inte tillgänglig</p><button class="empty-btn" onclick="retrySupabase()">Försök igen</button></div>';
+        if (subText) subText.textContent = 'Offline';
+        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>' +
+          '<div class="lv-empty-title">Ingen anslutning</div><p class="lv-empty-sub">Livedata är inte tillgänglig just nu.</p>' +
+          '<button class="empty-btn" onclick="retrySupabase()">Försök igen</button></div>';
         return;
       }
       var now = new Date();
       var cutoff = now - 45 * 60 * 1000;
       var recent = allReports.filter(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > cutoff; });
       if (!recent.length) {
-        el.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p>Inga rapporter ännu.<br>Gå ut och rapportera!</p></div>';
+        if (subText) subText.textContent = 'Inga rapporter senaste 45 min';
+        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>' +
+          '<div class="lv-empty-title">Inga rapporter ännu</div><p class="lv-empty-sub">Nya köuppdateringar dyker upp här så fort någon rapporterar.</p></div>';
         return;
       }
       // Group by venue, sort each group newest-first
@@ -2807,27 +2710,27 @@ import './style.css';
       var venueIds = Object.keys(groups).sort(function(a, b) {
         return new Date(groups[b][0].created_at) - new Date(groups[a][0].created_at);
       });
-      el.innerHTML = venueIds.map(function(vid) {
+      var items = venueIds.map(function(vid) {
         var reports = groups[vid];
-        var latest = reports[0];
         var older = reports.slice(1);
-        var mainRow = _liveRowHtml(latest, false);
+        var mainRow = _liveRowHtml(reports[0], false, older.length);
         if (!mainRow) return '';
         var html = mainRow + _liveEnteredHtml(vid, cutoff);
-        if (older.length) {
-          var expanded = _liveExpanded.has(vid);
-          if (expanded) {
-            html += older.map(function(r) { return _liveRowHtml(r, true); }).filter(Boolean).join('');
-            html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">↑ Dölj tidigare rapporter</button>';
-          } else {
-            html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">+' + older.length + ' tidigare ' + (older.length === 1 ? 'rapport' : 'rapporter') + ' · visa</button>';
-          }
+        if (older.length && _liveExpanded.has(vid)) {
+          html += '<div class="lv-older">' + older.map(function(r) { return _liveRowHtml(r, true); }).filter(Boolean).join('') + '</div>';
         }
-        return '<div class="tl-group">' + html + '</div>';
-      }).filter(Boolean).join('');
+        return '<div class="lv-item">' + html + '</div>';
+      }).filter(Boolean);
+      if (subText) subText.textContent = items.length + (items.length === 1 ? ' ställe' : ' ställen') + ' · 45 min';
+      el.innerHTML = '<div class="lv-group">' + items.join('') + '</div>';
     }
 
     renderLiveFeed();
+    (function() {
+      var wrap = document.getElementById('live-list-wrap');
+      var sticky = document.getElementById('live-sticky');
+      if (wrap && sticky) wrap.addEventListener('scroll', function() { sticky.classList.toggle('scrolled', wrap.scrollTop > 4); });
+    })();
     setInterval(function() { if (typeof renderLiveFeed === 'function') renderLiveFeed(); }, 30000);
 
     // ── På väg ────────────────────────────────────────────────────────────────
@@ -3070,7 +2973,6 @@ import './style.css';
         await submitReport(selectedRV.id, selectedRV.name, peopleAhead, comment);
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
-        showFloatingPoints(10);
         rsStep(3);
         var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
         selectedRV = null;
@@ -3120,7 +3022,6 @@ import './style.css';
       try {
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
-        showFloatingPoints(10);
         showToast('Rapport skickad — tack!');
         loadReports();
       } catch(e) {
@@ -3131,87 +3032,20 @@ import './style.css';
     filterReportList();
 
     // ── Profil ────────────────────────────────────────────────────────────────
-    function computeStreak(reports) {
-      if (!reports.length) return 0;
-      var dates = new Set(reports.map(function(r) { return r.created_at.slice(0, 10); }));
-      var today = new Date();
-      var todayStr = today.toISOString().slice(0, 10);
-      var yestStr = new Date(today - 86400000).toISOString().slice(0, 10);
-      if (!dates.has(todayStr) && !dates.has(yestStr)) return 0;
-      var cursor = dates.has(todayStr) ? today : new Date(today - 86400000);
-      var count = 0;
-      while (dates.has(cursor.toISOString().slice(0, 10))) {
-        count++;
-        cursor = new Date(cursor - 86400000);
-      }
-      return count;
-    }
-
     function updateProfileStats() {
       var userId = getUserId();
       var allMine = userHistory.length > 0
         ? userHistory
         : allReports.filter(function(r) { return r.user_id === userId; });
       var mine = allMine.filter(isQueueReport);
-      var enteredCount = allMine.filter(function(r) { return r.report_type === 'entered'; }).length;
-      var pts = mine.length * 10 + enteredCount * 5;
 
       var sr = document.getElementById('stat-r');
-      var sp = document.getElementById('stat-p');
+      var text = document.getElementById('pf-reports-text');
       if (sr) sr.textContent = mine.length;
-      if (sp) sp.textContent = pts;
-
-      var levels = [
-        { name: 'Ny', min: 0, next: 50 },
-        { name: 'Aktiv', min: 50, next: 150 },
-        { name: 'Stamgäst', min: 150, next: 400 },
-        { name: 'Insider', min: 400, next: 1000 },
-        { name: 'Legend', min: 1000, next: 9999 }
-      ];
-      var lvl = levels[0];
-      for (var i = 0; i < levels.length; i++) { if (pts >= levels[i].min) lvl = levels[i]; }
-
-      var badge = document.querySelector('#screen-profile .level-badge');
-      if (badge) badge.textContent = lvl.name;
-
-      var pct = Math.min(100, ((pts - lvl.min) / (lvl.next - lvl.min)) * 100);
-      var pl = document.getElementById('plabel');
-      var pb = document.getElementById('pbar');
-      if (pl) pl.textContent = lvl.next >= 9999 ? pts + ' poäng · högsta nivån' : (lvl.next - pts) + ' poäng kvar till nästa nivå';
-      if (pb) pb.style.width = pct + '%';
-
-      var daysEl = document.querySelector('#screen-profile .days-count');
-      if (daysEl) {
-        var streak = computeStreak(mine);
-        daysEl.textContent = streak;
-        daysEl.classList.remove('streak-warm', 'streak-fire');
-        if (streak >= 7) daysEl.classList.add('streak-fire');
-        else if (streak >= 3) daysEl.classList.add('streak-warm');
-      }
-
-      var badgeRow = document.querySelector('#screen-profile .badges-row');
-      if (badgeRow) {
-        var BADGE_ICONS = [
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>'
-        ];
-        var defs = [
-          { icon: BADGE_ICONS[0], name: 'Första rapport', req: 1 },
-          { icon: BADGE_ICONS[1], name: '10 rapporter', req: 10 },
-          { icon: BADGE_ICONS[2], name: 'Stamgäst', req: 25 },
-          { icon: BADGE_ICONS[3], name: 'Legend', req: 100 }
-        ];
-        badgeRow.innerHTML = defs.map(function(b) {
-          var on = mine.length >= b.req;
-          var prog = on ? 'Klar' : Math.min(mine.length, b.req) + '/' + b.req;
-          return '<div class="badge-item' + (on ? ' badge-item--on' : ' badge-item--locked') + '">' +
-            '<div class="badge-item-icon">' + b.icon + '</div>' +
-            '<div class="badge-item-label">' + b.name + '</div>' +
-            '<div class="badge-item-prog">' + prog + '</div>' +
-            '</div>';
-        }).join('');
+      if (text) {
+        text.textContent = mine.length === 0
+          ? 'Du har inte rapporterat någon kö än.'
+          : (mine.length === 1 ? 'kö du har hjälpt andra med' : 'köer du har hjälpt andra med');
       }
     }
 
