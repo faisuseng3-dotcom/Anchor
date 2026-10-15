@@ -49,10 +49,13 @@ const QUERY_VENUES = `[out:json][timeout:180];
 nwr["amenity"~"^(bar|pub|nightclub)$"](${bbox});
 out center tags;`;
 
+// Stockholms stadsdelar finns både som place-ytor och som administrativa gränser
+// (admin_level 9-10). Frågar efter båda, eftersom täckningen varierar.
 const QUERY_AREAS = `[out:json][timeout:180];
 (
   way["place"~"^(suburb|neighbourhood|quarter|borough)$"](${bbox});
   relation["place"~"^(suburb|neighbourhood|quarter|borough)$"](${bbox});
+  relation["boundary"="administrative"]["admin_level"~"^(9|10)$"](${bbox});
 );
 out geom tags;`;
 
@@ -109,12 +112,29 @@ function pointInRing(pt, ring) {
   return inside;
 }
 
+function normArea(n) {
+  return n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+}
+
+// OSM kallar dem ofta "Södermalms stadsdelsområde", så exakt namnmatchning missar dem.
+function mapAreaName(name) {
+  const n = normArea(name);
+  if (AREA_ALIASES[name.toLowerCase().trim()]) return AREA_ALIASES[name.toLowerCase().trim()];
+  for (const [key, val] of Object.entries(AREA_ALIASES)) {
+    const k = normArea(key);
+    if (k.length >= 5 && n.includes(k)) return val;
+  }
+  return null;
+}
+
 function buildAreas(raw) {
   const areas = [];
+  const seenNames = [];
   for (const el of raw.elements) {
     const name = el.tags?.name;
     if (!name) continue;
-    const mapped = AREA_ALIASES[name.toLowerCase().trim()];
+    seenNames.push(name);
+    const mapped = mapAreaName(name);
     if (!mapped) continue;
     const rings = [];
     if (el.type === 'way' && el.geometry?.length > 2) rings.push(el.geometry);
@@ -125,6 +145,7 @@ function buildAreas(raw) {
     }
     if (rings.length) areas.push({ name: mapped, osm: `${el.type}/${el.id}`, rings });
   }
+  areas.unmatchedNames = seenNames.filter(n => !mapAreaName(n));
   return areas;
 }
 
@@ -175,6 +196,9 @@ async function main() {
 
   const areas = buildAreas(rawAreas);
   console.log(`\nStadsdelspolygoner: ${areas.length} (${[...new Set(areas.map(a => a.name))].join(', ') || 'inga'})`);
+  if (areas.length === 0 && areas.unmatchedNames?.length) {
+    console.log(`  Inga matchade. OSM returnerade: ${[...new Set(areas.unmatchedNames)].slice(0, 25).join(', ')}`);
+  }
 
   const stats = {
     raw: rawVenues.elements.length,
