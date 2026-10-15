@@ -50,6 +50,11 @@ import './style.css';
       });
       if (name === 'home') setTimeout(function() { if (map) map.resize(); if (window.expandSheetHalf === undefined) {} }, 50);
       if (name === 'profile') loadUserHistory();
+      if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
+        selectedRV = null;
+        rsStep(1);
+        filterReportList();
+      }
       console.log('[QueueBar] Byter till skärm:', name);
     }
 
@@ -620,9 +625,7 @@ import './style.css';
       if (activeVenue) {
         selectedRV = activeVenue;
         document.getElementById('rs-vname').textContent = activeVenue.name;
-        document.getElementById('rs1').style.display = 'none';
-        document.getElementById('rs2').style.display = 'flex';
-        document.getElementById('rp-step-counter').style.display = 'none';
+        rsStep(2);
       }
     }
 
@@ -1728,16 +1731,20 @@ import './style.css';
         arrow: 'arr-d', arrowX: '50%'
       },
       {
-        screen: 'profile',
-        title: 'Din profil',
-        subtitle: 'Håll koll på dina krogar',
-        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', right: '8px' },
-        arrow: 'arr-d', arrowX: '75%'
+        screen: 'home',
+        title: 'Står du i kö? Rapportera',
+        subtitle: 'Fem sekunder — och alla ser läget',
+        target: 'report-btn',
+        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)' },
+        arrow: 'arr-d', arrowX: '50%'
       }
     ];
     var obStep = 0;
 
-    function obGetTarget(screen) {
+    function obGetTarget(screen, s) {
+      if (s && s.target === 'report-btn') {
+        return document.querySelector('.tab--report .tab-report-disc') || document.querySelector('.tab--report');
+      }
       if (screen === 'explore') {
         return document.querySelector('#explore-list .erow:not(.erow--empty)') ||
                document.querySelector('#explore-list .erow');
@@ -1819,7 +1826,7 @@ import './style.css';
 
       var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
 
-      if (s.screen === 'home' && map && typeof map.project === 'function') {
+      if (s.screen === 'home' && !s.target && map && typeof map.project === 'function') {
         var venue = VENUES.find(function(v) { return v.id === 'spy-bar'; });
         if (venue) {
           var px = map.project([venue.lng, venue.lat]);
@@ -1856,7 +1863,7 @@ import './style.css';
       // Steps 2-4: spotlight the target widget, bubble adjacent to it
       var _dim = dim; var _spot = spot; var _bubble = bubble; var _ar = ar;
       setTimeout(function() {
-        var target = obGetTarget(s.screen);
+        var target = obGetTarget(s.screen, s);
         if (target) {
           obApplyWidgetSpot(_dim, _spot, _bubble, target, _ar, BW, EDGE);
         }
@@ -2254,7 +2261,7 @@ import './style.css';
       var status = computeStatus(venue.id, allReports);
       var est = estimateWait(venue.id, allReports);
       var cls = getStatusClass(status);
-      var color = STATUS_COLORS[cls] || '#D1D5DB';
+      var color = STATUS_COLORS[cls] || getStatusColor('unknown');
       var hasData = venueReports.length > 0;
       var minsOld = hasData && latestReport ? (now - new Date(latestReport.created_at)) / 60000 : Infinity;
       var isAging = hasData && minsOld >= 15 && minsOld < 45;
@@ -2723,34 +2730,34 @@ import './style.css';
 
     function _liveRowHtml(r, isSub) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
-      var liveColors = { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
       var qs = r.queue_status;
       var descriptor = liveDescriptors[qs];
       if (!descriptor) return '';
-      var hasCount = r.people_ahead != null;
-      if (hasCount) descriptor = aheadBucket(r.people_ahead).label + (r.people_ahead ? ' i kö' : '');
-      var waitTime = isSub ? '' : venueWaitText(r.venue_id);
-      if (waitTime === descriptor) waitTime = '';
-      var color = liveColors[qs] || '#9CA3AF';
+      // Hjälten är det som faktiskt rapporterades — inte appens uppskattning.
+      if (r.people_ahead != null) descriptor = r.people_ahead ? aheadBucket(r.people_ahead).label + ' före' : 'Ingen kö';
+      var color = getStatusColor(qs);
+      var d = new Date(r.created_at);
+      var clock = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       var venue = getVenueById(r.venue_id);
       var name = venue ? venue.name : escapeHtml(r.venue_name || r.venue_id);
-      var area = venue ? venue.area : '';
+      var commentHtml = r.comment ? '<div class="tl-comment">"' + escapeHtml(r.comment) + '"</div>' : '';
       if (isSub) {
-        var subLabel = descriptor;
-        return '<div class="live-sub-row">' +
-          '<div class="live-sub-wait" style="color:' + color + '">' + subLabel + '</div>' +
-          '<div class="live-sub-meta">' + timeAgo(r.created_at) + '</div></div>';
+        return '<div class="tl-row tl-row--sub">' +
+          '<div class="tl-time">' + clock + '</div>' +
+          '<div class="tl-body"><div class="tl-report" style="color:' + color + '">' + descriptor + '</div>' + commentHtml + '</div></div>';
       }
-      var liveBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', none: 'rgba(0,230,118,0.04)' }[qs] || '';
-      var heroHtml = waitTime
-        ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
-        : '<div class="live-wait">' + descriptor + '</div>';
-      var venueLiveType = venue ? venueTypeLabel(venue.type) : '';
-      var typeBadgeHtml = venueLiveType ? '<span class="type-badge">' + venueLiveType.toUpperCase() + '</span>' : '';
-      return '<div class="live-row"' + (liveBg ? ' style="background:' + liveBg + '"' : '') + '>' +
-        '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
-        '<div class="live-right"><div class="live-name">' + name + typeBadgeHtml + '</div>' +
-        '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
+      var nowWait = venueWaitText(r.venue_id);
+      var area = venue ? venue.area + ' · ' + venueTypeLabel(venue.type) : '';
+      return '<div class="tl-row" onclick="openVenueCard(\'' + r.venue_id + '\')">' +
+        '<div class="tl-time">' + clock + '</div>' +
+        '<div class="tl-dot" style="background:' + color + '"></div>' +
+        '<div class="tl-body">' +
+          '<div class="tl-head"><span class="tl-name">' + name + '</span><span class="tl-ago">' + timeAgo(r.created_at) + '</span></div>' +
+          '<div class="tl-report" style="color:' + color + '">' + descriptor + '</div>' +
+          commentHtml +
+          '<div class="tl-meta">' + (area ? '<span>' + area + '</span>' : '') +
+            (nowWait ? '<span class="tl-now">nu ' + nowWait + '</span>' : '') + '</div>' +
+        '</div></div>';
     }
 
     // Senaste "Jag är inne" — verklig väntetid från en kö-session, inte en uppskattning.
@@ -2763,7 +2770,9 @@ import './style.css';
         .reduce(function(min, r) { var t = new Date(r.created_at).getTime(); return t < min ? t : min; }, Infinity);
       var mins = Math.round((new Date(entered.created_at).getTime() - start) / 60000);
       if (!isFinite(mins) || mins < 1) return '';
-      return '<div class="live-entered">Någon kom in efter ' + mins + ' min · ' + timeAgo(entered.created_at) + '</div>';
+      return '<div class="tl-row tl-row--entered"><div class="tl-time"></div>' +
+        '<div class="tl-body"><div class="tl-entered"><span class="tl-check">✓</span>Någon kom in efter <b>' + mins + ' min</b></div>' +
+        '<div class="tl-meta"><span>uppmätt väntetid · ' + timeAgo(entered.created_at) + '</span></div></div></div>';
     }
 
     function toggleLiveVenue(venueId) {
@@ -2814,7 +2823,7 @@ import './style.css';
             html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">+' + older.length + ' tidigare ' + (older.length === 1 ? 'rapport' : 'rapporter') + ' · visa</button>';
           }
         }
-        return html;
+        return '<div class="tl-group">' + html + '</div>';
       }).filter(Boolean).join('');
     }
 
@@ -2921,9 +2930,10 @@ import './style.css';
       var minsLeft = Math.round((_onMyWay.arrivalTime - Date.now()) / 60000);
       var arrived = minsLeft <= 0;
 
-      var title, sub, actions;
+      var kicker, big, sub, actions;
       if (arrived) {
-        title = 'Framme vid ' + name + '?';
+        kicker = 'Framme?';
+        big = name;
         sub = 'Hur många står framför dig?';
         actions = '<button class="qs-btn" onclick="cancelOnMyWay()">Kom inte dit</button>'
           + '<button class="qs-btn qs-btn--primary" onclick="onMyWayReport()">Rapportera kön</button>';
@@ -2934,14 +2944,16 @@ import './style.css';
         var fc = forecastWait(_onMyWay.venueId, minsLeft, Math.max(0, onMyWayCount(_onMyWay.venueId) - 1));
         var fcText = fc ? formatWait(fc) : '';
         var context = fc ? (fcText === 'Ingen kö' ? 'troligen ingen kö då' : 'troligen ' + fcText + ' kö då')
-          : waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || '';
-        title = 'På väg · ' + name;
-        sub = 'Framme om ca ' + minsLeft + ' min' + (context ? ' · ' + context : '');
+          : waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || 'ingen färsk rapport';
+        kicker = 'På väg · ' + name;
+        big = '<span class="qs-num">~' + minsLeft + ' min</span> <span class="qs-unit">kvar</span>';
+        sub = context;
         actions = '<button class="qs-btn" onclick="onMyWayArrived()">Jag är framme</button>';
       }
       banner.style.display = 'block';
       banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
-        + '<div class="qs-title">' + title + '</div>'
+        + '<div class="qs-kicker"><span class="qs-live"></span>' + kicker + '</div>'
+        + '<div class="qs-title">' + big + '</div>'
         + '<div class="qs-sub">' + sub + '</div></div>'
         + '<button class="qs-close" onclick="cancelOnMyWay()" aria-label="Avbryt">×</button></div>'
         + '<div class="qs-actions">' + actions + '</div>';
@@ -2950,12 +2962,15 @@ import './style.css';
     function renderQueueSessionBanner(banner, qs) {
       var sinceLast = Date.now() - qs.lastAt;
       var canUpdate = sinceLast >= QS_MIN_GAP && qs.followups < QS_MAX_FOLLOWUPS;
+      var inQueue = Math.max(0, Math.round((Date.now() - (qs.startedAt || qs.lastAt)) / 60000)) || 0;
+      var ahead = aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför' : '');
       var sub = canUpdate
-        ? 'Står du kvar? Hur många är framför dig nu?'
-        : aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför dig' : '') + ' · ' + timeAgo(new Date(qs.lastAt).toISOString());
+        ? ahead + ' · ' + timeAgo(new Date(qs.lastAt).toISOString()) + ' · hur många nu?'
+        : ahead + ' · ' + timeAgo(new Date(qs.lastAt).toISOString());
       banner.style.display = 'block';
       banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
-        + '<div class="qs-title">I kön · ' + qs.venueName + '</div>'
+        + '<div class="qs-kicker"><span class="qs-live"></span>I kön · ' + qs.venueName + '</div>'
+        + '<div class="qs-title"><span class="qs-num">' + inQueue + ' min</span> <span class="qs-unit">i kön</span></div>'
         + '<div class="qs-sub">' + sub + '</div></div>'
         + '<button class="qs-close" onclick="dismissQueueSession()" aria-label="Avsluta">×</button></div>'
         + '<div class="qs-actions">'
@@ -2963,6 +2978,16 @@ import './style.css';
         + '<button class="qs-btn qs-btn--primary" onclick="queueSessionEntered()">Jag är inne</button>'
         + '</div>';
     }
+
+    // Bannerns höjd skjuter ner kartans sökfält och skärmrubriker så att inget döljs.
+    (function() {
+      var b = document.getElementById('omw-banner');
+      if (!b || typeof ResizeObserver === 'undefined') return;
+      new ResizeObserver(function() {
+        var h = b.style.display === 'none' ? 0 : b.offsetHeight + 8;
+        document.documentElement.style.setProperty('--banner-h', h + 'px');
+      }).observe(b);
+    })();
 
     restoreOnMyWay();
     updateOnMyWayUI();
@@ -2983,9 +3008,17 @@ import './style.css';
         if (!latestTs[r.venue_id] || t > latestTs[r.venue_id]) latestTs[r.venue_id] = t;
       });
       var list = q ? venueSearch(q, VENUES) : VENUES.slice();
-      // When no query: sort by recency; when searching: preserve relevance order
+      var pos = window._userPos;
+      function distM(v) {
+        if (!pos) return null;
+        var dLat = (v.lat - pos.lat) * 111320;
+        var dLng = (v.lng - pos.lng) * 111320 * Math.cos(pos.lat * Math.PI / 180);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+      }
+      // Utan sökord: närmast först om platsen är känd, annars senast rapporterat. Med sökord: relevans.
       if (!q) {
         list.sort(function(a, b) {
+          if (pos) return distM(a) - distM(b);
           var at = latestTs[a.id] || 0;
           var bt = latestTs[b.id] || 0;
           if (at && !bt) return -1;
@@ -2994,25 +3027,39 @@ import './style.css';
           return bt - at;
         });
       }
+      var freshCut = Date.now() - 45 * 60 * 1000;
       el.innerHTML = list.map(function(v) {
         var rsTypeLbl = venueTypeLabel(v.type);
-        var rsAreaText = v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '');
-        return '<div class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
-          '<div><div class="rs-name">' + v.name + '</div><div class="rs-area">' + rsAreaText + '</div></div>' +
-          '<span class="rs-arrow">→</span></div>';
+        var fresh = latestTs[v.id] && latestTs[v.id] > freshCut;
+        var dotColor = fresh ? getStatusColor(computeStatus(v.id, allReports)) : 'transparent';
+        var d = distM(v);
+        var metaParts = [v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '')];
+        if (d != null) metaParts.push(d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1).replace('.', ',') + ' km');
+        var ago = latestTs[v.id] ? timeAgo(new Date(latestTs[v.id]).toISOString()) : 'ingen rapport ikväll';
+        return '<button class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
+          '<span class="rs-dot' + (fresh ? '' : ' rs-dot--none') + '" style="background:' + dotColor + '"></span>' +
+          '<span class="rs-text"><span class="rs-name">' + v.name + '</span><span class="rs-area">' + metaParts.join(' · ') + '</span></span>' +
+          '<span class="rs-ago">' + ago + '</span></button>';
       }).join('');
+    }
+
+    // Visar ett av de tre stegen och håller stegräknaren i synk.
+    function rsStep(n) {
+      document.getElementById('rs1').style.display = n === 1 ? 'block' : 'none';
+      document.getElementById('rs2').style.display = n === 2 ? 'flex' : 'none';
+      document.getElementById('rs3').style.display = n === 3 ? 'flex' : 'none';
+      var c = document.getElementById('rp-step-counter');
+      if (c) { c.textContent = n + ' / 3'; c.style.display = ''; }
     }
 
     function pickRV(id) {
       selectedRV = getVenueById(id);
       document.getElementById('rs-vname').textContent = selectedRV.name;
-      document.getElementById('rs1').style.display = 'none';
-      document.getElementById('rs2').style.display = 'flex';
+      rsStep(2);
     }
 
     function backToRs1() {
-      document.getElementById('rs1').style.display = 'block';
-      document.getElementById('rs2').style.display = 'none';
+      rsStep(1);
     }
 
     async function pickAhead(peopleAhead) {
@@ -3024,17 +3071,15 @@ import './style.css';
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
         showFloatingPoints(10);
-        document.getElementById('rs2').style.display = 'none';
-        document.getElementById('rs3').style.display = 'flex';
+        rsStep(3);
         var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
         selectedRV = null;
         setTimeout(function() {
-          document.getElementById('rs3').style.display = 'none';
-          document.getElementById('rs1').style.display = 'block';
+          rsStep(1);
           document.getElementById('rs-search').value = '';
           filterReportList();
           if (dest) showScreen(dest);
-        }, 1500);
+        }, 2800);
       } catch(err) { showToast(reportErrorText(err)); }
     }
 
@@ -3132,7 +3177,7 @@ import './style.css';
       var pct = Math.min(100, ((pts - lvl.min) / (lvl.next - lvl.min)) * 100);
       var pl = document.getElementById('plabel');
       var pb = document.getElementById('pbar');
-      if (pl) pl.textContent = pts + ' / ' + lvl.next + ' poäng till nästa nivå';
+      if (pl) pl.textContent = lvl.next >= 9999 ? pts + ' poäng · högsta nivån' : (lvl.next - pts) + ' poäng kvar till nästa nivå';
       if (pb) pb.style.width = pct + '%';
 
       var daysEl = document.querySelector('#screen-profile .days-count');
@@ -3160,9 +3205,11 @@ import './style.css';
         ];
         badgeRow.innerHTML = defs.map(function(b) {
           var on = mine.length >= b.req;
+          var prog = on ? 'Klar' : Math.min(mine.length, b.req) + '/' + b.req;
           return '<div class="badge-item' + (on ? ' badge-item--on' : ' badge-item--locked') + '">' +
             '<div class="badge-item-icon">' + b.icon + '</div>' +
             '<div class="badge-item-label">' + b.name + '</div>' +
+            '<div class="badge-item-prog">' + prog + '</div>' +
             '</div>';
         }).join('');
       }

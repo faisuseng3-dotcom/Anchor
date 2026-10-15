@@ -16,7 +16,7 @@
   <script type="module" src="/src/main.js"></script>
 </head>
 <body>
-  <div id="omw-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:800;padding:12px 16px;background:rgba(13,15,26,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08);align-items:center;gap:12px"></div>
+  <div id="omw-banner" role="status" aria-live="polite" style="display:none"></div>
 
   <div id="app">
     <section id="screen-home" class="screen active">
@@ -116,14 +116,12 @@
       <div id="rs2" style="display:none">
         <div id="rs-vname"></div>
         <div class="rs-question">Hur många står framför dig?</div>
-        <button class="q-btn q-btn-count" onclick="pickAhead(0)"><span class="q-btn-num">Ingen kö</span><span class="q-btn-sub">gå rakt in</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
-        <div style="margin-top:12px">
-          <input id="rs-comment" type="text" maxlength="80" placeholder="Valfri kommentar: fri entré, dresscode, VIP-kö öppen…" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;font-size:14px;color:rgba(255,255,255,0.8);font-family:inherit;outline:none" />
-        </div>
+        <input id="rs-comment" class="rs-comment" type="text" maxlength="80" placeholder="Kommentar (valfritt): fri entré, dresscode, VIP-kö…" />
+        <button class="q-btn q-btn-count q-fill-0" onclick="pickAhead(0)"><span class="q-btn-num">0</span><span class="q-btn-sub">Ingen kö — gå rakt in</span></button>
+        <button class="q-btn q-btn-count q-fill-1" onclick="pickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count q-fill-2" onclick="pickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count q-fill-3" onclick="pickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count q-fill-4" onclick="pickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
         <button class="rs-back" onclick="backToRs1()">← Byt ställe</button>
       </div>
 
@@ -131,8 +129,9 @@
         <div class="rs-success-icon">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <div class="rs-thanks">Tack för din rapport!</div>
+        <div class="rs-thanks">Tack — kön är uppdaterad</div>
         <div class="rs-points">+10 poäng</div>
+        <p class="rs-next">Står du kvar? Vi frågar snart hur långt du kommit. Då kan vi mäta hur snabbt kön rör sig.</p>
       </div>
     </section>
 
@@ -141,8 +140,10 @@
         <div class="pf-avatar">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
         </div>
-        <div class="pf-name">Anonym Användare</div>
-        <span class="pf-level level-badge">Ny</span>
+        <div>
+          <div class="pf-name">Anonym Användare</div>
+          <span class="pf-level level-badge">Ny</span>
+        </div>
       </div>
 
       <div class="pf-stats">
@@ -168,7 +169,7 @@
 
       <div class="pf-section">
         <div class="rs-label">Inställningar</div>
-        <div class="pf-card" style="padding-top:2px;padding-bottom:2px">
+        <div class="pf-card" style="padding-top:0;padding-bottom:0">
           <a class="pf-row" href="mailto:support@queuebar.se"><span>Kontakta oss<small>support@queuebar.se</small></span><span class="arrow">→</span></a>
           <button class="pf-row" onclick="showPrivacyPolicy()"><span>Integritetspolicy</span><span class="arrow">→</span></button>
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span><span class="arrow">→</span></button>
@@ -185,16 +186,16 @@
       </div>
     </section>
 
-    <div id="qr-overlay" onclick="closeQuickReport()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);"></div>
-    <div id="qr-sheet" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:390px;background:#0D0F1A;border:1px solid rgba(255,255,255,0.09);border-bottom:none;border-radius:20px 20px 0 0;padding:20px 20px 48px;z-index:201;">
-      <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 20px;"></div>
-      <div id="qr-vname" style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;"></div>
-      <div id="qr-question" style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:20px;">Hur många står framför dig?</div>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(0)"><span class="q-btn-num">Ingen kö</span><span class="q-btn-sub">gå rakt in</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
+    <div id="qr-overlay" class="qr-overlay" onclick="closeQuickReport()" style="display:none"></div>
+    <div id="qr-sheet" class="qr-sheet" role="dialog" aria-labelledby="qr-vname" style="display:none">
+      <div class="qr-handle"></div>
+      <div id="qr-vname" class="qr-vname"></div>
+      <div id="qr-question" class="qr-question">Hur många står framför dig?</div>
+      <button class="q-btn q-btn-count q-fill-0" onclick="quickPickAhead(0)"><span class="q-btn-num">0</span><span class="q-btn-sub">Ingen kö — gå rakt in</span></button>
+      <button class="q-btn q-btn-count q-fill-1" onclick="quickPickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count q-fill-2" onclick="quickPickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count q-fill-3" onclick="quickPickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count q-fill-4" onclick="quickPickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
     </div>
 
     <nav id="bottom-nav">
@@ -278,13 +279,13 @@
   </div>
 
 
-  <div id="install-prompt" style="display:none;position:fixed;bottom:88px;left:16px;right:16px;z-index:700;background:rgba(13,15,26,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;align-items:center;gap:12px">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:600;color:#fff;line-height:1.3">Lägg till på hemskärmen</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px">Öppna QueueBar snabbt utan webbläsaren</div>
+  <div id="install-prompt" class="install-prompt" style="display:none">
+    <div class="ip-text">
+      <div class="ip-title">Lägg till på hemskärmen</div>
+      <div class="ip-sub">Öppna QueueBar direkt — utan webbläsaren</div>
     </div>
-    <button onclick="acceptInstall()" style="flex-shrink:0;height:36px;padding:0 16px;border-radius:20px;background:rgba(255,255,255,0.92);color:#0D0F1A;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap;font-family:inherit">Lägg till</button>
-    <button onclick="dismissInstall()" style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-family:inherit">×</button>
+    <button class="ip-accept" onclick="acceptInstall()">Lägg till</button>
+    <button class="ip-close" onclick="dismissInstall()" aria-label="Stäng">×</button>
   </div>
 </body>
 </html>
