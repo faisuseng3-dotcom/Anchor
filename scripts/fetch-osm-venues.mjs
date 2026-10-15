@@ -15,11 +15,14 @@ const SANITY = { latMin: 59.2, latMax: 59.4, lonMin: 17.9, lonMax: 18.2 };
 const DUP_METERS = 50;
 const DRIFT_METERS = 75;
 
+// Bara servrar med global data. overpass.osm.ch täcker bara Schweiz och svarar
+// med noll träffar på en Stockholmsfråga, vilket ser ut som ett lyckat anrop.
 const ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.osm.ch/api/interpreter'
+  'https://overpass.private.coffee/api/interpreter'
 ];
+const ATTEMPTS_PER_ENDPOINT = 3;
 
 // OSM-namn → våra nio områden. Allt annat blir "oklart".
 const AREA_ALIASES = {
@@ -53,30 +56,38 @@ const QUERY_AREAS = `[out:json][timeout:180];
 );
 out geom tags;`;
 
-async function overpass(query, label) {
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function overpass(query, label, { minElements = 1 } = {}) {
   let lastErr;
   for (const url of ENDPOINTS) {
-    try {
-      process.stdout.write(`  ${label}: ${new URL(url).host} … `);
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'QueueBar/1.0 (venue research; contact via github.com/faisuseng3-dotcom/Anchor)'
-        },
-        body: new URLSearchParams({ data: query })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      console.log(`${json.elements.length} element`);
-      return json;
-    } catch (err) {
-      console.log(`misslyckades (${err.message})`);
-      lastErr = err;
-      await new Promise(r => setTimeout(r, 3000));
+    const host = new URL(url).host;
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_ENDPOINT; attempt++) {
+      try {
+        process.stdout.write(`  ${label}: ${host} (försök ${attempt}) … `);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'QueueBar/1.0 (venue research; github.com/faisuseng3-dotcom/Anchor)'
+          },
+          body: new URLSearchParams({ data: query })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const n = json.elements?.length ?? 0;
+        // Ett tomt svar på en storstadsfråga betyder fel server, inte tom stad.
+        if (n < minElements) throw new Error(`bara ${n} element — servern saknar troligen svensk data`);
+        console.log(`${n} element`);
+        return json;
+      } catch (err) {
+        console.log(`misslyckades (${err.message})`);
+        lastErr = err;
+        if (attempt < ATTEMPTS_PER_ENDPOINT) await sleep(attempt * 5000);
+      }
     }
   }
-  throw new Error(`Alla Overpass-servrar misslyckades för ${label}: ${lastErr?.message}`);
+  throw new Error(`Alla Overpass-servrar misslyckades för ${label}. Sist: ${lastErr?.message}. Servrarna är ofta överbelastade — vänta några minuter och kör igen.`);
 }
 
 function haversine(a, b) {
@@ -155,9 +166,9 @@ function csvCell(v) {
 
 async function main() {
   console.log(`Hämtar från Overpass (bbox ${bbox})`);
-  const rawVenues = await overpass(QUERY_VENUES, 'ställen');
-  await new Promise(r => setTimeout(r, 2000));
-  const rawAreas = await overpass(QUERY_AREAS, 'stadsdelar');
+  const rawVenues = await overpass(QUERY_VENUES, 'ställen', { minElements: 50 });
+  await sleep(3000);
+  const rawAreas = await overpass(QUERY_AREAS, 'stadsdelar', { minElements: 1 });
 
   if (!existsSync(DATA)) mkdirSync(DATA, { recursive: true });
   writeFileSync(join(DATA, 'osm_raw.json'), JSON.stringify({ venues: rawVenues, areas: rawAreas }, null, 2));
