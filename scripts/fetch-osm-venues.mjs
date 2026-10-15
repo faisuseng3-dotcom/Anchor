@@ -45,8 +45,13 @@ const AREA_ALIASES = {
 
 const bbox = `${BBOX.south},${BBOX.west},${BBOX.north},${BBOX.east}`;
 
-const QUERY_VENUES = `[out:json][timeout:180];
-nwr["amenity"~"^(bar|pub|nightclub)$"](${bbox});
+const CANDIDATE_TYPES = new Set(['bar', 'pub', 'nightclub']);
+
+// Hämtar även restaurang och kafé: Pelikan, Sturehof och TAK är taggade så i OSM
+// och syntes därför inte alls. De används bara för att matcha våra ställen,
+// aldrig som nya kandidater.
+const QUERY_VENUES = `[out:json][timeout:240];
+nwr["amenity"~"^(bar|pub|nightclub|restaurant|cafe)$"](${bbox});
 out center tags;`;
 
 // Stockholms stadsdelar finns både som place-ytor och som administrativa gränser
@@ -56,6 +61,7 @@ const QUERY_AREAS = `[out:json][timeout:180];
   way["place"~"^(suburb|neighbourhood|quarter|borough)$"](${bbox});
   relation["place"~"^(suburb|neighbourhood|quarter|borough)$"](${bbox});
   relation["boundary"="administrative"]["admin_level"~"^(9|10)$"](${bbox});
+  node["place"~"^(suburb|neighbourhood|quarter|borough)$"](${bbox});
 );
 out geom tags;`;
 
@@ -130,6 +136,8 @@ function mapAreaName(name) {
 function buildAreas(raw) {
   const areas = [];
   const seenNames = [];
+  const noGeometry = [];
+  const points = [];
   for (const el of raw.elements) {
     const name = el.tags?.name;
     if (!name) continue;
@@ -144,16 +152,25 @@ function buildAreas(raw) {
       }
     }
     if (rings.length) areas.push({ name: mapped, osm: `${el.type}/${el.id}`, rings });
+    else if (el.type === 'node' && el.lat != null) points.push({ name: mapped, lat: el.lat, lon: el.lon });
+    else noGeometry.push(name);
   }
   areas.unmatchedNames = seenNames.filter(n => !mapAreaName(n));
+  areas.noGeometry = noGeometry;
+  areas.points = points;
   return areas;
 }
 
 function areaFor(pt, areas) {
   for (const a of areas) {
-    if (a.rings.some(r => pointInRing(pt, r))) return a.name;
+    if (a.rings.some(r => pointInRing(pt, r))) return { area: a.name, area_source: 'polygon' };
   }
-  return 'oklart';
+  let best = null, bestD = 1500;
+  for (const p of areas.points || []) {
+    const d = haversine(pt, p);
+    if (d < bestD) { best = p; bestD = d; }
+  }
+  return best ? { area: best.name, area_source: 'närmaste punkt' } : { area: 'oklart', area_source: 'ingen' };
 }
 
 // Jämför namn utan skiftläge, skiljetecken och vanliga suffix.
@@ -210,7 +227,7 @@ async function main() {
   for (const el of rawVenues.elements) {
     const t = el.tags || {};
     const amenity = t.amenity;
-    stats.byType[amenity] = (stats.byType[amenity] || 0) + 1;
+    if (CANDIDATE_TYPES.has(amenity)) stats.byType[amenity] = (stats.byType[amenity] || 0) + 1;
 
     if (!t.name) { stats.noName++; continue; }
 
@@ -225,8 +242,10 @@ async function main() {
     const street = t['addr:street'] || null;
     const hnr = t['addr:housenumber'] || null;
     const address = street ? (hnr ? `${street} ${hnr}` : street) : null;
-    if (!address) stats.noAddress++;
-    if (!t.opening_hours) stats.noHours++;
+    if (CANDIDATE_TYPES.has(amenity)) {
+      if (!address) stats.noAddress++;
+      if (!t.opening_hours) stats.noHours++;
+    }
 
     const closedHints = Object.keys(t).filter(k =>
       k.startsWith('disused:') || k.startsWith('was:') || k.startsWith('abandoned:') || k.startsWith('removed:')
@@ -244,7 +263,8 @@ async function main() {
       postcode: t['addr:postcode'] || null,
       opening_hours: t.opening_hours || null,
       website: t.website || t['contact:website'] || null,
-      area: areaFor({ lat, lon }, areas),
+      ...areaFor({ lat, lon }, areas),
+      is_candidate: CANDIDATE_TYPES.has(amenity),
       possibly_closed: closedHints.length ? closedHints.join(', ') : null,
       tag_count: Object.keys(t).length
     });
@@ -264,6 +284,7 @@ async function main() {
     kept.push(r);
   }
   kept.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+  const candidates = kept.filter(k => k.is_candidate);
 
   const existing = parseExistingVenues();
   // Matcha bara på namn. Enbart närhet räcker inte: vid Stureplan ligger flera
@@ -281,7 +302,7 @@ async function main() {
   }
 
   const matchedIds = new Set([...matched.values()].map(m => m.osm.osm_id));
-  const newVenues = kept.filter(k => !matchedIds.has(k.osm_id));
+  const newVenues = candidates.filter(k => !matchedIds.has(k.osm_id));
   for (const n of newVenues) {
     const near = existing
       .map(e => ({ name: e.name, meters: Math.round(haversine(e, n)) }))
@@ -295,7 +316,7 @@ async function main() {
     .map(e => ({ id: e.id, name: e.name, meters: matched.get(e.id).meters, osm: matched.get(e.id).osm }));
 
   const notFound = existing.filter(e => !matched.has(e.id)).map(e => {
-    const near = kept
+    const near = candidates
       .map(k => ({ k, meters: Math.round(haversine(e, k)) }))
       .filter(x => x.meters <= 60)
       .sort((a, b) => a.meters - b.meters)[0];
@@ -306,7 +327,7 @@ async function main() {
   });
 
   const perArea = {};
-  for (const k of kept) {
+  for (const k of candidates) {
     perArea[k.area] ||= { bar: 0, pub: 0, nightclub: 0, total: 0 };
     perArea[k.area][k.type]++;
     perArea[k.area].total++;
@@ -317,7 +338,8 @@ async function main() {
     source: 'OpenStreetMap via Overpass API — © OpenStreetMap contributors, ODbL',
     bbox: BBOX,
     stats, per_area: perArea,
-    kept_count: kept.length,
+    fetched_count: kept.length,
+    candidate_count: candidates.length,
     comparison: {
       existing_count: existing.length,
       new_in_osm: newVenues.length,
@@ -327,11 +349,11 @@ async function main() {
   };
 
   writeFileSync(join(DATA, 'venues_candidates.json'),
-    JSON.stringify({ report, venues: kept }, null, 2));
+    JSON.stringify({ report, venues: candidates }, null, 2));
 
-  const cols = ['osm_id', 'name', 'type', 'lat', 'lon', 'address', 'postcode', 'opening_hours', 'website', 'area', 'possibly_closed'];
+  const cols = ['osm_id', 'name', 'type', 'lat', 'lon', 'address', 'postcode', 'opening_hours', 'website', 'area', 'area_source', 'possibly_closed'];
   writeFileSync(join(DATA, 'venues_candidates.csv'),
-    [cols.join(','), ...kept.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\n') + '\n');
+    [cols.join(','), ...candidates.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\n') + '\n');
 
   console.log('\n──────── RAPPORT ────────');
   console.log(`Råa träffar:        ${stats.raw}`);
@@ -339,7 +361,7 @@ async function main() {
   console.log(`Utan namn:          ${stats.noName} (borttagna)`);
   console.log(`Utanför koordinatkontroll: ${stats.outsideBbox} (borttagna)`);
   console.log(`Dubbletter:         ${stats.duplicates} (sammanslagna)`);
-  console.log(`Kvar:               ${kept.length}`);
+  console.log(`Kandidater (bar/pub/klubb): ${candidates.length}  — hämtade totalt ${kept.length} inkl. restaurang/kafé för matchning`);
   console.log(`  saknar adress:    ${stats.noAddress}`);
   console.log(`  saknar öppettider:${stats.noHours}`);
   console.log(`  flaggade nedlagda:${stats.flaggedClosed}`);
