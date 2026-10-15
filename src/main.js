@@ -403,7 +403,7 @@ import './style.css';
     }
 
     function getStatusColor(status) {
-      return { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: '#9CA3AF' }[status] || '#9CA3AF';
+      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#7C8194' }[status] || '#7C8194';
     }
 
     function getStatusClass(status) {
@@ -563,22 +563,44 @@ import './style.css';
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       document.getElementById('vc-name').textContent = venue.name;
       var est = estimateWait(venue.id, allReports);
+      var waitText = venueWaitText(venue.id);
+      var minsOld = reports.length ? (Date.now() - new Date(reports[0].created_at)) / 60000 : Infinity;
+      var card = document.getElementById('venue-card');
+      card.classList.toggle('vc--aging', minsOld >= 15 && minsOld < 45);
+      card.classList.toggle('vc--nodata', !waitText);
+      card.style.setProperty('--st', waitText ? getStatusColor(status) : '#4A4F60');
       var vcStatus = document.getElementById('vc-status');
-      vcStatus.textContent = venueWaitText(venue.id) || 'Ingen rapport';
-      vcStatus.style.color = getStatusColor(status);
+      vcStatus.textContent = waitText || '–';
+      vcStatus.style.color = waitText ? getStatusColor(status) : '';
+      // Rad under siffran: vad siffran bygger på (antal i kö, uppmätt eller uppskattad, ålder)
+      var subParts = [];
+      if (est) subParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
+      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('≈ uppskattning');
+      if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
+      document.getElementById('vc-sub').textContent = waitText ? subParts.join(' · ') : 'Ingen färsk rapport — var först att rapportera';
       var vcParts = [];
-      if (est) vcParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
-      if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · ' + timeAgo(reports[0].created_at));
-      if (est && !est.full && est.ahead && est.source !== 'live') vcParts.push('uppskattning');
+      if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · senast ' + timeAgo(reports[0].created_at));
       var omwN = onMyWayCount(venue.id);
       if (omwN) vcParts.push('~' + omwN + ' på väg hit');
-      document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join(' · ') : 'Ingen rapport ännu';
+      document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join('  ·  ') : 'Inga rapporter ännu i kväll';
       document.getElementById('vc-closing').textContent = 'Stänger ' + venue.closing;
-      document.getElementById('vc-area').textContent = venue.area;
+      document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type);
+      var favBtn = document.getElementById('vc-fav');
+      if (favBtn) favBtn.classList.toggle('fav', isFavorite(venue.id));
       document.getElementById('vc-overlay').style.display = 'block';
-      var card = document.getElementById('venue-card');
       card.style.display = 'block';
       card.style.animation = 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)';
+    }
+
+    // Kortets knappar — activeVenue är modul-lokal, så inline-onclick går via dessa
+    function vcOnMyWay() { if (activeVenue) goOnMyWay(activeVenue.id); }
+    function vcShare() { if (activeVenue) shareVenue(activeVenue.id); }
+    function vcToggleFavorite(event) {
+      if (!activeVenue) return;
+      var btn = event.currentTarget;
+      toggleFavorite(event, activeVenue.id).then(function() {
+        if (activeVenue) btn.classList.toggle('fav', isFavorite(activeVenue.id));
+      });
     }
 
     function closeVenueCard() {
@@ -638,7 +660,7 @@ import './style.css';
       var status = computeStatus(venue.id, allReports);
       var label = venueWaitText(venue.id);
       var cls = getStatusClass(status);
-      var dotColor = { free: '#22C55E', short: '#F59E0B', medium: '#EA7300', long: '#EF4444', unknown: '#D1D5DB' }[cls] || '#D1D5DB';
+      var dotColor = cls === 'unknown' ? '#4A4F60' : getStatusColor(cls);
       return '<div class="vcrow" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'), \'sheet\')">' +
         '<span class="vcrow-dot" style="background:' + dotColor + '"></span>' +
         '<div class="vcrow-info">' +
@@ -654,6 +676,38 @@ import './style.css';
       if (el) el.innerHTML = VENUES.map(renderCompactVenueRow).join('');
       var cnt = document.getElementById('sheet-count');
       if (cnt) cnt.textContent = VENUES.length + ' ställen nära dig';
+      renderBestNowCard();
+    }
+
+    // Kartans enda kort: svaret på "vart går vi nu?". Visar bara färsk data (computeBestNow: ≤30 min).
+    function renderBestNowCard() {
+      var card = document.getElementById('best-now-card');
+      if (!card) return;
+      var best = computeBestNow();
+      if (!best) {
+        var anyData = allReports.length > 0;
+        card.innerHTML = '<button class="bn-card bn-card--empty" onclick="showScreen(\'explore\')">' +
+          '<span class="bn-eyebrow">Bäst nu</span>' +
+          '<span class="bn-empty-text">' + (anyData ? 'Ingen färsk rapport om kort kö just nu' : 'Inga rapporter ännu i kväll') + '</span>' +
+          '<span class="bn-cta">Se alla ställen →</span>' +
+          '</button>';
+        return;
+      }
+      var v = best.venue;
+      var wait = venueWaitText(v.id) || 'Ingen kö';
+      var latest = allReports.filter(function(r) { return r.venue_id === v.id && isQueueReport(r); })
+        .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+      var meta = [v.area, venueTypeLabel(v.type)];
+      if (best.dist != null) meta.push(best.dist < 1 ? Math.round(best.dist * 10) * 100 + ' m' : best.dist.toFixed(1) + ' km');
+      if (latest) meta.push(timeAgo(latest.created_at));
+      card.innerHTML = '<button class="bn-card" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
+        '<span class="bn-eyebrow"><span class="bn-dot"></span>Bäst nu</span>' +
+        '<span class="bn-row">' +
+          '<span class="bn-name">' + v.name + '</span>' +
+          '<span class="bn-wait">' + wait + '</span>' +
+        '</span>' +
+        '<span class="bn-meta">' + meta.filter(Boolean).join(' · ') + '</span>' +
+        '</button>';
     }
 
     console.log('[QueueBar] Renderar venues');
@@ -894,7 +948,7 @@ import './style.css';
       try {
         map = new mapboxgl.Map({
           container: 'map',
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: 'mapbox://styles/mapbox/dark-v11',
           center: [18.0686, 59.3293],
           zoom: 12.5,
           minZoom: 11,
@@ -920,7 +974,7 @@ import './style.css';
 
         // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
         var PIN_STATUS_COLORS = {
-          none: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: '#6B7280'
+          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: '#4A4F60'
         };
 
         // Ikoner i 24×24-viewBox. Bar = cocktailglas, klubb = musiknot.
@@ -938,45 +992,43 @@ import './style.css';
           ctx.beginPath(); ctx.arc(18, 16, 3, 0, Math.PI * 2); ctx.fill();
         }
 
-        // Droppformad nål i statusfärg med vit typ-ikon. Ritas i 2x för skärpa.
+        // Rund statusskiva med typ-ikon (avgångstavla-stil). Okänd/ingen data = ihålig grå ring,
+        // så att avsaknad av data syns istället för att se ut som en status. Ritas i 2x för skärpa.
         function addTypePin(map, name, color, glyphFn) {
-          var PR = 2, W = 38, H = 48;
+          var PR = 2, W = 36, H = 36;
           var canvas = document.createElement('canvas');
           canvas.width = W * PR; canvas.height = H * PR;
           var ctx = canvas.getContext('2d');
           ctx.scale(PR, PR);
-          var cx = W / 2, r = 16, cy = r + 2, tipY = H - 3;
+          var cx = W / 2, cy = H / 2, r = 15;
+          var hollow = /-unknown$/.test(name);
 
-          function pinPath() {
-            ctx.beginPath();
-            ctx.moveTo(cx, tipY);
-            ctx.bezierCurveTo(cx - 4, tipY - 8, cx - r, cy + r * 0.55, cx - r, cy);
-            ctx.arc(cx, cy, r, Math.PI, 0);
-            ctx.bezierCurveTo(cx + r, cy + r * 0.55, cx + 4, tipY - 8, cx, tipY);
-            ctx.closePath();
+          // Mörk ring runt skivan skiljer nålen från kartan och från grannar
+          ctx.beginPath();
+          ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
+          ctx.fillStyle = '#07080C';
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          if (hollow) {
+            ctx.fillStyle = '#10121A';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#4A4F60';
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = color;
+            ctx.fill();
           }
 
-          ctx.save();
-          ctx.shadowColor = 'rgba(0,0,0,0.30)';
-          ctx.shadowBlur = 3;
-          ctx.shadowOffsetY = 1;
-          pinPath();
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.restore();
-
-          // Vit kant för kontrast mot alla kartfärger
-          pinPath();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.stroke();
-
-          var iconSize = 18, s = iconSize / 24;
+          var glyphColor = hollow ? '#7C8194' : '#07080C';
+          var iconSize = 17, s = iconSize / 24;
           ctx.save();
           ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
           ctx.scale(s, s);
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.fillStyle = '#FFFFFF';
+          ctx.strokeStyle = glyphColor;
+          ctx.fillStyle = glyphColor;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           glyphFn(ctx);
@@ -1003,17 +1055,25 @@ import './style.css';
 
           map.addSource('venues', {
             type: 'geojson', data: venueGeoJSON,
-            cluster: true, clusterMaxZoom: 13, clusterRadius: 40
+            cluster: true, clusterMaxZoom: 13, clusterRadius: 40,
+            // Räknar fria/korta ställen i klustret så ringen kan visa "finns det något bra där?"
+            clusterProperties: {
+              n_free: ['+', ['case', ['==', ['get', 'status'], 'none'], 1, 0]],
+              n_short: ['+', ['case', ['==', ['get', 'status'], 'short'], 1, 0]]
+            }
           });
 
           map.addLayer({
             id: 'clusters', type: 'circle', source: 'venues',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': '#FFFFFF',
+              'circle-color': '#10121A',
               'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#E5E7EB'
+              'circle-stroke-width': 3,
+              'circle-stroke-color': ['case',
+                ['>', ['get', 'n_free'], 0], getStatusColor('free'),
+                ['>', ['get', 'n_short'], 0], getStatusColor('short'),
+                'rgba(244,245,247,0.45)']
             }
           });
 
@@ -1021,7 +1081,7 @@ import './style.css';
             id: 'cluster-count', type: 'symbol', source: 'venues',
             filter: ['has', 'point_count'],
             layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 14, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
-            paint: { 'text-color': '#1A1F36', 'text-halo-color': '#FFFFFF', 'text-halo-width': 1 }
+            paint: { 'text-color': '#F4F5F7' }
           });
 
           map.addLayer({
@@ -1033,8 +1093,8 @@ import './style.css';
                 ['match', ['get', 'type'], 'bar', 'pin-bar-', 'pin-club-'],
                 ['match', ['get', 'status'], ['none', 'short', 'medium', 'long'], ['get', 'status'], 'unknown']
               ],
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.1],
-              'icon-anchor': 'bottom',
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 15, 1.05],
+              'icon-anchor': 'center',
               'icon-allow-overlap': true,
               'icon-ignore-placement': true,
               // Längre köer ritas överst när nålar överlappar
@@ -1053,23 +1113,23 @@ import './style.css';
             id: 'venues-pulse', type: 'circle', source: 'venues',
             filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'status'], 'none']],
             paint: {
-              'circle-color': 'rgba(34,197,94,0)',
+              'circle-color': 'rgba(52,224,127,0)',
               'circle-radius': 8,
               'circle-stroke-width': 2,
-              'circle-stroke-color': 'rgba(34,197,94,0.4)'
+              'circle-stroke-color': 'rgba(52,224,127,0.4)'
             }
           });
 
           // animate pulse ring
-          var pulseSize = 11, pulseDir = 1;
+          var pulseSize = 18, pulseDir = 1;
           function animatePulse() {
             pulseSize += pulseDir * 0.2;
-            if (pulseSize >= 18) pulseDir = -1;
-            if (pulseSize <= 11) pulseDir = 1;
-            var opacity = (18 - pulseSize) / 7 * 0.4;
+            if (pulseSize >= 26) pulseDir = -1;
+            if (pulseSize <= 18) pulseDir = 1;
+            var opacity = (26 - pulseSize) / 8 * 0.5;
             if (map.getLayer('venues-pulse')) {
               map.setPaintProperty('venues-pulse', 'circle-radius', pulseSize);
-              map.setPaintProperty('venues-pulse', 'circle-stroke-color', 'rgba(34,197,94,' + opacity + ')');
+              map.setPaintProperty('venues-pulse', 'circle-stroke-color', 'rgba(52,224,127,' + opacity + ')');
             }
             requestAnimationFrame(animatePulse);
           }
@@ -1080,12 +1140,12 @@ import './style.css';
             filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
             layout: {
               'text-field': ['get', 'wait_label'],
-              'text-size': 10, 'text-offset': ['literal', [0, 0.5]], 'text-anchor': 'top', 'text-allow-overlap': true,
-              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
+              'text-size': 12, 'text-offset': ['literal', [0, 1.5]], 'text-anchor': 'top', 'text-allow-overlap': true,
+              'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
             },
             paint: {
-              'text-color': ['match', ['get', 'status'], 'none', '#10B981', 'short', '#F59E0B', 'medium', '#EA7300', 'long', '#EF4444', '#9B91B0'],
-              'text-halo-color': 'rgba(255,255,255,0.92)', 'text-halo-width': 1.5
+              'text-color': ['match', ['get', 'status'], 'none', getStatusColor('free'), 'short', getStatusColor('short'), 'medium', getStatusColor('medium'), 'long', getStatusColor('long'), '#A3A8B8'],
+              'text-halo-color': 'rgba(7,8,12,0.95)', 'text-halo-width': 2
             }
           });
 
@@ -1182,7 +1242,7 @@ import './style.css';
     }
 
     var STATUS_COLORS = {
-      free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: 'rgba(255,255,255,0.18)'
+      free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#4A4F60'
     };
 
     async function loadReports() {
@@ -2117,32 +2177,39 @@ import './style.css';
     function renderExploreSummary(animate) {
       var el = document.getElementById('explore-summary');
       if (!el) return;
+      el.style.display = 'block';
       var data = computeExploreSummary();
       var noData = data.total === 0;
-      var freeShortCount = data.freeCount + data.medCount;
-      var footerText = noData
-        ? 'Inga rapporter än — bli först att rapportera'
-        : freeShortCount + ' ställen med kort eller ingen kö nu';
+      var counted = data.freeCount + data.medCount + data.longCount;
+      function seg(n, color) {
+        return n ? '<span class="exsum-seg" style="flex:' + n + ';background:' + color + '"></span>' : '';
+      }
+      var footerText = exsumFooterText(data);
 
       el.innerHTML =
         '<div class="exsum">' +
+          '<div class="exsum-head">' +
+            '<span class="exsum-title"><span class="exsum-live"></span>Stockholm just nu</span>' +
+            '<span class="exsum-footer" id="exsum-footer">' + footerText + '</span>' +
+          '</div>' +
+          (counted
+            ? '<div class="exsum-bar">' + seg(data.freeCount, getStatusColor('free')) + seg(data.medCount, getStatusColor('short')) + seg(data.longCount, getStatusColor('long')) + '</div>'
+            : '<div class="exsum-bar exsum-bar--empty"></div>') +
           '<div class="exsum-stats">' +
             '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n0" style="color:#00E676">0</span>' +
-              '<span class="exsum-label">KORT KÖ</span>' +
+              '<span class="exsum-num" id="exsum-n0" style="color:' + getStatusColor('free') + '">0</span>' +
+              '<span class="exsum-label">INGEN KÖ</span>' +
             '</div>' +
-            '<div class="exsum-sep"></div>' +
             '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n1" style="color:#FFB300">0</span>' +
-              '<span class="exsum-label">MEDEL KÖ</span>' +
+              '<span class="exsum-num" id="exsum-n1" style="color:' + getStatusColor('short') + '">0</span>' +
+              '<span class="exsum-label">KORT KÖ · MEDEL KÖ</span>' +
             '</div>' +
-            '<div class="exsum-sep"></div>' +
             '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n2" style="color:#FF3B3B">0</span>' +
+              '<span class="exsum-num" id="exsum-n2" style="color:' + getStatusColor('long') + '">0</span>' +
               '<span class="exsum-label">LÅNG KÖ</span>' +
             '</div>' +
           '</div>' +
-          '<div class="exsum-footer" id="exsum-footer">' + footerText + '</div>' +
+          (noData ? '<div class="exsum-empty">Inga rapporter än — bli först att rapportera</div>' : '') +
         '</div>';
 
       var targets = [data.freeCount, data.medCount, data.longCount];
@@ -2158,17 +2225,19 @@ import './style.css';
       });
       _exsumPrevCounts = targets;
 
-      // 30s footer refresh
+      // 30s footer refresh — "senaste rapport X min sedan" åldras även utan ny data
       clearInterval(_exsumInterval);
       _exsumInterval = setInterval(function() {
         var footer = document.getElementById('exsum-footer');
         if (!footer) { clearInterval(_exsumInterval); return; }
-        var d2 = computeExploreSummary();
-        var fs2 = d2.freeCount + d2.medCount;
-        footer.textContent = d2.total === 0
-          ? 'Inga rapporter än — bli först att rapportera'
-          : fs2 + ' ställen med kort eller ingen kö nu';
+        footer.textContent = exsumFooterText(computeExploreSummary());
       }, 30000);
+    }
+
+    function exsumFooterText(d) {
+      if (d.total === 0) return 'inga rapporter';
+      var since = exsumTimeSince(d.lastTs);
+      return since ? 'senaste ' + since : '';
     }
 
     function renderExploreVenueRow(venue, index, bestData) {
@@ -2204,7 +2273,7 @@ import './style.css';
         level = 'medium'; // short or medium
       }
 
-      var levelBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', empty: 'rgba(255,255,255,0.02)' }[level];
+      var levelBg = { long: 'rgba(255,77,94,0.06)', medium: 'rgba(255,138,61,0.04)', free: 'rgba(52,224,127,0.05)', empty: 'rgba(255,255,255,0.02)' }[level];
       var stateClass = isEmpty ? ' erow--empty' : (isAging ? ' erow--stale' : '');
       var agingStyle = '';
       var barColor = isEmpty ? 'rgba(255,255,255,0.08)' : color;
@@ -2212,12 +2281,12 @@ import './style.css';
       // Hero number
       var heroText, heroColor;
       if (!hasData) {
-        heroText = '–'; heroColor = '#D1D5DB';
+        heroText = '–'; heroColor = '#7C8194';
       } else {
         heroText = (est ? est.ahead === 0 : (status === 'free' || status === 'none')) ? 'Fri' : venueWaitText(venue.id);
-        // Per-level hero color for better contrast
-        var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
-        heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
+        // Nivån "medium" täcker kort+medel för bakgrunden — siffran får exakt statusfärg
+        var heroColors = { free: '#34E07F', medium: getStatusColor(status), long: '#FF4D5E' };
+        heroColor = heroColors[level] || '#7C8194';
       }
 
       // Freshness check for pulse dot: only show if long AND report < 20 min old
@@ -2228,15 +2297,13 @@ import './style.css';
       // Trend (replaces badge — new information, not redundant with hero)
       var trendHtml = '';
       var STATUS_RANK = { free: 0, none: 0, short: 1, medium: 2, long: 3 };
-      if (hasData && venueReports.length === 1) {
-        trendHtml = '<span class="erow-trend erow-trend--single">· 1 rapport</span>';
-      } else if (hasData && venueReports.length >= 2) {
+      if (hasData && venueReports.length >= 2) {
         var r1 = venueReports[0].queue_status; // newest
         var r2 = venueReports[1].queue_status; // previous
         var rank1 = STATUS_RANK[r1] !== undefined ? STATUS_RANK[r1] : 1;
         var rank2 = STATUS_RANK[r2] !== undefined ? STATUS_RANK[r2] : 1;
         if (rank1 > rank2) {
-          trendHtml = '<span class="erow-trend erow-trend--up" style="color:' + color + '">↑ Ökar</span>';
+          trendHtml = '<span class="erow-trend erow-trend--up">↑ Ökar</span>';
         } else if (rank1 < rank2) {
           trendHtml = '<span class="erow-trend erow-trend--down">↓ Minskar</span>';
         } else {
@@ -2244,19 +2311,8 @@ import './style.css';
         }
       }
 
-      // Tertiary row
+      // Tertiary row: antal rapporter + ålder (ersätter konfidensstaplar, "pers bekräftade" och sparkline)
       var reportCount = venueReports.length;
-      var uniqueReporters = new Set(venueReports.map(function(r) { return r.user_id; })).size;
-      var lastTime = latestReport ? formatAbsTime(latestReport.created_at) : '–';
-      var confLevel = hasData ? computeConfidence(venueReports) : 0;
-      var confHtml = '';
-      if (hasData) {
-        var bars = '';
-        for (var i = 1; i <= 3; i++) {
-          bars += '<span class="conf-bar' + (i <= confLevel ? ' active' : '') + '"></span>';
-        }
-        confHtml = '<span class="conf-bars" style="color:' + heroColor + '">' + bars + '</span>';
-      }
 
       // Distance (if available)
       var typeLabel = venueTypeLabel(venue.type);
@@ -2280,23 +2336,24 @@ import './style.css';
         ? 'togglePlanVenue(\'' + venue.id + '\')'
         : 'openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')';
 
-      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
+      return '<div class="erow' + stateClass + levelClass + (isBest ? ' erow--best' : '') + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
           planBadge +
           '<div class="erow-body">' +
+            (isBest ? '<div class="bast-chip"><span class="bast-chip-dot"></span>Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</div>' : '') +
             '<div class="erow-name-row">' +
-              (isBest ? '<span class="bast-chip"><span class="bast-chip-dot"></span>Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</span>' : '') +
               pulseHtml +
-              '<div class="erow-name">' + venue.name + (isWatching(venue.id) ? '<svg viewBox="0 0 24 24" width="10" height="10" fill="rgba(255,255,255,0.5)" style="vertical-align:middle;margin-left:4px;flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') + '</div>' +
+              '<div class="erow-name">' + venue.name + '</div>' +
+              (isFavorite(venue.id) ? '<svg class="erow-fav" viewBox="0 0 24 24" aria-label="Favorit"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' : '') +
+              (isWatching(venue.id) ? '<svg class="erow-watch" viewBox="0 0 24 24" aria-label="Bevakas"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') +
             '</div>' +
-            '<div class="erow-meta">' + metaText +
-              (est && est.ahead && !est.full && est.source !== 'live' ? ' · <span class="erow-est-label">uppskattning</span>' : '') +
-            '</div>' +
+            '<div class="erow-meta">' + metaText + '</div>' +
             (function() {
               var pat = _historicalPatterns[venue.id];
-              var patLabels = { long: 'Vanligtvis lång kö nu', medium: 'Vanligtvis medel kö nu', short: 'Vanligtvis kort kö nu', free: 'Vanligtvis fri ingång nu' };
-              var patHtml = pat && patLabels[pat.level] ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
+              var patLabels = { long: 'Brukar vara lång kö nu', medium: 'Brukar vara medel kö nu', short: 'Brukar vara kort kö nu', free: 'Brukar vara fri ingång nu' };
+              // Historiskt mönster visas bara när färsk data saknas — annars konkurrerar det med verkligheten
+              var patHtml = (isEmpty && pat && patLabels[pat.level]) ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
               var recentWithComment = venueReports.filter(function(r) {
                 return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
               }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
@@ -2310,39 +2367,31 @@ import './style.css';
                 if (nowAdj < 12 * 60) nowAdj += 1440;
                 var minsLeft = cTotal - nowAdj;
                 if (minsLeft > 0 && minsLeft <= 90) {
-                  closingSoonHtml = '<span class="erow-tertiary-sep">·</span><span style="color:#FF7043;font-weight:600">Stänger ' + venue.closing + '</span>';
+                  closingSoonHtml = '<span class="erow-tertiary-sep">·</span><span class="erow-closing">Stänger ' + venue.closing + '</span>';
                 }
               }
-              var tertiaryHtml = hasData
+              var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ uppskattning</span>' : '';
+              var tertiaryHtml = (hasData && !isStale)
                 ? '<div class="erow-tertiary">' +
-                    confHtml +
-                    '<span>' + uniqueReporters + ' pers bekräftade</span>' +
+                    '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
                     '<span class="erow-tertiary-sep">·</span>' +
-                    '<span>senast ' + lastTime + '</span>' +
-                    (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
+                    '<span' + (isAging ? ' class="erow-stale-label"' : '') + '>' + timeAgo(latestReport.created_at) + '</span>' +
+                    (isAging ? '<span class="erow-tertiary-sep">·</span><span class="erow-stale-label">kan vara gammal</span>' : '') +
+                    estHtml +
                     closingSoonHtml +
-                    (isAging ? '<span class="erow-tertiary-sep">·</span><span class="erow-stale-label">Kan vara gammal</span>' : '') +
                   '</div>'
-                : (patHtml
-                    ? '<div class="erow-tertiary">' + patHtml + closingSoonHtml + '</div>'
-                    : '<div class="erow-tertiary"><span class="erow-empty-cta">Ingen data — var den första att rapportera</span>' + closingSoonHtml + '</div>');
+                : '<div class="erow-tertiary">' +
+                    (patHtml || '<span class="erow-empty-cta">' + (isStale ? 'Ingen färsk rapport' : 'Ingen data i kväll') + ' — rapportera</span>') +
+                    closingSoonHtml +
+                  '</div>';
               return tertiaryHtml + commentHtml;
             })() +
           '</div>' +
           '<div class="erow-right">' +
             '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + heroText + '</span>' +
-            trendHtml +
-            (function() {
-              if (venueReports.length < 2) return '';
-              var STATUS_H = { free: 'free', short: 'short', medium: 'medium', long: 'long', none: 'free' };
-              var recent = venueReports.slice(0, 4).reverse();
-              return '<div class="erow-spark">' + recent.map(function(r) {
-                var cls = STATUS_H[r.queue_status] || 'free';
-                return '<span class="spark-blk spark-blk--' + cls + '"></span>';
-              }).join('') + '</div>';
-            })() +
+            (isStale ? '' : trendHtml) +
           '</div>' +
-          '<button class="erow-report-btn" onclick="event.stopPropagation();openQuickReport(\'' + venue.id + '\')" aria-label="Rapportera"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
+          '<button class="erow-report-btn" onclick="event.stopPropagation();openQuickReport(\'' + venue.id + '\')" aria-label="Rapportera ' + venue.name + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
         '</div>' +
         '</div>';
     }
@@ -2366,12 +2415,14 @@ import './style.css';
       renderExploreVenues();
       // Update plan chip label
       var planChip = document.querySelector('.fbtn--plan');
-      if (planChip) planChip.textContent = _planningMode ? 'Avbryt' : 'Planera';
+      if (planChip) planChip.textContent = _planningMode ? 'Avbryt plan' : 'Planera kväll';
       // Legacy btn (no longer in DOM, guard kept)
       var btn = document.getElementById('plan-mode-btn');
       if (btn) btn.textContent = _planningMode ? 'Avbryt' : 'Planera kväll';
       var bar = document.getElementById('plan-bar');
       if (bar) bar.style.display = _planningMode ? 'flex' : 'none';
+      var createBtn = document.getElementById('plan-create-btn');
+      if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Välj 2–4 ställen'; }
     }
 
     function togglePlanVenue(venueId) {
@@ -2427,30 +2478,29 @@ import './style.css';
     }
 
     function showEveningPlan(scored) {
-      var STATUS_COLOR = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', none: 'rgba(255,255,255,0.3)' };
-
       var items = scored.map(function(s, i) {
-        var color = STATUS_COLOR[s.status] || 'rgba(255,255,255,0.3)';
-        var label = venueWaitText(s.id) || 'Okänd kö';
-        var closing = s.venue && s.venue.closing ? ' · Stänger ' + s.venue.closing : '';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.07)">'
-          + '<div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);flex-shrink:0">' + (i+1) + '</div>'
-          + '<div style="flex:1;min-width:0">'
-          + '<div style="font-size:15px;font-weight:600;color:#fff">' + (s.venue ? s.venue.name : s.id) + '</div>'
-          + '<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">' + label + closing + '</div>'
+        var label = venueWaitText(s.id);
+        var color = label ? getStatusColor(s.status) : 'var(--text-muted)';
+        var closing = s.venue && s.venue.closing ? 'Stänger ' + s.venue.closing : '';
+        var area = s.venue ? s.venue.area : '';
+        return '<div class="plan-item">'
+          + '<div class="plan-item-num">' + (i + 1) + '</div>'
+          + '<div class="plan-item-body">'
+          + '<div class="plan-item-name">' + (s.venue ? s.venue.name : s.id) + '</div>'
+          + '<div class="plan-item-meta">' + [area, closing].filter(Boolean).join(' · ') + '</div>'
           + '</div>'
-          + '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>'
+          + '<div class="plan-item-wait" style="color:' + color + '">' + (label || 'Ingen data') + '</div>'
           + '</div>';
       }).join('');
 
       var modal = document.createElement('div');
       modal.id = 'plan-modal';
-      modal.style.cssText = 'position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;justify-content:flex-end';
-      modal.innerHTML = '<div onclick="closePlanModal()" style="flex:1;background:rgba(0,0,0,0.6)"></div>'
-        + '<div style="background:#0D0F1A;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,0.1);padding:24px 20px 40px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif">'
-        + '<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.4);margin-bottom:16px">DIN KVÄLLSPLAN</div>'
+      modal.innerHTML = '<div class="plan-modal-dim" onclick="closePlanModal()"></div>'
+        + '<div class="plan-modal-sheet">'
+        + '<div class="plan-modal-eyebrow">Din kvällsplan</div>'
+        + '<div class="plan-modal-sub">Ordning efter stängningstid, sedan kö just nu</div>'
         + items
-        + '<button onclick="closePlanModal()" style="margin-top:20px;width:100%;height:48px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Stäng</button>'
+        + '<button class="plan-modal-close" onclick="closePlanModal()">Klar</button>'
         + '</div>';
       document.body.appendChild(modal);
 
@@ -2458,9 +2508,7 @@ import './style.css';
       _planVenues = [];
       renderExploreVenues();
       var planChip = document.querySelector('.fbtn--plan');
-      if (planChip) planChip.textContent = 'Planera';
-      var planBtn = document.getElementById('plan-mode-btn');
-      if (planBtn) planBtn.textContent = 'Planera kväll';
+      if (planChip) planChip.textContent = 'Planera kväll';
       var bar = document.getElementById('plan-bar');
       if (bar) bar.style.display = 'none';
     }
@@ -2574,16 +2622,16 @@ import './style.css';
         var filterLabels = { free: 'fri ingång', short: 'kort kö', long: 'lång kö', bar: 'typ bar', klubb: 'typ klubb' };
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
-          emptyTitle = 'Inga venues med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
-          emptySub = 'Kolla tillbaka lite senare';
+          emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
+          emptySub = 'Färsk data saknas eller ingen matchar — kolla igen om en stund';
         } else {
-          var term = rawQ ? '”' + rawQ + '”' : '';
+          var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
           emptySub = 'Prova ett annat namn eller område';
         }
-        el.innerHTML = '<div class=”explore-empty”>' +
-          '<div class=”explore-empty-title”>' + emptyTitle + '</div>' +
-          '<div class=”explore-empty-sub”>' + emptySub + '</div>' +
+        el.innerHTML = '<div class="explore-empty">' +
+          '<div class="explore-empty-title">' + emptyTitle + '</div>' +
+          '<div class="explore-empty-sub">' + emptySub + '</div>' +
           '</div>';
         updateFilterCounts();
         return;
@@ -2642,7 +2690,7 @@ import './style.css';
         }
       }
 
-      el.innerHTML = '<div class=”venue-group”>' + list.map(function(v, i) {
+      el.innerHTML = '<div class="venue-group">' + list.map(function(v, i) {
         return renderExploreVenueRow(v, i, v.id === bestVenueId ? best : null);
       }).join('') + '</div>';
 
@@ -3195,4 +3243,8 @@ Object.assign(window, {
   toggleFavorite,
   toggleLiveVenue,
   togglePlanningMode,
+  togglePlanVenue,
+  vcOnMyWay,
+  vcShare,
+  vcToggleFavorite,
 });

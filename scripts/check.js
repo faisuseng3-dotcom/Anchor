@@ -30,7 +30,7 @@ check('src/main.js exists', fs.existsSync(path.join(root, 'src/main.js')));
 check('vite.config.js exists', fs.existsSync(path.join(root, 'vite.config.js')));
 check('Font: Satoshi loaded', html.includes('satoshi'));
 check('Font var: --font-base Satoshi', css.includes("--font-base: 'Satoshi'"));
-check('Mapbox streets-v12', js.includes('streets-v12'));
+check('Mapbox dark-v11 (night design)', js.includes('dark-v11'));
 check('Supabase npm import', js.includes('supabase-js'));
 
 // ── Security ──────────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ check('.env not committed', !hasEnvFile || true); // .gitignore handles it; warn
 check('No hardcoded supabase key in plain text (anon key OK)', true); // informational
 
 // ── Design system ─────────────────────────────────────────────────────────────
-check('Status colors defined: free/short/medium/long/unknown', js.includes("free: '#00E676'"));
+check('Status colors defined: free/short/medium/long/unknown', js.includes("free: '#34E07F'") && js.includes("long: '#FF4D5E'"));
 check('STATUS_RANK map defined', js.includes('STATUS_RANK'));
 check('erow--empty uses rowInEmpty keyframe', css.includes('rowInEmpty'));
 // opacity 0.55 is allowed ONLY inside prefers-reduced-motion (fallback for no-animation)
@@ -62,9 +62,9 @@ check('No-data message in summary', js.includes('Inga rapporter än'));
 // ── Venue rows ────────────────────────────────────────────────────────────────
 check('erow-pulse-dot for long queue', js.includes('erow-pulse-dot'));
 check('pulseDot keyframe animation', css.includes('@keyframes pulseDot'));
-check('Level backgrounds: long rgba(255,59,59,0.06)', js.includes('rgba(255,59,59,0.06)'));
+check('Level backgrounds: long rgba(255,77,94,0.06)', js.includes('rgba(255,77,94,0.06)'));
 check('Level backgrounds: empty rgba(255,255,255,0.02)', js.includes('rgba(255,255,255,0.02)'));
-check('Hero color long: #FF3B3B', js.includes('#FF3B3B'));
+check('Hero color long: #FF4D5E', js.includes('#FF4D5E'));
 check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
 check('Trend indicator: ↑ Ökar / ↓ Minskar / → Stabil', js.includes('↑ Ökar') && js.includes('↓ Minskar') && js.includes('→ Stabil'));
 check('Sorting: Swedish localeCompare for empty venues', js.includes("localeCompare(b.name, 'sv')"));
