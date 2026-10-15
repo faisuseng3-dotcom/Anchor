@@ -66,7 +66,8 @@ check('Level backgrounds: long rgba(255,77,94,0.06)', js.includes('rgba(255,77,9
 check('Level backgrounds: empty rgba(255,255,255,0.02)', js.includes('rgba(255,255,255,0.02)'));
 check('Hero color long: #FF4D5E', js.includes('#FF4D5E'));
 check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
-check('Trend indicator: ↑ Ökar / ↓ Minskar / → Stabil', js.includes('↑ Ökar') && js.includes('↓ Minskar') && js.includes('→ Stabil'));
+// "Stabil" visades på varje rad utan att säga något nytt — bara ändring visas nu.
+check('Trend indicator: ↑ Ökar / ↓ Minskar', js.includes('↑ Ökar') && js.includes('↓ Minskar'));
 check('Sorting: Swedish localeCompare for empty venues', js.includes("localeCompare(b.name, 'sv')"));
 check('Sorting: newest-report-first for venues with data', js.includes('bLatest - aLatest'));
 check('background-color transition 300ms', css.includes('background-color 300ms ease-out'));
