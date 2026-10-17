@@ -389,6 +389,14 @@ import './style.css';
       return getStatusLabel(computeStatus(venueId, allReports));
     }
 
+    // Siffran är hjälten, enheten är underordnad ("20–30" stort, "min" litet). Ren text ("Fri", "Fullt") lämnas orörd.
+    // Texten kommer från formatWait/getStatusLabel, aldrig från användare, så ingen escaping behövs.
+    function waitHtml(text) {
+      var m = /^(.*?)\s*(min)$/.exec(text || '');
+      if (!m || !m[1]) return text || '';
+      return m[1] + '<span class="wait-unit"> min</span>';
+    }
+
     function computeStatus(venueId, reports) {
       var est = estimateWait(venueId, reports);
       if (est) return waitToStatus(est);
@@ -408,7 +416,7 @@ import './style.css';
     }
 
     function getStatusColor(status) {
-      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#7C8194' }[status] || '#7C8194';
+      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#85858A' }[status] || '#85858A';
     }
 
     function getStatusClass(status) {
@@ -573,9 +581,9 @@ import './style.css';
       var card = document.getElementById('venue-card');
       card.classList.toggle('vc--aging', minsOld >= 15 && minsOld < 45);
       card.classList.toggle('vc--nodata', !waitText);
-      card.style.setProperty('--st', waitText ? getStatusColor(status) : '#4A4F60');
+      card.style.setProperty('--st', waitText ? getStatusColor(status) : '#55555B');
       var vcStatus = document.getElementById('vc-status');
-      vcStatus.textContent = waitText || '–';
+      vcStatus.innerHTML = waitText ? waitHtml(waitText) : '–';
       vcStatus.style.color = waitText ? getStatusColor(status) : '';
       // Rad under siffran: vad siffran bygger på (antal i kö, uppmätt eller uppskattad, ålder)
       var subParts = [];
@@ -663,7 +671,7 @@ import './style.css';
       var status = computeStatus(venue.id, allReports);
       var label = venueWaitText(venue.id);
       var cls = getStatusClass(status);
-      var dotColor = cls === 'unknown' ? '#4A4F60' : getStatusColor(cls);
+      var dotColor = cls === 'unknown' ? '#55555B' : getStatusColor(cls);
       return '<div class="vcrow" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'), \'sheet\')">' +
         '<span class="vcrow-dot" style="background:' + dotColor + '"></span>' +
         '<div class="vcrow-info">' +
@@ -707,7 +715,7 @@ import './style.css';
         '<span class="bn-eyebrow"><span class="bn-dot"></span>Bäst nu</span>' +
         '<span class="bn-row">' +
           '<span class="bn-name">' + v.name + '</span>' +
-          '<span class="bn-wait">' + wait + '</span>' +
+          '<span class="bn-wait">' + waitHtml(wait) + '</span>' +
         '</span>' +
         '<span class="bn-meta">' + meta.filter(Boolean).join(' · ') + '</span>' +
         '</button>';
@@ -977,7 +985,7 @@ import './style.css';
 
         // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
         var PIN_STATUS_COLORS = {
-          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: '#4A4F60'
+          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: '#55555B'
         };
 
         // Ikoner i 24×24-viewBox. Bar = cocktailglas, klubb = musiknot.
@@ -1009,23 +1017,23 @@ import './style.css';
           // Mörk ring runt skivan skiljer nålen från kartan och från grannar
           ctx.beginPath();
           ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
-          ctx.fillStyle = '#07080C';
+          ctx.fillStyle = '#0B0B0D';
           ctx.fill();
 
           ctx.beginPath();
           ctx.arc(cx, cy, r, 0, Math.PI * 2);
           if (hollow) {
-            ctx.fillStyle = '#10121A';
+            ctx.fillStyle = '#151517';
             ctx.fill();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = '#4A4F60';
+            ctx.strokeStyle = '#55555B';
             ctx.stroke();
           } else {
             ctx.fillStyle = color;
             ctx.fill();
           }
 
-          var glyphColor = hollow ? '#7C8194' : '#07080C';
+          var glyphColor = hollow ? '#85858A' : '#0B0B0D';
           var iconSize = 17, s = iconSize / 24;
           ctx.save();
           ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
@@ -1070,7 +1078,7 @@ import './style.css';
             id: 'clusters', type: 'circle', source: 'venues',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': '#10121A',
+              'circle-color': '#151517',
               'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
               'circle-stroke-width': 3,
               'circle-stroke-color': ['case',
@@ -1147,8 +1155,8 @@ import './style.css';
               'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
             },
             paint: {
-              'text-color': ['match', ['get', 'status'], 'none', getStatusColor('free'), 'short', getStatusColor('short'), 'medium', getStatusColor('medium'), 'long', getStatusColor('long'), '#A3A8B8'],
-              'text-halo-color': 'rgba(7,8,12,0.95)', 'text-halo-width': 2
+              'text-color': ['match', ['get', 'status'], 'none', getStatusColor('free'), 'short', getStatusColor('short'), 'medium', getStatusColor('medium'), 'long', getStatusColor('long'), '#A8A8A4'],
+              'text-halo-color': 'rgba(11,11,13,0.95)', 'text-halo-width': 2
             }
           });
 
@@ -1233,7 +1241,7 @@ import './style.css';
     }
 
     var STATUS_COLORS = {
-      free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#4A4F60'
+      free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#55555B'
     };
 
     async function loadReports() {
@@ -2178,12 +2186,12 @@ import './style.css';
       // Hero number
       var heroText, heroColor;
       if (!hasData) {
-        heroText = '–'; heroColor = '#7C8194';
+        heroText = '–'; heroColor = '#85858A';
       } else {
         heroText = (est ? est.ahead === 0 : (status === 'free' || status === 'none')) ? 'Fri' : venueWaitText(venue.id);
         // Nivån "medium" täcker kort+medel för bakgrunden — siffran får exakt statusfärg
         var heroColors = { free: '#34E07F', medium: getStatusColor(status), long: '#FF4D5E' };
-        heroColor = heroColors[level] || '#7C8194';
+        heroColor = heroColors[level] || '#85858A';
       }
 
       // Freshness check for pulse dot: only show if long AND report < 20 min old
@@ -2282,7 +2290,7 @@ import './style.css';
             })() +
           '</div>' +
           '<div class="erow-right">' +
-            '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + heroText + '</span>' +
+            '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + waitHtml(heroText) + '</span>' +
             (isStale ? '' : trendHtml) +
           '</div>' +
         '</div>' +
