@@ -1249,6 +1249,20 @@ import './style.css';
       free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#55555B'
     };
 
+    // Hur det gick med den senaste inläsningen: 'loading' | 'ok' | 'error'.
+    // Utan den här kan en tom vy inte skilja "inga rapporter i Stockholm" från "vi nådde
+    // inte servern", och ett serverfel visades som en lugn kväll.
+    var _loadState = 'loading';
+
+    // Vid fel: behåll rapporterna vi redan har, men märk dem som osäkra. Finns inga alls är
+    // felläget allt vi kan visa. Rör inte explore-listan när den har data — att tömma en
+    // fungerande lista för att en enda pollning missade är sämre än att visa den med varning.
+    function renderLoadFailure() {
+      if (!allReports.length) showExploreError();
+      if (typeof renderExploreSummary === 'function') renderExploreSummary();
+      if (typeof renderLiveFeed === 'function') renderLiveFeed();
+    }
+
     async function loadReports() {
       if (!supabase) {
         console.warn('[QueueBar] loadReports: supabase är null');
@@ -1272,9 +1286,11 @@ import './style.css';
           '| error:', result.error || 'ingen');
         if (result.error) {
           console.error('[QueueBar] loadReports Supabase-fel (fullt objekt):', JSON.stringify(result.error));
-          showExploreError();
+          _loadState = 'error';
+          renderLoadFailure();
         }
         if (result.data) {
+          _loadState = 'ok';
           // Bara kända ställen: venue_id hamnar i onclick-attribut och okända id:n kan inte visas meningsfullt ändå.
           allReports = result.data.filter(function(r) { return getVenueById(r.venue_id); });
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
@@ -1290,7 +1306,8 @@ import './style.css';
         }
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
-        showExploreError();
+        _loadState = 'error';
+        renderLoadFailure();
       }
     }
 
@@ -2129,7 +2146,16 @@ import './style.css';
     // ── Färskhetsrad ──────────────────────────────────────────────────────────
     // Ersätter den gamla "Stockholm just nu"-widgeten: antalen per status finns redan i filterchipsen,
     // så här visas bara det chipsen inte säger — hur färsk datan är.
-    function exsumText(d) {
+    // `state` skickas in i stället för att läsas globalt, så funktionen är ren och testbar.
+    // Den måste kunna skilja tre lägen åt: vi nådde inte servern, Stockholm är tyst,
+    // eller här är datan. Slås de två första samman blir ett serverfel en lugn kväll.
+    function exsumText(d, state) {
+      if (state === 'error') {
+        return d.total
+          ? 'Ingen kontakt med servern · siffrorna kan vara gamla'
+          : 'Ingen kontakt med servern';
+      }
+      if (state === 'loading') return 'Hämtar rapporter…';
       if (d.total === 0) return 'Inga rapporter än — bli först att rapportera';
       var since = exsumTimeSince(d.lastTs);
       return d.fresh + ' av ' + d.venueTotal + ' ställen har färsk rapport' + (since ? ' · senast ' + since : '');
@@ -2139,14 +2165,18 @@ import './style.css';
       var el = document.getElementById('explore-summary');
       if (!el) return;
       el.style.display = 'block';
-      el.innerHTML = '<div class="exsum-line" id="exsum-line">' + exsumText(computeExploreSummary()) + '</div>';
+      // Felvarianten markeras med en prick via ::before, inte ett barnelement — intervallet
+      // nedan sätter textContent, vilket hade raderat ett <span>.
+      var cls = 'exsum-line' + (_loadState === 'error' ? ' exsum-line--error' : '');
+      el.innerHTML = '<div class="' + cls + '" id="exsum-line">' + exsumText(computeExploreSummary(), _loadState) + '</div>';
 
       // Åldras även utan ny data
       clearInterval(_exsumInterval);
       _exsumInterval = setInterval(function() {
         var line = document.getElementById('exsum-line');
         if (!line) { clearInterval(_exsumInterval); return; }
-        line.textContent = exsumText(computeExploreSummary());
+        line.className = 'exsum-line' + (_loadState === 'error' ? ' exsum-line--error' : '');
+        line.textContent = exsumText(computeExploreSummary(), _loadState);
       }, 30000);
     }
 
@@ -2704,6 +2734,15 @@ import './style.css';
       var now = new Date();
       var cutoff = now - 45 * 60 * 1000;
       var recent = allReports.filter(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > cutoff; });
+      // Nådde vi inte servern vet vi ingenting om kvällen. Säg det, i stället för att
+      // visa samma tomma läge som när Stockholm faktiskt är tyst.
+      if (_loadState === 'error' && !recent.length) {
+        if (subText) subText.textContent = 'Ingen kontakt';
+        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>' +
+          '<div class="lv-empty-title">Ingen kontakt med servern</div><p class="lv-empty-sub">Vi vet inte hur köerna ser ut just nu.</p>' +
+          '<button class="empty-btn" onclick="loadReports()">Försök igen</button></div>';
+        return;
+      }
       if (!recent.length) {
         if (subText) subText.textContent = 'Inga rapporter senaste 45 min';
         el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>' +
@@ -2734,7 +2773,11 @@ import './style.css';
         }
         return '<div class="lv-item">' + html + '</div>';
       }).filter(Boolean);
-      if (subText) subText.textContent = items.length + (items.length === 1 ? ' ställe' : ' ställen') + ' · 45 min';
+      if (subText) {
+        subText.textContent = _loadState === 'error'
+          ? 'Ingen kontakt · kan vara gammalt'
+          : items.length + (items.length === 1 ? ' ställe' : ' ställen') + ' · 45 min';
+      }
       el.innerHTML = '<div class="lv-group">' + items.join('') + '</div>';
     }
 

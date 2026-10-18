@@ -53,6 +53,13 @@ check('renderExploreSummary function defined', js.includes('function renderExplo
 check('renderExploreSummary called in renderExploreVenues', js.includes('renderExploreSummary();'));
 check('Summary: freshness line replaces widget', js.includes('exsum-line'));
 check('Summary: 30s interval for freshness line', js.includes('30000'));
+// Ett serverfel får aldrig se ut som en tyst kväll. _loadState håller lägena åtskilda och
+// exsumText tar det som argument för att vara testbar. Se tests/loadstate.test.js.
+check('Error states: _loadState separates server failure from an empty city',
+  js.includes("var _loadState = 'loading'") &&
+  js.includes('function exsumText(d, state)') &&
+  js.includes("if (state === 'error')") &&
+  js.includes('function renderLoadFailure('));
 check('No-data message in summary', js.includes('Inga rapporter än'));
 
 // ── Venue rows ────────────────────────────────────────────────────────────────

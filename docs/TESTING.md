@@ -8,8 +8,8 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 | Verktyg | Finns | Kommando |
 |---|---|---|
-| **Vitest — 111 enhetstester** | ✅ | `npm test` |
-| `scripts/check.js` — 54 strängkontroller | ✅ | `node scripts/check.js` |
+| **Vitest — 120 enhetstester** | ✅ | `npm test` |
+| `scripts/check.js` — 55 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | Produktionsbygge | ✅ | `npm run build` |
 | Utvecklingsserver | ✅ | `npm run dev` |
@@ -24,7 +24,7 @@ npm run verify   # vitest run && node scripts/check.js && vite build
 ```
 
 Kör det före varje commit. Senaste körning på HEAD `28040f2`:
-**111 tester, 54 kontroller, bygget igenom.**
+**120 tester, 55 kontroller, bygget igenom.**
 
 ### Testfilerna
 
@@ -36,6 +36,7 @@ Kör det före varje commit. Senaste körning på HEAD `28040f2`:
 | `tests/history.test.js` | 14 | `historicalRateFor`, `nightKey` |
 | `tests/search.test.js` | 22 | `venueScore`, `venueSearch`, `_searchNorm` |
 | `tests/venues.test.js` | 14 | `VENUES`-integritet, koordinater, överlappande kartnålar |
+| `tests/loadstate.test.js` | 9 | `exsumText` — serverfel får aldrig se ut som en tyst kväll |
 
 Testerna kör i tidszonen **Europe/Stockholm** (`vitest.config.js`). Det är inte kosmetika:
 `nightKey()` drar bort sex timmar för att en fredag 00:30 ska höra till fredagskvällen, och
@@ -77,7 +78,7 @@ bör behållas. Den ska bara inte förväxlas med ett test av logiken.
 ### Resultat vid senaste körning
 
 ```
-54 passed, 0 failed
+55 passed, 0 failed
 All checks passed ✓
 ```
 
@@ -85,7 +86,7 @@ All checks passed ✓
 
 1. **Rad 38 och 39 är attrapper.** `check('.env not committed', !hasEnvFile || true)` är alltid
    sant oavsett om `.env` finns. Samma gäller `check('No hardcoded supabase key…', true)`.
-   Två av de 54 "godkända" kontrollerna kontrollerar ingenting.
+   Två av de 55 "godkända" kontrollerna kontrollerar ingenting.
 2. **Kontrollerna är hårt bundna till radformuleringar.** Flera letar efter exakt kod, t.ex.
    `js.includes('result.data.filter(function(r) { return getVenueById(r.venue_id); })')`.
    En ofarlig omformulering av samma logik får kontrollen att fallera.
@@ -220,24 +221,47 @@ Räkneexemplen i [QUEUE_LOGIC.md](QUEUE_LOGIC.md) avsnitt 5 finns nu som körbar
 Verifierat i webbläsare på HEAD `28040f2` (Playwright, 390×844, mockad Supabase). Samma tre lägen
 kördes om efter att färskhetsraden ersatte den gamla summeringswidgeten.
 
-| Vy | Tom databas | **Databasfel 500** |
-|---|---|---|
-| `#exsum-line` | "Inga rapporter än — bli först att rapportera" | **exakt samma text** ❌ |
-| `#live-feed` | "Inga rapporter ännu. Nya köuppdateringar dyker upp här…" | **exakt samma text** ❌ |
-| `#explore-list` | "Ingen data i kväll — rapportera" per rad ✅ | "Kunde inte ladda data / Kontrollera anslutningen / Försök igen" ✅ |
-| Kartan (Mapbox nekad) | "Kartan kunde inte laddas / Övriga funktioner fungerar normalt" ✅ | samma ✅ |
+**Åtgärdat.** Fyra lägen, verifierade i webbläsare och nu åtskilda:
+
+| Läge | `#exsum-line` | Live-flödets underrad | `.erow`-rader |
+|---|---|---|---|
+| Tom databas | "Inga rapporter än — bli först att rapportera" | "Inga rapporter senaste 45 min" | 28 |
+| **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge i listan |
+| **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | 28 **behållna** |
+| Normalt | "2 av 28 ställen har färsk rapport · senast 3 min sedan" | "2 ställen · 45 min" | 28 |
+
+Kartan hanterade felet korrekt redan innan: "Kartan kunde inte laddas / Övriga funktioner fungerar
+normalt".
+
+Före åtgärden gav de två första lägena **exakt samma text** i både färskhetsraden och Live-flödet.
+Ett serverfel såg ut som en tyst kväll i Stockholm.
 
 Med testdata: `exsum-line` visar "17 av 28 ställen har färsk rapport · senast 1 min sedan", 28 rader
 renderas med väntetider från `<5 min` till `Fullt`, inga konsolfel. ✅
 
-**De två ❌-fallen är verifierade buggar, inte antaganden.** Grundorsaken är tydlig i koden:
-`exsumText()` returnerar meningen om "inga rapporter" så snart `total === 0`, och `renderLiveFeed()`
-kontrollerar bara `if (!supabase)` — ingen av dem känner till om inläsningen *misslyckades*.
-`loadReports` fångar felet och anropar `showExploreError()`, men den signalen når bara
+### Grundorsaken, och hur den löstes
+
+`exsumText()` returnerade meningen om "inga rapporter" så snart `total === 0`, och `renderLiveFeed()`
+kontrollerade bara `if (!supabase)`. Ingen av dem kunde veta om inläsningen *misslyckades*.
+`loadReports` fångade felet och anropade `showExploreError()`, men den signalen nådde bara
 Utforska-listan.
 
-Ingen kontroll i `check.js` kan upptäcka detta, eftersom felet uppstår i hur tillstånden
-*kombineras* — inte i vilken kod som finns.
+Löst med en `_loadState` (`'loading' | 'ok' | 'error'`) som sätts i `loadReports` och läses av de
+vyer som annars inte kan skilja lägena åt.
+
+Två designbeslut är värda att bevara:
+
+1. **`exsumText(d, state)` tar tillståndet som argument**, inte från den globala variabeln. Det är
+   enda skälet att funktionen kan enhetstestas utan DOM — de nio testerna i
+   `tests/loadstate.test.js` finns bara tack vare det. Görs den om till att läsa `_loadState`
+   direkt försvinner testbarheten.
+2. **`renderLoadFailure()` kastar inte bort data som redan finns.** Att tömma en fungerande lista
+   för att en enda pollning missade är sämre än att visa den med en varning, så
+   `showExploreError()` körs bara när `allReports` är tom. Därav det tredje läget i tabellen.
+
+Ingen kontroll i `check.js` kunde ha hittat detta från början, eftersom felet uppstod i hur
+tillstånden *kombinerades* — inte i vilken kod som fanns. Nu finns en kontroll som ser till att
+`_loadState` och `exsumText(d, state)` är kvar.
 
 ### Högt: rapportflödet
 
@@ -314,7 +338,7 @@ await page.route('**/*.supabase.co/**', r => r.fulfill({
 
 ### ✅ Klart — enhetstester på modellen och `npm run verify`
 
-Vitest, 111 tester i fem filer, och ett kommando som kör allt. Den första körningen hittade en
+Vitest, 120 tester i sex filer, och ett kommando som kör allt. Den första körningen hittade en
 bugg i `sessionRates`, som nu är åtgärdad och skyddad av fem tester plus en kontroll i
 `check.js` (avsnitt 3).
 
@@ -362,5 +386,5 @@ git ls-files --error-unmatch .env   # ska misslyckas
 ### Steg 5 — Flytta modellen till `src/model/`
 
 **Först nu**, när testerna finns. De bevisar att flytten inte ändrar beteendet: `tests/harness.js`
-byts mot vanliga `import`-satser och alla 111 testerna ska fortsätta passera. Det öppnar också för
+byts mot vanliga `import`-satser och alla 120 testerna ska fortsätta passera. Det öppnar också för
 att Expo-appen kan importera samma modell, som den i dag helt saknar.

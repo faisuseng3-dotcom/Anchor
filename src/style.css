@@ -972,6 +972,13 @@
 
     /* ── Färskhetsrad (ovanför listan) ──────────────────────────────────── */
     .exsum-line { padding: 4px 2px 0; font-size: 13px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; line-height: 1.4; }
+    /* Fel ska läsas som ett påstående, inte som en svag fotnot: ljusare text och en prick.
+       Pricken via ::before, så att textContent-uppdateringen var 30:e sekund inte raderar den. */
+    .exsum-line--error { color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+    .exsum-line--error::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--danger); flex-shrink: 0;
+    }
     #filter-context { font-size: 13px; font-weight: 600; color: var(--text-secondary); padding: 14px 2px 0; }
 
     /* ── Filter chips with live counts ──────────────────────────────────── */

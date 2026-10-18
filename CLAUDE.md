@@ -79,7 +79,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — MÅSTE passera före commit
-npm test                   # 111 enhetstester (Vitest)
+npm test                   # 120 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
@@ -100,6 +100,29 @@ Ingen linter och ingen CI finns. Se [docs/TESTING.md](docs/TESTING.md).
 
 **Fem tester i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
 på noll. Fallerar något av dem är vakten `aheadBucket(first.people_ahead).width > 0` borta.
+**Nio tester i `tests/loadstate.test.js`** skyddar mot att ett serverfel åter ser ut som en tyst
+kväll.
+
+## Fyra inläsningslägen — de får aldrig slås samman
+
+`_loadState` är `'loading' | 'ok' | 'error'` och sätts i `loadReports`. Utan den kan en tom vy inte
+skilja "inga rapporter i Stockholm" från "vi nådde inte servern", och då blir ett serverfel en lugn
+kväll. Verifierat i webbläsare:
+
+| Läge | Färskhetsraden | Live-flödets underrad | Rader |
+|---|---|---|---|
+| Tom databas | "Inga rapporter än — bli först att rapportera" | "Inga rapporter senaste 45 min" | 28 |
+| **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge |
+| **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | 28 **behållna** |
+| Normalt | "17 av 28 ställen har färsk rapport · senast 3 min sedan" | "17 ställen · 45 min" | 28 |
+
+Två regler som följer av det:
+
+- **`exsumText(d, state)` tar tillståndet som argument, inte från en global.** Det är därför den är
+  ren och testbar utan DOM. Görs den om till att läsa `_loadState` direkt försvinner testerna.
+- **`renderLoadFailure()` kastar inte bort data som redan finns.** Att tömma en fungerande lista
+  för att en enda pollning missade är sämre än att visa den med en varning. `showExploreError()`
+  körs bara när `allReports` är tom.
 
 **Testdata:** `?testdata=true` i URL:en, eller **Alt + 2** (Option + 2 på Mac; ignoreras i
 textfält där det skriver "@"). Växlar `qb_testdata` i localStorage och laddar om. Av som standard —
@@ -257,21 +280,21 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 Dokumenterad i [docs/](docs/). De allvarligaste:
 
 1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
-2. **Serverfel visas som "inga rapporter"** i färskhetsraden och i Live-flödet. Verifierat på
-   HEAD `28040f2`: vid HTTP 500 säger båda exakt samma sak som när databasen är tom. Grundorsak:
-   varken `exsumText` eller `renderLiveFeed` känner till om inläsningen misslyckades
-3. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
-4. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
-5. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
+2. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
+3. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
+4. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
    Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
-6. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
-7. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
-8. Ingen linter, ingen CI, ingen spärr före commit
+5. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
+6. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
+7. Ingen linter, ingen CI, ingen spärr före commit
 
-**Åtgärdat:** `sessionRates` mätte takten 0 från en session som rapporterat "Ingen kö"
-(`aheadBucket(0).width` är 0). Två sådana sessioner fick appen att visa "Fullt" när kön började
-byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
-`tests/sessions.test.js` och en kontroll i `check.js`.
+**Åtgärdat:**
+
+- `sessionRates` mätte takten 0 från en session som rapporterat "Ingen kö"
+  (`aheadBucket(0).width` är 0). Två sådana sessioner fick appen att visa "Fullt" när kön började
+  byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
+  `tests/sessions.test.js`
+- Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
 
 ## Vidare läsning
 

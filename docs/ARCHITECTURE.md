@@ -205,7 +205,7 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 
 | Beroende | Används för | Vad händer om det fallerar |
 |---|---|---|
-| Supabase REST | Läsa och skriva rapporter | `showExploreError()` i Utforska. Live-flödet och summeringswidgeten visar däremot "inga rapporter" — se risk R-02 i [granskningen](#) |
+| Supabase REST | Läsa och skriva rapporter | `_loadState` sätts till `'error'` och `renderLoadFailure()` kör. Finns rapporter kvar behålls de med varningen "siffrorna kan vara gamla"; finns inga visas felläge. Se [TESTING.md](TESTING.md) avsnitt 4 |
 | Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen var 30 s täcker upp |
 | Supabase RPC `on_my_way_counts` | "På väg"-räknare | Varning i konsolen, räknaren visas inte |
 | Supabase RPC `increment_points` | Inget — **funktionen finns inte** | Tyst fel. Poäng räknas ändå klientsidan |

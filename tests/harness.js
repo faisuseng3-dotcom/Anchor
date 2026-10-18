@@ -36,6 +36,10 @@ const modelBlock = between('var PACE_RATE', 'function getStatusLabel');
 // Fuzzy-sökningen. Stoppar före "── Utforska", som rör document.
 const searchBlock = between('function _searchNorm', '// ── Utforska');
 
+// Färskhetsradens text. exsumText tar sitt tillstånd som argument just för att vara testbar,
+// så den går att nå utan DOM. Stoppar före renderExploreSummary, som rör document.
+const exsumBlock = between('function exsumTimeSince', 'function renderExploreSummary');
+
 // Beroenden som modellblocket använder men som deklareras utanför det.
 const shims = `
   function getVenueById(id) { return VENUES.find(function(v) { return v.id === id; }); }
@@ -47,12 +51,13 @@ const exported = [
   'estimateWait', 'setWaitRange', 'formatWait', 'waitToStatus',
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
-  'getVenueById', '_searchNorm', 'venueScore', 'venueSearch'
+  'getVenueById', '_searchNorm', 'venueScore', 'venueSearch',
+  'exsumText', 'exsumTimeSince'
 ];
 
 const box = {};
 new Function('exports', [
-  venuesBlock, shims, modelBlock, searchBlock,
+  venuesBlock, shims, modelBlock, searchBlock, exsumBlock,
   `Object.assign(exports, { ${exported.join(', ')} });`
 ].join('\n'))(box);
 
@@ -65,7 +70,8 @@ export const {
   estimateWait, setWaitRange, formatWait, waitToStatus,
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
-  getVenueById, _searchNorm, venueScore, venueSearch
+  getVenueById, _searchNorm, venueScore, venueSearch,
+  exsumText, exsumTimeSince
 } = box;
 
 // ── Testdatabyggare ─────────────────────────────────────────────────────────
