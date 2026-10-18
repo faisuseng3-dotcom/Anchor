@@ -195,6 +195,13 @@ aggregeringen eller säkerheten gör det.
   två gånger av parallella AI-redigeringar. Ange radantal före och efter.
 - **Lägg till nya `onclick`-funktioner i `Object.assign(window, …)`** — annars går de sönder tyst.
 - **Skriv aldrig om en hel fil.** Kirurgiska ändringar.
+- **Läs filen efter varje mönsterbaserad ändring** (`sed`, `perl`, `awk`, sök-och-ersätt). Ett
+  mönster som matchar fel ändrar inte en rad utan alla, och det syns inte i utdata. En
+  `perl`-ersättning avsedd för en rad i `CLAUDE.md` sprutade in sig före alla 256 raderna och
+  tredubblade filen — `npm run verify` var grönt hela tiden, för ett testsvit verifierar inte en
+  Markdown-fil. Föredra exakta redigeringar framför regex när träffarna är få.
+- **Verifiera det du faktiskt ändrade**, inte bara att något annat fortfarande fungerar. Gröna
+  tester är inget bevis för att den redigerade filen är hel.
 - Skilj alltid **befintliga problem** från problem din ändring orsakade.
 
 ## Säkerhet
