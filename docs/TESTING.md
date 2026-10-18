@@ -8,18 +8,44 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 | Verktyg | Finns | Kommando |
 |---|---|---|
+| **Vitest — 110 enhetstester** | ✅ | `npm test` |
 | `scripts/check.js` — 53 strängkontroller | ✅ | `node scripts/check.js` |
+| **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | Produktionsbygge | ✅ | `npm run build` |
 | Utvecklingsserver | ✅ | `npm run dev` |
-| Enhetstester | ❌ | — |
-| Integrationstester | ❌ | — |
 | E2E-tester / webbläsartester | ❌ | — |
 | Linter | ❌ | — |
 | Typkontroll | ❌ | — |
 | CI (GitHub Actions eller liknande) | ❌ | — |
 | Spärr före commit | ❌ | — |
 
-Det finns **inget testramverk** i `package.json`. Det finns inget `"test"`-script.
+```bash
+npm run verify   # vitest run && node scripts/check.js && vite build
+```
+
+Kör det före varje commit. Senaste körning på HEAD `28040f2`:
+**110 tester, 53 kontroller, bygget igenom.**
+
+### Testfilerna
+
+| Fil | Tester | Täcker |
+|---|---|---|
+| `tests/harness.js` | — | Läser de rena funktionerna ur `src/main.js` + testdatabyggare |
+| `tests/wait.test.js` | 37 | `estimateWait`, `setWaitRange`, `formatWait`, `waitToStatus`, `aheadBucket`, `median` |
+| `tests/sessions.test.js` | 23 | `sessionRates`, `measureQueueRates` — alla ogiltighetsregler |
+| `tests/history.test.js` | 14 | `historicalRateFor`, `nightKey` |
+| `tests/search.test.js` | 22 | `venueScore`, `venueSearch`, `_searchNorm` |
+| `tests/venues.test.js` | 14 | `VENUES`-integritet, koordinater, överlappande kartnålar |
+
+Testerna kör i tidszonen **Europe/Stockholm** (`vitest.config.js`). Det är inte kosmetika:
+`nightKey()` drar bort sex timmar för att en fredag 00:30 ska höra till fredagskvällen, och
+`closingHour()` jämför mot lokala klockslag. I UTC hamnar nattgränsen fel och ett test
+på lördag morgon ger fredag.
+
+### Tre tester är märkta KÄND BUGG
+
+De låser fast ett **felaktigt** beteende så att det inte glöms. När buggen åtgärdas fallerar de,
+och då ska de vändas. Se avsnitt 3.
 
 ---
 
@@ -67,11 +93,54 @@ All checks passed ✓
 
 ---
 
-## 3. Vad som inte testas — rangordnat efter risk
+## 3. Buggen som testerna hittade
 
-### Kritiskt: väntetidsmodellen
+Första körningen av `tests/sessions.test.js` avslöjade ett fel i den viktigaste koden i appen.
 
-Hela appens värde ligger i att siffran är rätt. Ingen av dessa funktioner har ett test:
+`sessionRates` gissar takten utifrån intervallets bredd när någon står kvar i samma intervall:
+
+```js
+else if (mins >= 10) rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+if (rate !== null) out.push({ ... });
+```
+
+För `people_ahead: 0` är `width` **0**, så uttrycket blir `0`. Vakten är `rate !== null`, och
+noll passerar den. Resultatet är en **uppmätt dörrtakt på noll** från någon som rapporterade att
+det inte fanns någon kö.
+
+**Nås genom ett normalt flöde:** rapportera "Ingen kö" → bannern frågar → "Jag är inne" tolv
+minuter senare.
+
+Två verifierade konsekvenser:
+
+| Situation | Appen svarar | Borde svara |
+|---|---|---|
+| Kristall, 37 framför, en nollsession i historiken | **20–35 min** | 10–25 min |
+| Kristall, 37 framför, två nollsessioner | **"Fullt"** | 10–25 min |
+
+Det andra fallet är det värsta: två personer som gick rakt in tidigare under kvällen gör att
+appen säger **"Fullt"** när kön börjar byggas — alltså i exakt det ögonblick någon står på
+gatan och behöver ett rätt svar.
+
+**Åtgärd** (en rad): kräv att intervallet har en bredd innan det gissas på den.
+
+```js
+else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0)
+```
+
+**Inte åtgärdad.** Tre tester i `tests/sessions.test.js` är märkta `KÄND BUGG` och låser fast
+dagens beteende. Rättas raden fallerar de, och då vänds de.
+
+Ingen kontroll i `check.js` kunde ha hittat detta — koden ser korrekt ut, den räknar fel.
+
+---
+
+## 4. Vad som fortfarande inte testas — rangordnat efter risk
+
+### Täckt sedan den här genomgången
+
+Dessa åtta rena funktioner har nu tester. De testas genom `tests/harness.js`, som läser dem ur
+`src/main.js` utan att någon kod flyttats:
 
 | Funktion | Varför det betyder något |
 |---|---|
@@ -87,36 +156,33 @@ Hela appens värde ligger i att siffran är rätt. Ingen av dessa funktioner har
 **Alla åtta är rena funktioner.** De tar indata och returnerar utdata. De kräver ingen webbläsare,
 ingen Supabase och ingen Mapbox.
 
-### Att de går att testa utan att flytta kod är bevisat
+### Hur hjälparen fungerar — och varför den är tillfällig
 
-Funktionerna saknar `export` och ligger inne i `src/main.js` tillsammans med all DOM-kod. Det
-behöver **inte** blockera tester. Ett provskript läste `src/main.js` som text, klippte ut `VENUES`
-och modellblocket mellan ankarna `var PACE_RATE` och `function getStatusLabel`, och körde dem i
-Node med `new Function`. På HEAD `28040f2` gav det:
+Funktionerna saknar `export` och ligger inne i `src/main.js` tillsammans med all DOM- och
+Mapbox-kod, som inte kan köras i Node. `tests/harness.js` läser filen som text och klipper ut tre
+block mellan **ankare**, inte radnummer:
 
-```
-VENUES: 28 ställen
-  ✓ 37 före, pace=slow   → 25–50 min
-  ✓ 37 före, pace=fast   → 10–15 min
-  ✓ 0 före               → Ingen kö
-  ✓ 60 före, pace=slow   → 40+ min
-  ✓ 5 före, pace=fast    → <5 min
-  ✓ rapport 50 min gammal → null
-  sessionRates: 1.00 pers/min  (30 min, 37→7)
-  för kort / negativ rörelse / en punkt → 0 takter
-6 av 6 kända svar stämmer.
-```
+| Block | Från | Till |
+|---|---|---|
+| `VENUES` | `const VENUES = [` | den avslutande klammern |
+| Väntetidsmodellen | `var PACE_RATE` | `function getStatusLabel` |
+| Fuzzy-sökningen | `function _searchNorm` | `// ── Utforska` |
 
-Samma utfall före och efter att två commits tog bort 158 rader ur filen — modellblocket låg
-oförändrat kvar.
+Blocken körs med `new Function`, och `getVenueById` och `allReports` matas in som attrapper
+eftersom de deklareras utanför blocken. Saknas ett ankare kastar hjälparen ett namngivet fel i
+stället för att tysta ett test.
 
-Textutklipp är **tillfällig byggnadsställning** och går sönder om funktionsnamnen ändras. Men det
-löser rätt problem i rätt ordning: testerna låser fast dagens beteende **innan** koden rörs, och
-därefter är en flytt till `src/model/` bevisbart beteendebevarande — samma testfall måste passera
-mot den importerade modulen. Går de från grönt till rött har flytten ändrat något.
+**Detta är byggnadsställning.** Den går sönder om ett ankarnamn ändras, och den ska inte finnas
+kvar för alltid. Men den löser rätt problem i rätt ordning: testerna låser fast dagens beteende
+**innan** koden rörs. När modellen senare flyttas till `src/model/` byts hjälparen mot vanliga
+`import`-satser — samma testfall, samma förväntade värden. Går de från grönt till rött har flytten
+ändrat beteendet, och då är det flytten som är fel, inte testet.
 
-Siffrorna i [QUEUE_LOGIC.md](QUEUE_LOGIC.md) avsnitt 5 är redan färdiga testfall med kända svar.
-**De finns ännu inte kvar som en körbar kontroll i repot.**
+Att blocken verkligen är stabila är observerat: samma utfall före och efter att två commits tog
+bort 158 rader ur `src/main.js`. Modellblocket låg oförändrat kvar.
+
+Räkneexemplen i [QUEUE_LOGIC.md](QUEUE_LOGIC.md) avsnitt 5 finns nu som körbara testfall i
+`tests/wait.test.js`.
 
 ### Högt: tillstånd när data saknas eller fallerar
 
@@ -149,35 +215,30 @@ Flödet innehåller en 20-minutersspärr, en `queue_session`, en status som ber�
 ett RPC-anrop som misslyckas tyst, och en `loadReports()` efteråt. Varje steg är en möjlig
 regression.
 
-### Medel: sökningen
+### Medel: realtid och pollning
 
-`venueScore` har tio poängnivåer med längdgrindar (minst 2 eller 3 tecken för vissa
-nivåer). Den är ren och väldokumenterad i koden, och exakt den sortens funktion där en ändring i
-en gren tyst förstör en annan. Inget test.
+Inget test täcker att en `insert` från en annan användare når skärmen, eller vad som händer när
+Realtime och den 30-sekundersintervallen överlappar. Kräver en mockad WebSocket.
 
-### Medel: venue-datans integritet
+### Medel: skärmarna som renderar
 
-Inget test fångar: dubbla id, saknade fält, koordinater utanför Stockholm, två ställen på samma
-punkt. Den här genomgången hittade **tio par under 60 m** och **ett par på 3 m** med ett
-20-raders skript. Det skriptet finns inte kvar i repot.
+`renderExploreVenues`, `renderLiveFeed`, `renderQueueSessionBanner` och `updateProfileStats`
+bygger HTML-strängar och rör DOM. De kan bara testas i en webbläsare — se steg 2 nedan.
 
 ---
 
-## 4. Hur en ändring bör verifieras idag
-
-Så här ser den fungerande arbetsgången ut med nuvarande verktyg:
+## 5. Hur en ändring bör verifieras idag
 
 ```bash
-# 1. Strukturkontroller
-node scripts/check.js
+# 1. Allt maskinellt: tester, strukturkontroller, bygge
+npm run verify
 
-# 2. Att bygget går igenom
-npm run build
-
-# 3. Manuellt i webbläsaren, med testdata
+# 2. Manuellt i webbläsaren, med testdata
 npm run dev
 # öppna http://localhost:5173/?testdata=true
 ```
+
+Under arbete med modellen: `npm run test:watch` kör om testerna vid varje sparning.
 
 ### Manuell checklista före en release
 
@@ -195,7 +256,7 @@ Testdata måste vara på, annars syns inga väntetider alls utan riktiga rapport
 
 ---
 
-## 5. Begränsningar i testmiljön
+## 6. Begränsningar i testmiljön
 
 Dessa påverkar vad som går att verifiera var.
 
@@ -218,58 +279,56 @@ await page.route('**/*.supabase.co/**', r => r.fulfill({
 
 ---
 
-## 6. Rekommenderad väg framåt
+## 7. Rekommenderad väg framåt
 
-Ordningen är vald så att varje steg är litet och ger skydd direkt.
+### ✅ Klart — enhetstester på modellen och `npm run verify`
 
-### Steg 1 — Enhetstester på modellen (högsta värde per timme)
+Vitest, 110 tester i fem filer, och ett kommando som kör allt. Den första körningen hittade en
+bugg i `sessionRates` (avsnitt 3).
+
+### Steg 1 — Spärr före commit
 
 ```bash
-npm i -D vitest
+npm i -D husky && npx husky init
+echo "npm run verify" > .husky/pre-commit
 ```
 
-```
-tests/wait.test.js       estimateWait, setWaitRange, formatWait, waitToStatus
-tests/sessions.test.js   sessionRates: de fyra ogiltighetsreglerna, width-fallet
-tests/history.test.js    historicalRateFor: veckodag, ±1 h, 12-timmarsregeln, ≥3
-tests/search.test.js     venueScore: de tio nivåerna och längdgrindarna
-tests/venues.test.js     VENUES: id unika, alla fält, inga två punkter under 25 m
-```
+Då **kan** inget trasigt committas, oavsett vilket verktyg som gjorde ändringen. Det hade stoppat
+båda tillfällena då `src/main.js` trunkerades.
 
-Tabellen i [QUEUE_LOGIC.md](QUEUE_LOGIC.md) avsnitt 5 är färdiga testfall med kända svar.
+### Steg 2 — Playwright som devDependency, fyra tester
 
-**Förutsättning:** funktionerna måste gå att importera. Idag ligger de inuti `src/main.js`
-tillsammans med all DOM-kod, så de kan inte importeras utan att en webbläsarmiljö krävs. Att
-flytta de rena funktionerna till en egen fil är därför en förutsättning för steg 1 — och den
-ändringen är i sig riskfri eftersom funktionerna inte har några sidoeffekter.
-
-### Steg 2 — Ett enda kommando
-
-```json
-"test": "vitest run",
-"verify": "vitest run && node scripts/check.js && vite build"
+```bash
+npm i -D @playwright/test
 ```
 
-### Steg 3 — Spärr före commit
-
-Så att inget trasigt kan committas, oavsett vilket verktyg som gjorde ändringen.
-
-### Steg 4 — Playwright som devDependency, fyra tester
-
-Begränsa till de flöden som inte går att täcka med enhetstester:
+Begränsa till flöden som enhetstester inte kan nå:
 
 1. Appen startar, Utforska-listan renderar med mockad data
-2. **Databasfel visar felläge i alla tre vyer** (fångar de två buggarna i avsnitt 3)
+2. **Databasfel visar felläge i alla tre vyer** — fångar de två buggarna i avsnitt 4
 3. Sök → välj ställe → venue-kortet öppnas
 4. Rapportflödets tre steg med mockad `insert`
 
-Playwright finns redan i den här utvecklingsmiljön och användes för verifieringen ovan, men saknas
-i `package.json` och är därför inte reproducerbart för andra.
+Mockningen som användes för verifieringen i avsnitt 4 fungerar och kan återanvändas rakt av.
+Playwright finns i den här utvecklingsmiljön men saknas i `package.json`, så webbläsartester är
+ännu inte reproducerbara på en annan maskin.
 
-### Steg 5 — Städa check.js
+### Steg 3 — CI som kör `npm run verify` vid varje push
 
-Ta bort de två attrapp-kontrollerna, och gör en riktig kontroll av att `.env` inte är spårad:
+`.github/workflows/verify.yml`. Det är den enda kontrollen som är oberoende av vilken agent eller
+människa som gjorde ändringen, och en förutsättning för agentflödet.
+
+### Steg 4 — Städa check.js
+
+Ta bort de två attrapp-kontrollerna (avsnitt 2), och gör en riktig kontroll av att `.env` inte är
+spårad:
 
 ```bash
 git ls-files --error-unmatch .env   # ska misslyckas
 ```
+
+### Steg 5 — Flytta modellen till `src/model/`
+
+**Först nu**, när testerna finns. De bevisar att flytten inte ändrar beteendet: `tests/harness.js`
+byts mot vanliga `import`-satser och alla 110 testerna ska fortsätta passera. Det öppnar också för
+att Expo-appen kan importera samma modell, som den i dag helt saknar.
