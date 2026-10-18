@@ -30,13 +30,17 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Ramverk | **inget** — ingen React, Vue eller Svelte | — |
 | Styling | Ren CSS med custom properties | `src/style.css` |
 | Karta | `mapbox-gl` 3.x via npm, stil `mapbox://styles/mapbox/dark-v11` | `src/main.js` |
-| Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js–77` |
+| Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js` |
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
+| Enhetstester | **Vitest** 5.x, 120 tester | `vitest.config.js`, `tests/` |
+| E2E | **Playwright** 1.56, 10 tester | `playwright.config.js`, `e2e/` |
+| Spärr före commit | **husky** 9.x — kör `npm run verify` | `.husky/pre-commit` |
+| CI | GitHub Actions | `.github/workflows/verify.yml` |
 
-Det finns **inget testramverk** och **ingen linter** i projektet. Enda automatiska kontrollen är
-`scripts/check.js`. Se [TESTING.md](TESTING.md).
+Det finns **ingen linter** och ingen typkontroll. Det är medvetet uppskjutet tills modellen flyttats
+till egna filer — se [TESTING.md](TESTING.md) avsnitt 7.
 
 ### Andra kodbasen i repot
 
@@ -50,11 +54,22 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 
 ```
 index.html                  273 rader   Allt DOM-skelett: 5 skärmar, modaler, bottom sheets
-src/main.js                3139 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1370 rader   Design tokens + alla komponentklasser
-scripts/check.js            123 rader   57 strängbaserade kontroller (pre-commit-grind)
+src/main.js                3187 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1377 rader   Design tokens + alla komponentklasser
+
+tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
+tests/*.test.js             120 tester   Vitest: modell, sessioner, historik, sök, venues, lägen
+vitest.config.js                        TZ=Europe/Stockholm — nattgränsen hamnar fel i UTC
+e2e/support.js                          Supabase-mock; inget test rör produktionsdatabasen
+e2e/app.spec.js             10 tester   Playwright, 390×844: start, feltillstånd, sök, rapport
+playwright.config.js                    Startar dev-servern själv, Stockholm-tidszon
+
+scripts/check.js            127 rader   55 strängbaserade kontroller
 scripts/fetch-osm-venues.mjs 387 rader  Engångsverktyg: hämtar venue-kandidater från OpenStreetMap
 data/venues_candidates.*                Resultat från OSM-körningen. Används INTE av appen.
+
+.husky/pre-commit                       Kör npm run verify före varje commit
+.github/workflows/verify.yml            CI: verify + e2e vid varje push
 vercel.json                             Deploy-konfiguration
 QueueBar/                               Separat, ofullständigt Expo-projekt (ej i produktion)
 ```
@@ -67,7 +82,7 @@ toppnivåskript — det finns ingen `init()`-funktion och ingen `DOMContentLoade
 1. Importer (`mapbox-gl`, `supabase-js`, `./style.css`)
 2. Mapbox-token sätts, `map` skapas (`src/main.js`)
 3. Supabase-klient skapas (`src/main.js`)
-4. `VENUES`-arrayen definieras (`src/main.js–187`)
+4. `VENUES`-arrayen definieras (`src/main.js`)
 5. Alla funktioner deklareras (hissas, så ordningen spelar ingen roll)
 6. **`loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates)`** (`src/main.js`)
 7. Tre `setInterval`: `loadReports` var 30 s, `loadHistoricalRates` var 30 min

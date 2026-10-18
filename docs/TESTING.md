@@ -9,22 +9,32 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 | Verktyg | Finns | Kommando |
 |---|---|---|
 | **Vitest — 120 enhetstester** | ✅ | `npm test` |
+| **Playwright — 10 E2E-tester** | ✅ | `npm run e2e` |
 | `scripts/check.js` — 55 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
+| **Spärr före commit** | ✅ | automatiskt, `.husky/pre-commit` |
+| **CI vid varje push** | ✅ | `.github/workflows/verify.yml` |
 | Produktionsbygge | ✅ | `npm run build` |
 | Utvecklingsserver | ✅ | `npm run dev` |
-| E2E-tester / webbläsartester | ❌ | — |
-| Linter | ❌ | — |
+| Linter | ❌ | medvetet uppskjutet, se nedan |
 | Typkontroll | ❌ | — |
-| CI (GitHub Actions eller liknande) | ❌ | — |
-| Spärr före commit | ❌ | — |
 
 ```bash
 npm run verify   # vitest run && node scripts/check.js && vite build
 ```
 
-Kör det före varje commit. Senaste körning på HEAD `28040f2`:
-**120 tester, 55 kontroller, bygget igenom.**
+**Den körs automatiskt före varje commit** (husky). Du behöver inte komma ihåg det — spärren sätts
+upp av `npm install`. `--no-verify` hoppar över den; gör det bara när du vet varför.
+
+E2E-testerna ingår inte i `verify`, eftersom de kräver en webbläsarbinär som inte finns på en ny
+maskin. Första gången:
+
+```bash
+npx playwright install chromium
+npm run e2e
+```
+
+CI kör båda vid varje push. Det är den enda kontrollen som inte går att hoppa över.
 
 ### Testfilerna
 
@@ -37,6 +47,8 @@ Kör det före varje commit. Senaste körning på HEAD `28040f2`:
 | `tests/search.test.js` | 22 | `venueScore`, `venueSearch`, `_searchNorm` |
 | `tests/venues.test.js` | 14 | `VENUES`-integritet, koordinater, överlappande kartnålar |
 | `tests/loadstate.test.js` | 9 | `exsumText` — serverfel får aldrig se ut som en tyst kväll |
+| `e2e/support.js` | — | Supabase-mock, rapportbyggare, uppstart |
+| `e2e/app.spec.js` | 10 | Start, feltillstånd, sök, rapportflödet, kartans felläge |
 
 Testerna kör i tidszonen **Europe/Stockholm** (`vitest.config.js`). Det är inte kosmetika:
 `nightKey()` drar bort sex timmar för att en fredag 00:30 ska höra till fredagskvällen, och
@@ -336,55 +348,47 @@ await page.route('**/*.supabase.co/**', r => r.fulfill({
 
 ## 7. Rekommenderad väg framåt
 
-### ✅ Klart — enhetstester på modellen och `npm run verify`
+### ✅ Klart — enhetstester, spärr före commit, E2E och CI
 
-Vitest, 120 tester i sex filer, och ett kommando som kör allt. Den första körningen hittade en
-bugg i `sessionRates`, som nu är åtgärdad och skyddad av fem tester plus en kontroll i
-`check.js` (avsnitt 3).
+| Steg | Resultat |
+|---|---|
+| Enhetstester på modellen | Vitest, 120 tester i sex filer. Första körningen hittade `sessionRates`-buggen (avsnitt 3) |
+| Ett kommando | `npm run verify` — tester, kontroller, bygge |
+| Spärr före commit | `.husky/pre-commit`, sätts upp av `npm install` |
+| E2E | Playwright, 10 tester i `e2e/`, mobil viewport, mockad Supabase |
+| CI | `.github/workflows/verify.yml` — två jobb, `verify` och `e2e` |
 
-### Steg 1 — Spärr före commit
+Två saker som verifierades under arbetet och är värda att komma ihåg:
 
-```bash
-npm i -D husky && npx husky init
-echo "npm run verify" > .husky/pre-commit
-```
+**Spärren provades med en medvetet trasig fil.** Committen blockerades — och det var **bygget** som
+fångade syntaxfelet, inte testerna. Hjälparen klipper bara ut vissa block ur `src/main.js`, så ett
+fel utanför dem syns inte för `vitest`. Det är därför `vite build` hör i spärren och inte bara i CI.
 
-Då **kan** inget trasigt committas, oavsett vilket verktyg som gjorde ändringen. Det hade stoppat
-båda tillfällena då `src/main.js` trunkerades.
+**E2E-testerna provades mot den återinförda buggen.** `_loadState`-fixen backades tillfälligt, och
+två av tre feltillståndstester fallerade medan det tredje korrekt fortsatte passera. Ett test som
+aldrig setts fallera är inte ett bevis på någonting.
 
-### Steg 2 — Playwright som devDependency, fyra tester
+### Kvar: städa check.js
 
-```bash
-npm i -D @playwright/test
-```
-
-Begränsa till flöden som enhetstester inte kan nå:
-
-1. Appen startar, Utforska-listan renderar med mockad data
-2. **Databasfel visar felläge i alla tre vyer** — fångar de två buggarna i avsnitt 4
-3. Sök → välj ställe → venue-kortet öppnas
-4. Rapportflödets tre steg med mockad `insert`
-
-Mockningen som användes för verifieringen i avsnitt 4 fungerar och kan återanvändas rakt av.
-Playwright finns i den här utvecklingsmiljön men saknas i `package.json`, så webbläsartester är
-ännu inte reproducerbara på en annan maskin.
-
-### Steg 3 — CI som kör `npm run verify` vid varje push
-
-`.github/workflows/verify.yml`. Det är den enda kontrollen som är oberoende av vilken agent eller
-människa som gjorde ändringen, och en förutsättning för agentflödet.
-
-### Steg 4 — Städa check.js
-
-Ta bort de två attrapp-kontrollerna (avsnitt 2), och gör en riktig kontroll av att `.env` inte är
+Rad 38 och 39 är attrapper som alltid är sanna. Ersätt med en riktig kontroll av att `.env` inte är
 spårad:
 
 ```bash
 git ls-files --error-unmatch .env   # ska misslyckas
 ```
 
-### Steg 5 — Flytta modellen till `src/model/`
+### Kvar: en linter — medvetet uppskjutet
+
+ESLint på en 3 187-radersfil i ES5-stil (`var`, `function`, inga moduler) skulle ge hundratals
+varningar och kräva konfigurationsbeslut som ingen tagit. Den ger mest värde **efter** att modellen
+flyttats till `src/model/`, när filerna är små nog att städa en i taget. Att slå på den nu skulle
+betyda antingen hundratals ignorerade varningar eller en stor omskrivning utan testtäckning i de
+delar som inte är rena funktioner.
+
+### Kvar: flytta modellen till `src/model/`
 
 **Först nu**, när testerna finns. De bevisar att flytten inte ändrar beteendet: `tests/harness.js`
-byts mot vanliga `import`-satser och alla 120 testerna ska fortsätta passera. Det öppnar också för
-att Expo-appen kan importera samma modell, som den i dag helt saknar.
+byts mot vanliga `import`-satser och alla 120 testerna ska fortsätta passera. Går de från grönt till
+rött är det flytten som är fel, inte testet.
+
+Det öppnar också för att Expo-appen kan importera samma modell, som den i dag helt saknar.

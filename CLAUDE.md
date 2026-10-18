@@ -78,9 +78,10 @@ reserv för gamla rapporter utan `people_ahead`.
 ## Kommandon
 
 ```bash
-npm run verify             # tester + kontroller + bygge — MÅSTE passera före commit
+npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
 npm test                   # 120 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
+npm run e2e                # 10 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 ```
@@ -88,20 +89,40 @@ npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 `npm run verify` är `vitest run && node scripts/check.js && vite build`. Kör det, inte delarna var
 för sig.
 
-De två kontrollerna gör olika saker och ersätter inte varandra:
+**Spärren före commit kör `npm run verify` automatiskt** (husky, `.husky/pre-commit`). Den sätts upp
+av `npm install` — du behöver inte göra något. Tar ~15 sekunder. `--no-verify` hoppar över den; gör
+det bara när du vet varför.
+
+**CI** kör samma kedja plus E2E vid varje push (`.github/workflows/verify.yml`). Det är den enda
+kontrollen som inte går att hoppa över.
+
+**E2E-testerna ingår inte i `verify`** eftersom de kräver en webbläsarbinär. Första gången:
+
+```bash
+npx playwright install chromium
+```
+
+De tre kontrollerna gör olika saker och ersätter inte varandra:
 
 - **`vitest`** testar att de rena funktionerna **räknar rätt**. Täcker väntetidsmodellen,
-  kö-sessionerna, historiken, sökningen och `VENUES`-integriteten. Testerna läser funktionerna ur
-  `src/main.js` via `tests/harness.js` — **ingen kod har flyttats för att möjliggöra dem.**
+  kö-sessionerna, historiken, sökningen, `VENUES`-integriteten och inläsningslägena. Testerna läser
+  funktionerna ur `src/main.js` via `tests/harness.js` — **ingen kod har flyttats för att möjliggöra
+  dem.**
 - **`check.js`** söker efter textsträngar och kontrollerar att funktioner och konventioner
   **finns**. Den upptäcker att något raderats, aldrig att något räknar fel.
+- **`playwright`** kör appen i en riktig webbläsare på 390×844 med mockad Supabase. Täcker det som
+  bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
+  fungerar, och att en rapport skickas med rätt fält.
 
-Ingen linter och ingen CI finns. Se [docs/TESTING.md](docs/TESTING.md).
+**Ingen linter finns.** ESLint på en 3 187-radersfil i ES5-stil skulle ge hundratals varningar och
+kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
+
+Se [docs/TESTING.md](docs/TESTING.md).
 
 **Fem tester i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
 på noll. Fallerar något av dem är vakten `aheadBucket(first.people_ahead).width > 0` borta.
-**Nio tester i `tests/loadstate.test.js`** skyddar mot att ett serverfel åter ser ut som en tyst
-kväll.
+**Nio tester i `tests/loadstate.test.js`** plus tre i `e2e/app.spec.js` skyddar mot att ett
+serverfel åter ser ut som en tyst kväll.
 
 ## Fyra inläsningslägen — de får aldrig slås samman
 
@@ -286,7 +307,10 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
    Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
 5. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
 6. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
-7. Ingen linter, ingen CI, ingen spärr före commit
+7. **Ingen linter.** Medvetet uppskjutet — se motiveringen under Kommandon
+8. `limit(100)` i `loadReports` kan tysta hastighetsmätningen en full fredag (B-05 i
+   [docs/QUEUE_LOGIC.md](docs/QUEUE_LOGIC.md))
+9. Realtime och 30-sekunderspollningen körs samtidigt; varje `insert` får alla klienter att läsa om
 
 **Åtgärdat:**
 
@@ -295,6 +319,9 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
   `tests/sessions.test.js`
 - Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
+- Modellen hade inga tester. 120 enhetstester + 10 E2E-tester finns nu
+- Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
+  `.github/workflows/verify.yml`
 
 ## Vidare läsning
 

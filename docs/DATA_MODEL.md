@@ -16,14 +16,14 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 > Att göra schemat versionshanterat är rekommendation F-01 i granskningen.
 
 Inga nycklar, lösenord eller produktionsdata återges i detta dokument. Supabase-URL och den publika
-anon-nyckeln ligger i klartext i `src/main.js–67`; se säkerhetsavsnittet längst ned.
+anon-nyckeln ligger i klartext i `src/main.js`; se säkerhetsavsnittet längst ned.
 
 ---
 
 ## 1. `VENUES` — ställena
 
 **Ställena ligger inte i databasen.** De är en hårdkodad array på 28 objekt i
-`src/main.js–187`. Att lägga till, ta bort eller flytta ett ställe är en **kodändring och en
+`src/main.js`. Att lägga till, ta bort eller flytta ett ställe är en **kodändring och en
 deploy**, inte en databasuppdatering.
 
 | Fält | Typ | Exempel | Används av |
@@ -228,7 +228,7 @@ per rapport och ett vilseledande spår i koden.
    `qb_user_id` just raderats kan hen aldrig försöka igen. Texten i gränssnittet säger
    "All din data raderas permanent", vilket då inte är sant.
 
-7. **Nycklar i klartext i källkoden** (`src/main.js, 66–67`): Mapbox-token, Supabase-URL och
+7. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
    Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och
    anon-nyckeln skyddas av RLS. Det är **korrekt** så länge RLS verkligen är satt, vilket är
    det som inte kan verifieras. Ingen `.env` finns och ingen `import.meta.env` läses, trots att

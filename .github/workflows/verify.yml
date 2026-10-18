@@ -1,0 +1,69 @@
+name: verify
+
+# Den enda kontrollen som är oberoende av vilken agent eller människa som gjorde
+# ändringen. Spärren före commit kan hoppas över med --no-verify; den här kan den inte.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # En ny push avbryter den föregående körningen på samma gren.
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Tester, kontroller och bygge
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # HUSKY=0 hindrar prepare-steget från att installera git-hooks, som inte hör i CI.
+      # --ignore-scripts duger inte: esbuild behöver sitt postinstall för att hitta
+      # plattformsbinären, och bygget fallerar utan det.
+      - run: npm ci
+        env:
+          HUSKY: 0
+
+      - name: npm run verify
+        run: npm run verify
+
+  e2e:
+    name: E2E i webbläsare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+        env:
+          HUSKY: 0
+
+      # Bara chromium. Appen är en mobil webbapp och testerna kör i 390×844.
+      - run: npx playwright install --with-deps chromium
+
+      - name: npm run e2e
+        run: npm run e2e
+
+      # Spåren sparas bara när något fallerade (trace: 'retain-on-failure').
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trace
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
