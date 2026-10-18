@@ -1,6 +1,6 @@
 # QueueBar — Test och verifiering
 
-Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `395f59e`).
+Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 ---
 
@@ -8,7 +8,7 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `395f59e`).
 
 | Verktyg | Finns | Kommando |
 |---|---|---|
-| `scripts/check.js` — 57 strängkontroller | ✅ | `node scripts/check.js` |
+| `scripts/check.js` — 53 strängkontroller | ✅ | `node scripts/check.js` |
 | Produktionsbygge | ✅ | `npm run build` |
 | Utvecklingsserver | ✅ | `npm run dev` |
 | Enhetstester | ❌ | — |
@@ -52,7 +52,7 @@ bör behållas. Den ska bara inte förväxlas med ett test av logiken.
 ### Resultat vid senaste körning
 
 ```
-57 passed, 0 failed
+53 passed, 0 failed
 All checks passed ✓
 ```
 
@@ -60,7 +60,7 @@ All checks passed ✓
 
 1. **Rad 38 och 39 är attrapper.** `check('.env not committed', !hasEnvFile || true)` är alltid
    sant oavsett om `.env` finns. Samma gäller `check('No hardcoded supabase key…', true)`.
-   Två av de 57 "godkända" kontrollerna kontrollerar ingenting.
+   Två av de 53 "godkända" kontrollerna kontrollerar ingenting.
 2. **Kontrollerna är hårt bundna till radformuleringar.** Flera letar efter exakt kod, t.ex.
    `js.includes('result.data.filter(function(r) { return getVenueById(r.venue_id); })')`.
    En ofarlig omformulering av samma logik får kontrollen att fallera.
@@ -73,39 +73,74 @@ All checks passed ✓
 
 Hela appens värde ligger i att siffran är rätt. Ingen av dessa funktioner har ett test:
 
-| Funktion | Rader | Varför det betyder något |
-|---|---|---|
-| `estimateWait` | `:297` | Producerar varje väntetid i appen |
-| `sessionRates` | `:244` | Mäter dörrens hastighet; fyra ogiltighetsregler |
-| `setWaitRange` | `:323` | Bestämmer osäkerhetsintervallet |
-| `formatWait` | `:366` | Sju grenar, varje felaktig gren är en synlig lögn |
-| `waitToStatus` | `:377` | Bestämmer färgen på kartan |
-| `historicalRateFor` | `:285` | Veckodags- och 12-timmarslogiken är lätt att bryta |
-| `forecastWait` | `:331` | Tre trösklar som ska hindra brus från att visas |
-| `computeStatus` | `:392` | Reservvägen när ingen väntetid finns |
+| Funktion | Varför det betyder något |
+|---|---|
+| `estimateWait` | Producerar varje väntetid i appen |
+| `sessionRates` | Mäter dörrens hastighet; fyra ogiltighetsregler |
+| `setWaitRange` | Bestämmer osäkerhetsintervallet |
+| `formatWait` | Sju grenar, varje felaktig gren är en synlig lögn |
+| `waitToStatus` | Bestämmer färgen på kartan |
+| `historicalRateFor` | Veckodags- och 12-timmarslogiken är lätt att bryta |
+| `forecastWait` | Tre trösklar som ska hindra brus från att visas |
+| `computeStatus` | Reservvägen när ingen väntetid finns |
 
 **Alla åtta är rena funktioner.** De tar indata och returnerar utdata. De kräver ingen webbläsare,
-ingen Supabase och ingen Mapbox. Det finns inget tekniskt hinder för att testa dem — bara avsaknad
-av ett testramverk.
+ingen Supabase och ingen Mapbox.
 
-Siffrorna i [QUEUE_LOGIC.md](QUEUE_LOGIC.md) avsnitt 5 räknades fram genom att replikera koden
-manuellt för den här genomgången. **De finns inte kvar som en körbar kontroll.**
+### Att de går att testa utan att flytta kod är bevisat
+
+Funktionerna saknar `export` och ligger inne i `src/main.js` tillsammans med all DOM-kod. Det
+behöver **inte** blockera tester. Ett provskript läste `src/main.js` som text, klippte ut `VENUES`
+och modellblocket mellan ankarna `var PACE_RATE` och `function getStatusLabel`, och körde dem i
+Node med `new Function`. På HEAD `28040f2` gav det:
+
+```
+VENUES: 28 ställen
+  ✓ 37 före, pace=slow   → 25–50 min
+  ✓ 37 före, pace=fast   → 10–15 min
+  ✓ 0 före               → Ingen kö
+  ✓ 60 före, pace=slow   → 40+ min
+  ✓ 5 före, pace=fast    → <5 min
+  ✓ rapport 50 min gammal → null
+  sessionRates: 1.00 pers/min  (30 min, 37→7)
+  för kort / negativ rörelse / en punkt → 0 takter
+6 av 6 kända svar stämmer.
+```
+
+Samma utfall före och efter att två commits tog bort 158 rader ur filen — modellblocket låg
+oförändrat kvar.
+
+Textutklipp är **tillfällig byggnadsställning** och går sönder om funktionsnamnen ändras. Men det
+löser rätt problem i rätt ordning: testerna låser fast dagens beteende **innan** koden rörs, och
+därefter är en flytt till `src/model/` bevisbart beteendebevarande — samma testfall måste passera
+mot den importerade modulen. Går de från grönt till rött har flytten ändrat något.
+
+Siffrorna i [QUEUE_LOGIC.md](QUEUE_LOGIC.md) avsnitt 5 är redan färdiga testfall med kända svar.
+**De finns ännu inte kvar som en körbar kontroll i repot.**
 
 ### Högt: tillstånd när data saknas eller fallerar
 
-Verifierat i webbläsare under den här genomgången (Playwright, 390×844, mockad Supabase):
+Verifierat i webbläsare på HEAD `28040f2` (Playwright, 390×844, mockad Supabase). Samma tre lägen
+kördes om efter att färskhetsraden ersatte den gamla summeringswidgeten.
 
-| Läge | Resultat | Bedömning |
+| Vy | Tom databas | **Databasfel 500** |
 |---|---|---|
-| Tom databas | 28 rader med `–` som väntetid, widget säger "inga rapporter" | ✅ ärligt |
-| Databasfel 500 | Utforska-listan visar "Kunde inte ladda data / Försök igen" | ✅ korrekt |
-| Databasfel 500 | **Widgeten "Stockholm just nu" visar `0 / 0 / 0` och "Inga rapporter än — bli först att rapportera"** | ❌ **presenterar ett serverfel som en lugn kväll** |
-| Databasfel 500 | **Live-flödet visar "Inga rapporter ännu. Gå ut och rapportera!"** | ❌ **samma fel** |
-| Mapbox otillgängligt | "Kartan kunde inte laddas / Övriga funktioner fungerar normalt" | ✅ korrekt |
-| Testdata på | 28 rader, väntetider `5–10 min` … `Fullt`, inga konsolfel | ✅ fungerar |
+| `#exsum-line` | "Inga rapporter än — bli först att rapportera" | **exakt samma text** ❌ |
+| `#live-feed` | "Inga rapporter ännu. Nya köuppdateringar dyker upp här…" | **exakt samma text** ❌ |
+| `#explore-list` | "Ingen data i kväll — rapportera" per rad ✅ | "Kunde inte ladda data / Kontrollera anslutningen / Försök igen" ✅ |
+| Kartan (Mapbox nekad) | "Kartan kunde inte laddas / Övriga funktioner fungerar normalt" ✅ | samma ✅ |
 
-De två ❌-fallen är verifierade buggar, inte antaganden. Ingen kontroll i `check.js` kan upptäcka
-dem eftersom de uppstår i hur tillstånden *kombineras*, inte i vilken kod som finns.
+Med testdata: `exsum-line` visar "17 av 28 ställen har färsk rapport · senast 1 min sedan", 28 rader
+renderas med väntetider från `<5 min` till `Fullt`, inga konsolfel. ✅
+
+**De två ❌-fallen är verifierade buggar, inte antaganden.** Grundorsaken är tydlig i koden:
+`exsumText()` returnerar meningen om "inga rapporter" så snart `total === 0`, och `renderLiveFeed()`
+kontrollerar bara `if (!supabase)` — ingen av dem känner till om inläsningen *misslyckades*.
+`loadReports` fångar felet och anropar `showExploreError()`, men den signalen når bara
+Utforska-listan.
+
+Ingen kontroll i `check.js` kan upptäcka detta, eftersom felet uppstår i hur tillstånden
+*kombineras* — inte i vilken kod som finns.
 
 ### Högt: rapportflödet
 
@@ -116,7 +151,7 @@ regression.
 
 ### Medel: sökningen
 
-`venueScore` (`:1985`) har tio poängnivåer med längdgrindar (minst 2 eller 3 tecken för vissa
+`venueScore` har tio poängnivåer med längdgrindar (minst 2 eller 3 tecken för vissa
 nivåer). Den är ren och väldokumenterad i koden, och exakt den sortens funktion där en ändring i
 en gren tyst förstör en annan. Inget test.
 
@@ -149,7 +184,7 @@ npm run dev
 Testdata måste vara på, annars syns inga väntetider alls utan riktiga rapporter.
 
 - [ ] **Karta** — nålar har rätt färg, kluster visas vid utzoomning, en nål går att trycka på
-- [ ] **Utforska** — "Stockholm just nu" summerar, rader sorterade, tomma ställen sist
+- [ ] **Utforska** — färskhetsraden stämmer ("N av 28 ställen"), rader sorterade, tomma ställen sist
 - [ ] **Väntetider** — intervall visas (`25–50 min`), aldrig en naken siffra
 - [ ] **Live** — flödet har rapporter, grupperade per ställe, klockslag stämmer
 - [ ] **Rapportera** — alla tre stegen, bekräftelsen visas, listan återställs

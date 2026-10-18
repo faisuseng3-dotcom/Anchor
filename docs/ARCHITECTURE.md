@@ -1,6 +1,6 @@
 # QueueBar — Arkitektur
 
-Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `395f59e`).
+Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 Allt i detta dokument är läst ur koden. Avsnitt som inte kunnat verifieras är markerade **OVERIFIERAT**.
 
 ---
@@ -29,8 +29,8 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Språk | Vanilla JavaScript, ES-moduler, ES5-syntax i kroppen (`var`, `function`) | `src/main.js` |
 | Ramverk | **inget** — ingen React, Vue eller Svelte | — |
 | Styling | Ren CSS med custom properties | `src/style.css` |
-| Karta | `mapbox-gl` 3.x via npm, stil `mapbox://styles/mapbox/dark-v11` | `src/main.js:950` |
-| Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js:66–77` |
+| Karta | `mapbox-gl` 3.x via npm, stil `mapbox://styles/mapbox/dark-v11` | `src/main.js` |
+| Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js–77` |
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
@@ -49,9 +49,9 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  291 rader   Allt DOM-skelett: 5 skärmar, modaler, bottom sheets
-src/main.js                3297 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1443 rader   Design tokens + alla komponentklasser
+index.html                  273 rader   Allt DOM-skelett: 5 skärmar, modaler, bottom sheets
+src/main.js                3139 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1370 rader   Design tokens + alla komponentklasser
 scripts/check.js            123 rader   57 strängbaserade kontroller (pre-commit-grind)
 scripts/fetch-osm-venues.mjs 387 rader  Engångsverktyg: hämtar venue-kandidater från OpenStreetMap
 data/venues_candidates.*                Resultat från OSM-körningen. Används INTE av appen.
@@ -65,15 +65,15 @@ QueueBar/                               Separat, ofullständigt Expo-projekt (ej
 toppnivåskript — det finns ingen `init()`-funktion och ingen `DOMContentLoaded`-väntan. Ordningen är:
 
 1. Importer (`mapbox-gl`, `supabase-js`, `./style.css`)
-2. Mapbox-token sätts, `map` skapas (`src/main.js:949`)
-3. Supabase-klient skapas (`src/main.js:70`)
-4. `VENUES`-arrayen definieras (`src/main.js:159–187`)
+2. Mapbox-token sätts, `map` skapas (`src/main.js`)
+3. Supabase-klient skapas (`src/main.js`)
+4. `VENUES`-arrayen definieras (`src/main.js–187`)
 5. Alla funktioner deklareras (hissas, så ordningen spelar ingen roll)
-6. **`loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates)`** (`src/main.js:1657`)
+6. **`loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates)`** (`src/main.js`)
 7. Tre `setInterval`: `loadReports` var 30 s, `loadHistoricalRates` var 30 min
 8. `subscribeToReports()` — Realtime-prenumeration
 9. `updateProfileStats()`, `filterReportList()`, `checkConsent()`
-10. `Object.assign(window, {...})` exponerar 49 funktioner (`src/main.js:3247`)
+10. `Object.assign(window, {...})` exponerar 49 funktioner (`src/main.js`)
 
 Steg 10 är **nödvändigt**: HTML-strängarna använder inline `onclick`, och ES-moduler har inget
 globalt scope. Lägger du till en ny `onclick`-handler måste den läggas till i det objektet,
@@ -83,7 +83,7 @@ annars kastar klicket `ReferenceError`.
 
 ## 4. Navigation
 
-Det finns ingen router. `showScreen(name)` (`src/main.js:42`) växlar klassen `.active` mellan fem
+Det finns ingen router. `showScreen(name)` (`src/main.js`) växlar klassen `.active` mellan fem
 `<section>`-element i `index.html`:
 
 | Skärm | Element | Ansvar |
@@ -104,7 +104,7 @@ delningsbar vy.** `?testdata=true` är den enda URL-parameter som läses.
 ```mermaid
 flowchart TD
     subgraph Klient["Webbläsaren"]
-        VENUES["VENUES<br/>28 objekt hårdkodade<br/>src/main.js:159"]
+        VENUES["VENUES<br/>28 objekt hårdkodade<br/>src/main.js"]
         AR["allReports<br/>global array"]
         LS["localStorage<br/>qb_user_id, qb_queue_session,<br/>qb_on_my_way, qb_testdata,<br/>qb_favorites, qb_consent"]
     end
@@ -143,11 +143,11 @@ flowchart TD
 
 ### Den enda sanningskällan för väntetid
 
-Varje skärm som visar en väntetid går genom **`venueWaitText(venueId)`** (`src/main.js:386`),
+Varje skärm som visar en väntetid går genom **`venueWaitText(venueId)`** (`src/main.js`),
 som anropar `estimateWait()` och formaterar med `formatWait()`. Det finns ingen andra väg.
 Det är den viktigaste arkitektoniska egenskapen i appen och den ska bevaras.
 
-`getStatusLabel()` (`src/main.js:406`) returnerar fasta strängar (`'~15 min'`, `'~25 min'`,
+`getStatusLabel()` (`src/main.js`) returnerar fasta strängar (`'~15 min'`, `'~25 min'`,
 `'30+ min'`) och används **endast** som reserv när en rapport saknar `people_ahead` — alltså bara
 för rapporter skapade före att `people_ahead` infördes.
 
@@ -155,33 +155,47 @@ för rapporter skapade före att `people_ahead` infördes.
 
 ## 6. Modulernas ansvar inuti `src/main.js`
 
-Filen har inga moduler, men den har tydliga avsnitt. Radnumren gäller HEAD `395f59e`.
+Filen har inga moduler, men den har tydliga avsnitt.
 
-| Rader | Ansvar | Rena funktioner? |
+Filen är indelad med kommentarrubriker av formen `// ── Rubrik ───`. **Sök på rubriken, inte på
+radnummer** — en enda commit kan flytta allt nedanför sig. Kör
+`grep -n "── " src/main.js` för den aktuella kartan.
+
+| Avsnittsrubrik | Ansvar | Rena funktioner? |
 |---|---|---|
-| 1–60 | Importer, PWA-prompt, `showScreen` | nej (DOM) |
-| 61–130 | Mapbox-token, Supabase-klient, feltoast, återanslutning | nej |
-| 159–187 | `VENUES` — 28 ställen | data |
-| 180–225 | `computeConfidence` — **död kod, anropas aldrig** | ja |
-| 226–430 | **Väntetidsmodellen** — `estimateWait`, `sessionRates`, `formatWait`, `computeStatus` | **ja** |
-| 431–560 | `escapeHtml`, `timeAgo`, toast, dela, bevaka, favoriter | delvis |
-| 560–730 | Venue-kort, hemskärmens lista | nej (DOM) |
-| 730–940 | Bottom sheet-dragning, kartsök | nej (DOM) |
-| 940–1195 | Mapbox: init, ikoner, lager, kluster, pulsanimation | nej |
-| 1196–1345 | Supabase-läsning, skelett, felläge, testdata | nej |
-| 1409–1545 | **Rapportering** — `submitReport`, kö-sessioner | nej |
-| 1550–1670 | Historik, dörrtakt, kalibrering | delvis |
-| 1673–1980 | Favoriter, samtycke, onboarding, radera data | nej |
-| 1978–2080 | Fuzzy-sökning — `venueScore`, `venueSearch` | **ja** |
-| 2103–2410 | Utforska-skärmen: summeringswidget + rader | nej |
-| 2419–2560 | Kvällsplan, "bäst nu", avstånd, stängningstid | delvis |
-| 2584–2840 | Utforska-rendering, Live-flöde | nej |
-| 2840–2995 | "På väg", kö-sessionsbanner | nej |
-| 2999–3135 | Rapportskärm, snabbrapport | nej |
-| 3134–3245 | Profil: poäng, nivå, streak, märken | nej |
-| 3247–3297 | `Object.assign(window, …)` — 49 funktioner | — |
+| *(ingen rubrik)* | Importer | — |
+| `PWA install prompt` | Installationsprompt | nej |
+| `Navigation initieras ALLRA FÖRST` | `showScreen` | nej (DOM) |
+| `Mapbox token` | Token sätts | — |
+| `Supabase` | Klienten skapas | nej |
+| `Feltoast` | Felvisning, återanslutning | nej |
+| `Data och hjälpfunktioner` | `VENUES` (28 ställen) + `computeConfidence` — **död kod, anropas aldrig** | data / ja |
+| **`Väntetid = kölängd ÷ köns hastighet`** | **Väntetidsmodellen** — `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait` | **ja** |
+| *(efter modellen)* | `escapeHtml`, `timeAgo`, toast | delvis |
+| `Dela (Share)` | `shareVenue` | nej |
+| `Bevaka (Watch)` | `getWatched`, `checkWatchedVenueAlerts`. `toggleWatch` är **död kod** | delvis |
+| *(venue-kort, hemskärm)* | Kort och listor | nej (DOM) |
+| `Bottom sheet drag` | Dragning, snappning | nej (DOM) |
+| `Kartans inline-sökning` | Sökfält över kartan | nej (DOM) |
+| `Karta` | Mapbox: init, ikoner, lager, kluster, pulsanimation | nej |
+| `Supabase-funktioner` | `loadReports`, skelett, felläge, testdata, `submitReport` | nej |
+| `Kö-session` | `submitSessionReport`, uppföljningar, "Jag är inne" | nej |
+| `Historiska mönster` | `loadHistoricalPatterns` | nej |
+| `Historisk dörrtakt + kalibrering` | `loadHistoricalRates`, `computeCalibration` | delvis |
+| `Favoriter` / `Consent` / `Onboarding` | localStorage + modaler | nej |
+| `Dataradering` | `deleteAllUserData` | nej |
+| **`Gemensam fuzzy-sökning`** | `venueScore`, `venueSearch` | **ja** |
+| `Utforska` | Filter, rader, `computeExploreSummary` | delvis |
+| `Färskhetsrad` | `exsumText`, `renderExploreSummary` | delvis |
+| `Kvällsplanering` | Kvällsplan, "bäst nu", avstånd, stängningstid | delvis |
+| `Live-feed` | `_liveRowHtml`, `renderLiveFeed` | nej |
+| `På väg` | Banner, RPC-synk | nej |
+| `Rapportera` / `Snabbrapport` | De tre stegen, bottom sheet | nej |
+| `Profil` | Poäng, nivå, streak, märken | nej |
+| *(sist i filen)* | `Object.assign(window, …)` — **48 funktioner** | — |
 
-**Konsekvens för utveckling:** de rena funktionerna i raderna 226–430 och 1978–2080 är den enda
+**Konsekvens för utveckling:** de rena funktionerna under `Väntetid = kölängd ÷ köns hastighet` och
+`Gemensam fuzzy-sökning` är den enda
 koden som kan enhetstestas utan en webbläsare. De är också de som betyder mest. Se
 [TESTING.md](TESTING.md).
 
@@ -201,11 +215,11 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 
 ### Verkliga flaskhalsar
 
-1. **`limit(100)` i `loadReports`** (`src/main.js:1272`) — hela appens tillstånd bygger på de 100
+1. **`limit(100)` i `loadReports`** (`src/main.js`) — hela appens tillstånd bygger på de 100
    senaste icke-utgångna rapporterna. En fredag med 28 ställen kan det räcka till under en
    halvtimme, och en kö-sessions första mätpunkt kan hamna utanför fönstret. Då tappas
    hastighetsmätningen tyst.
-2. **Realtime + pollning samtidigt** (`src/main.js:1310` och `1663`) — varje INSERT från vilken
+2. **Realtime + pollning samtidigt** (`src/main.js` och `1663`) — varje INSERT från vilken
    användare som helst får *alla* anslutna klienter att köra `loadReports()` + `loadHistoricalPatterns()`
    på nytt, utöver pollningen var 30 s. Lasten växer kvadratiskt med antalet samtidiga användare.
 3. **2,2 MB JS / 628 kB gzip i produktionsbygget** — nästan allt är `mapbox-gl`. Målgruppen står
@@ -230,9 +244,9 @@ tillstånd (allReports, VENUES, localStorage)
 **Två regler som följer av mönstret:**
 
 1. All text som kommer från databasen måste gå genom `escapeHtml()` innan den hamnar i en
-   HTML-sträng. Det gäller idag `comment` och `venue_name` (`src/main.js:2367, 2742, 2743`).
+   HTML-sträng. Det gäller idag `comment` och `venue_name` (`src/main.js`).
 2. `venue_id` placeras oescapat i `onclick`-attribut. Det är säkert **endast** därför att
-   `loadReports` filtrerar bort rapporter för okända ställen (`src/main.js:1277`). Tas det filtret
+   `loadReports` filtrerar bort rapporter för okända ställen (`src/main.js`). Tas det filtret
    bort öppnas en XSS-väg. Filtret är en säkerhetsmekanism, inte en städning.
 
 ---

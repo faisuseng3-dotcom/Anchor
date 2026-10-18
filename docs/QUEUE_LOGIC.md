@@ -1,6 +1,6 @@
 # QueueBar — Köberäkningen
 
-Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `395f59e`).
+Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 Alla siffror i exemplen är **räknade ut genom att replikera koden**, inte uppskattade.
 
 **Detta dokument beskriver logiken som den är.** Brister är dokumenterade i avsnitt 9 men inga
@@ -26,7 +26,7 @@ framför dig på Spy Bar (långsam dörr) är 25–50 minuter. 37 personer på S
 ## 2. Så mäts kölängden
 
 Användaren trycker på ett intervall, inte en siffra. Det lagrade `people_ahead` är intervallets
-**mittvärde** (`AHEAD_BUCKETS`, `src/main.js:217`):
+**mittvärde** (`AHEAD_BUCKETS`, `src/main.js`):
 
 | Knappen säger | `people_ahead` | `width` |
 |---|---|---|
@@ -40,7 +40,7 @@ Användaren trycker på ett intervall, inte en siffra. Det lagrade `people_ahead
 
 ### Vilken kölängd används?
 
-`estimateWait` (`src/main.js:297`):
+`estimateWait` (`src/main.js`):
 
 1. Ta alla rapporter för stället där `report_type` är `'initial'` (eller saknas), `people_ahead`
    finns, och åldern är **0–45 minuter**.
@@ -50,7 +50,7 @@ Användaren trycker på ett intervall, inte en siffra. Det lagrade `people_ahead
 
 Median, inte medelvärde. En avvikande rapport bland tre kan därför inte dra iväg siffran.
 
-**Bara `initial` räknas som en kömätning** (`isQueueReport`, `:233`). En `followup` är samma persons
+**Bara `initial` räknas som en kömätning** (`isQueueReport`). En `followup` är samma persons
 nya position i samma kö, inte en ny mätning av köns längd — att räkna den vore dubbelräkning.
 
 ---
@@ -60,7 +60,7 @@ nya position i samma kö, inte en ny mätning av köns längd — att räkna den
 En **kö-session** är en persons väg genom en kö: en `initial`, noll till fyra `followup`, och
 eventuellt en `entered`. Alla delar samma `queue_session`-id.
 
-`sessionRates` (`src/main.js:244`) ger **en hastighet per session**:
+`sessionRates` (`src/main.js`) ger **en hastighet per session**:
 
 ```
 rörelse = första mätningens people_ahead − sista mätningens people_ahead
@@ -84,13 +84,13 @@ Två utfall:
   avsiktligt: att sätta takten till 0 vore att hävda att kön står helt still, vilket inte
   följer av datan.
 
-`measureQueueRates` (`:267`) hämtar kvällens sessioner: samma ställe, **senaste 45 minuterna**.
+`measureQueueRates` hämtar kvällens sessioner: samma ställe, **senaste 45 minuterna**.
 
 ---
 
 ## 4. Tre lager för takten
 
-Vilken takt som används avgörs i `estimateWait` (`:297`) i den här ordningen:
+Vilken takt som används avgörs i `estimateWait` i den här ordningen:
 
 | Lager | Källa | Krav | `source` |
 |---|---|---|---|
@@ -98,7 +98,7 @@ Vilken takt som används avgörs i `estimateWait` (`:297`) i den här ordningen:
 | 2 | **Tidigare kvällar** — `_historicalRates` | samma ställe, samma veckodag, ±1 h, **≥3 sessioner** | `'history'` |
 | 3 | **Startgissning** — `venue.pace` | alltid | `'estimate'` |
 
-`PACE_RATE` (`:215`): `slow: 1.0`, `normal: 2.0`, `fast: 3.0` personer per minut.
+`PACE_RATE`: `slow: 1.0`, `normal: 2.0`, `fast: 3.0` personer per minut.
 
 ### Hur lagren blandas
 
@@ -116,7 +116,7 @@ se avsnitt 9.
 
 ### Historiklagret i detalj
 
-`historicalRateFor` (`:285`) och `nightKey` (`:276`):
+`historicalRateFor` och `nightKey`:
 
 - **Kvällen räknas från 06:00.** `nightKey` drar bort 6 timmar innan veckodagen läses ut, så
   fredag 00:30 tillhör torsdagskvällen räknat som "fredagsnatt" — alltså samma kväll som
@@ -126,21 +126,21 @@ se avsnitt 9.
 - Kräver **minst 3 matchande sessioner**, annars faller lagret bort.
 - Använder **medianen** av de matchande takterna.
 
-Datan hämtas av `loadHistoricalRates` (`:1590`): kö-sessioner 8 veckor bakåt, **limit 1000**,
+Datan hämtas av `loadHistoricalRates`: kö-sessioner 8 veckor bakåt, **limit 1000**,
 som sedan räknas om var 30:e minut.
 
 ---
 
 ## 5. Osäkerhet och formatering
 
-`setWaitRange` (`:323`) lägger ett intervall runt punktskattningen:
+`setWaitRange` lägger ett intervall runt punktskattningen:
 
 | Antal mätta sessioner | Spridning |
 |---|---|
 | ≥3 | **±20 %** |
 | 0–2 | **±35 %** |
 
-Gränserna avrundas till närmaste 5 minuter. `formatWait` (`:366`) väljer text:
+Gränserna avrundas till närmaste 5 minuter. `formatWait` väljer text:
 
 | Villkor | Visas |
 |---|---|
@@ -187,7 +187,7 @@ Samma kölängd (37) ger 10–15 min eller 25–50 min beroende på dörren. Det
 
 ## 6. Från väntetid till status och färg
 
-`waitToStatus` (`:377`) gör om minuter till en nivå:
+`waitToStatus` gör om minuter till en nivå:
 
 | Villkor | Status | Färg |
 |---|---|---|
@@ -198,12 +198,12 @@ Samma kölängd (37) ger 10–15 min eller 25–50 min beroende på dörren. Det
 | annars | `long` | `#FF4D5E` |
 
 **Statusen är alltså härledd ur väntetiden, inte rapporterad.** Den `queue_status` som sparas i
-databasen beräknas också med `waitToStatus` vid insättning (`:1416`) och används bara som reserv
+databasen beräknas också med `waitToStatus` vid insättning och används bara som reserv
 för gamla rapporter utan `people_ahead`.
 
 ### Reservvägen
 
-`computeStatus` (`:392`) används när `estimateWait` returnerar `null`:
+`computeStatus` används när `estimateWait` returnerar `null`:
 
 1. Finns en väntetidsskattning → `waitToStatus(est)`.
 2. Annars: ta `initial`-rapporter för stället. Finns ingen → `'unknown'`.
@@ -220,22 +220,22 @@ Gränssnittet markerar detta genom tidsstämpeln i raden, men **statusfärgen de
 
 Modellen hanterar oenighet på tre sätt, utan att någonsin låta en enskild rapport dominera:
 
-| Mekanism | Var | Effekt |
+| Mekanism | Funktion | Effekt |
 |---|---|---|
-| **Median** av färska kölängder | `:306` | En avvikande rapport bland tre ignoreras |
-| **Median** av mätta takter | `:313` | En ovanligt snabb eller långsam session jämnas ut |
-| **Prior-dämpning** (väger som 2 sessioner) | `:314` | Ny, tunn mätdata kan inte svänga siffran helt |
-| **Negativ rörelse förkastas** | `:257` | Orimliga sessioner räknas inte alls |
+| **Median** av färska kölängder | `estimateWait` | En avvikande rapport bland tre ignoreras |
+| **Median** av mätta takter | `estimateWait` | En ovanligt snabb eller långsam session jämnas ut |
+| **Prior-dämpning** (väger som 2 sessioner) | `estimateWait` | Ny, tunn mätdata kan inte svänga siffran helt |
+| **Negativ rörelse förkastas** | `sessionRates` | Orimliga sessioner räknas inte alls |
 
 Det finns **ingen röstning, ingen användarviktning och inget ryktessystem.** Alla rapportörer väger
-lika. `computeConfidence` (`:180`) beräknar ett tillförlitlighetsmått på 1–3 staplar ur
+lika. `computeConfidence` beräknar ett tillförlitlighetsmått på 1–3 staplar ur
 samstämmighet, volym och färskhet — men **funktionen anropas aldrig**. Den är död kod.
 
 ---
 
 ## 8. Prognos och kalibrering
 
-### `forecastWait` (`:331`) — kön när du är framme
+### `forecastWait` — kön när du är framme
 
 Används av "På väg"-bannern. Kräver:
 
@@ -247,7 +247,7 @@ Annars returneras `null` och bannern visar "kön nu" i stället. Trenden extrapo
 andra som är på väg läggs till med **halv vikt** (`othersOnWay / 2`), eftersom inte alla som
 säger att de är på väg faktiskt kommer.
 
-### `computeCalibration` (`:1619`) — håller modellen ärlig
+### `computeCalibration` — håller modellen ärlig
 
 För varje avslutad session med `entered`: räkna om vad appen **hade** sagt när sessionen startade,
 och jämför med den verkliga väntetiden.
@@ -308,7 +308,7 @@ precis när mätningarna behövs mest.
 
 ### B-06 — Historiken använder ett osorterat urval
 
-`loadHistoricalPatterns` (`:1550`) frågar utan `limit` och utan `order`. PostgREST returnerar
+`loadHistoricalPatterns` frågar utan `limit` och utan `order`. PostgREST returnerar
 högst 1000 rader, och vilka 1000 är inte definierat. Resultatet lagras i `_historicalPatterns`
 men påverkar inte väntetiden — bara en indikator i Utforska. `loadHistoricalRates`, som **faktiskt**
 påverkar väntetiden, sorterar däremot korrekt på `created_at desc`.

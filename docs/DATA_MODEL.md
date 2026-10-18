@@ -1,6 +1,6 @@
 # QueueBar — Datamodell
 
-Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `395f59e`).
+Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 > ## ⚠️ Viktig förutsättning för hela dokumentet
 >
@@ -16,14 +16,14 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `395f59e`).
 > Att göra schemat versionshanterat är rekommendation F-01 i granskningen.
 
 Inga nycklar, lösenord eller produktionsdata återges i detta dokument. Supabase-URL och den publika
-anon-nyckeln ligger i klartext i `src/main.js:66–67`; se säkerhetsavsnittet längst ned.
+anon-nyckeln ligger i klartext i `src/main.js–67`; se säkerhetsavsnittet längst ned.
 
 ---
 
 ## 1. `VENUES` — ställena
 
 **Ställena ligger inte i databasen.** De är en hårdkodad array på 28 objekt i
-`src/main.js:159–187`. Att lägga till, ta bort eller flytta ett ställe är en **kodändring och en
+`src/main.js–187`. Att lägga till, ta bort eller flytta ett ställe är en **kodändring och en
 deploy**, inte en databasuppdatering.
 
 | Fält | Typ | Exempel | Används av |
@@ -79,7 +79,7 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 ### Så här används `people_ahead`
 
 Värdet är **inte** ett antal personer användaren räknat. Det är mittvärdet i det intervall
-användaren tryckte på (`AHEAD_BUCKETS`, `src/main.js:217`):
+användaren tryckte på (`AHEAD_BUCKETS`, `src/main.js`):
 
 | Knapp | Lagrat `people_ahead` | Intervallbredd |
 |---|---|---|
@@ -107,10 +107,10 @@ entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verk
 
 | Funktion | Fråga | Gräns |
 |---|---|---|
-| `loadReports` (`:1272`) | `select * where expires_at >= nu order by created_at desc` | **limit 100** |
-| `loadHistoricalPatterns` (`:1557`) | `select venue_id, queue_status, created_at where created_at >= 8 v, queue_status != 'none', report_type = 'initial'` | ingen → PostgREST-default 1000, **osorterat** |
-| `loadHistoricalRates` (`:1592`) | `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
-| `loadUserHistory` (`:3221`) | `select * where user_id = mitt` | ingen |
+| `loadReports` | `select * where expires_at >= nu order by created_at desc` | **limit 100** |
+| `loadHistoricalPatterns` | `select venue_id, queue_status, created_at where created_at >= 8 v, queue_status != 'none', report_type = 'initial'` | ingen → PostgREST-default 1000, **osorterat** |
+| `loadHistoricalRates` | `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
+| `loadUserHistory` | `select * where user_id = mitt` | ingen |
 
 ---
 
@@ -122,7 +122,7 @@ entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verk
 | `venue_id` | ja | nej |
 
 Appen **läser aldrig** från `favorites`. Favoriter visas från `localStorage.qb_favorites`
-(`src/main.js:1686`). Tabellen får `insert` och `delete` (`:1681, :1684`) men värdet används inte.
+(`src/main.js`). Tabellen får `insert` och `delete` men värdet används inte.
 Konsekvens: favoriter följer inte med mellan enheter, och tabellen fyller ingen funktion i appen
 idag.
 
@@ -135,17 +135,17 @@ härifrån och bör kontrolleras.
 ## 4. `user_profiles`
 
 Appen **rör den bara på ett enda ställe**: `delete().eq('user_id', userId)` i `deleteAllUserData()`
-(`src/main.js:1955`). Den läses aldrig och skrivs aldrig i övrigt.
+(`src/main.js`). Den läses aldrig och skrivs aldrig i övrigt.
 
 Poäng, nivå, streak och märken beräknas helt i klienten i `updateProfileStats()`
-(`src/main.js:3150`) ur antalet egna rapporter:
+(`src/main.js`) ur antalet egna rapporter:
 
 ```
 poäng = (antal initial-rapporter × 10) + (antal entered-rapporter × 5)
 ```
 
 Det betyder att tabellen är **funktionellt oanvänd** och att RPC-anropet `increment_points`
-(`:1439, :1527`) är verkningslöst. Se F-04 i granskningen.
+är verkningslöst. Se F-04 i granskningen.
 
 ---
 
@@ -156,12 +156,12 @@ genom tre security-definer-funktioner:
 
 | RPC | Parametrar | Används av |
 |---|---|---|
-| `start_on_my_way` | `p_user_id`, `p_venue_id`, `p_minutes` | `goOnMyWay()` (`:2882`) |
-| `stop_on_my_way` | `p_user_id` | `cancelOnMyWay()` (`:2892`) |
-| `on_my_way_counts` | — | `loadOnMyWayCounts()` (`:355`) |
+| `start_on_my_way` | `p_user_id`, `p_venue_id`, `p_minutes` | `goOnMyWay()` |
+| `stop_on_my_way` | `p_user_id` | `cancelOnMyWay()` |
+| `on_my_way_counts` | — | `loadOnMyWayCounts()` |
 
 `on_my_way_counts()` returnerar enligt klientkoden bara ställen med minst 3 aktiva, och klienten
-döljer dessutom allt under 3 (`onMyWayCount`, `:361`). Dubbel spärr mot att avslöja att en enskild
+döljer dessutom allt under 3 (`onMyWayCount`). Dubbel spärr mot att avslöja att en enskild
 person är på väg någonstans. **Det här är mönstret som bör användas för alla tabeller.**
 
 **OVERIFIERAT:** att tabellen har RLS utan policyer, så att bara RPC-funktionerna kommer åt den.
@@ -170,7 +170,7 @@ person är på väg någonstans. **Det här är mönstret som bör användas fö
 
 ## 6. `increment_points` — en RPC som inte finns
 
-`submitReport` (`:1439`) och `queueSessionEntered` (`:1527`) anropar
+`submitReport` och `queueSessionEntered` anropar
 `supabase.rpc('increment_points', …)`. Funktionen finns enligt tidigare observation inte i
 databasen.
 
@@ -201,34 +201,34 @@ per rapport och ett vilseledande spår i koden.
 
 ### Verifierat ur koden
 
-1. **`user_id` sätts av klienten.** `getUserId()` (`:1197`) läser eller skapar en sträng i
+1. **`user_id` sätts av klienten.** `getUserId()` läser eller skapar en sträng i
    `localStorage`. Den skickas med i varje `insert`. Servern kan därför inte skilja två användare
    åt, och ingen klient kan bevisa vem den är. **Detta är grundorsaken till punkterna 2–4.**
 
-2. **Spärren mot dubbelrapportering är enbart klientsidan.** `submitReport` (`:1413`) letar efter
+2. **Spärren mot dubbelrapportering är enbart klientsidan.** `submitReport` letar efter
    egna rapporter under 20 minuter i `allReports` — alltså i de **100 senaste** inlästa raderna.
    Finns ens den egna rapporten inte där, släpper spärren igenom. Och den som rensar
    `localStorage` får ett nytt `user_id` och är fri igen.
-   Felsträngarna `rate_limited` och `too_soon` i `reportErrorText` (`:1448`) antyder att en
+   Felsträngarna `rate_limited` och `too_soon` i `reportErrorText` antyder att en
    serverspärr finns. **OVERIFIERAT.**
 
-3. **`expires_at` sätts av klienten** (`:1419`). En manipulerad klient kan sätta den långt fram i
+3. **`expires_at` sätts av klienten**. En manipulerad klient kan sätta den långt fram i
    tiden och få en rapport att överleva i Utforska, på kartan och i Live-flödet i princip för alltid.
 
-4. **`queue_status` beräknas i klienten** (`:1416`) och skickas med. Den kan sättas till vilket
+4. **`queue_status` beräknas i klienten** och skickas med. Den kan sättas till vilket
    värde som helst oberoende av `people_ahead`.
 
 5. **`select('*')` returnerar `user_id` till alla.** Varje besökare kan läsa samtliga `user_id`
    tillsammans med `venue_id` och `created_at` — alltså rekonstruera var en enskild person varit
    under en kväll, i vilken ordning. Fältet renderas aldrig i gränssnittet, men det ligger i svaret.
 
-6. **Radering kan misslyckas tyst.** `deleteAllUserData()` (`:1949`) kör tre `delete` i en
+6. **Radering kan misslyckas tyst.** `deleteAllUserData()` kör tre `delete` i en
    `Promise.all` och **kontrollerar inget returvärde**, varpå den kör `localStorage.clear()` och
    laddar om. Nekar RLS raderingen ser användaren ändå ett lyckat resultat — och eftersom
    `qb_user_id` just raderats kan hen aldrig försöka igen. Texten i gränssnittet säger
-   "All din data raderas permanent" (`:3237`), vilket då inte är sant.
+   "All din data raderas permanent", vilket då inte är sant.
 
-7. **Nycklar i klartext i källkoden** (`src/main.js:62, 66–67`): Mapbox-token, Supabase-URL och
+7. **Nycklar i klartext i källkoden** (`src/main.js, 66–67`): Mapbox-token, Supabase-URL och
    Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och
    anon-nyckeln skyddas av RLS. Det är **korrekt** så länge RLS verkligen är satt, vilket är
    det som inte kan verifieras. Ingen `.env` finns och ingen `import.meta.env` läses, trots att
@@ -240,9 +240,9 @@ Stängd för databastext, men beroendet är indirekt och värt att skydda:
 
 | Fält | Skydd |
 |---|---|
-| `comment` | `escapeHtml()` (`:2367, :2743`) |
-| `venue_name` | `escapeHtml()` (`:2742`) |
-| `venue_id` | **Inget escapande.** Säkert bara därför att `loadReports` filtrerar bort okända venue_id (`:1277`), så värdet alltid är ett av 28 kända. Tas filtret bort öppnas en injektionsväg via `onclick`-attributet. |
+| `comment` | `escapeHtml()`  |
+| `venue_name` | `escapeHtml()` |
+| `venue_id` | **Inget escapande.** Säkert bara därför att `loadReports` filtrerar bort okända venue_id, så värdet alltid är ett av 28 kända. Tas filtret bort öppnas en injektionsväg via `onclick`-attributet. |
 | `user_id` | Renderas aldrig |
 
 ### Vad som inte kunnat verifieras

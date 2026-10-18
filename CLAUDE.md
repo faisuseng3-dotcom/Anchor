@@ -17,7 +17,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 297 rader), `src/style.css` (1 443 rader), `index.html` (291 rader) |
+| Kod | `src/main.js` (3 139 rader), `src/style.css` (1 370 rader), `index.html` (273 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -48,26 +48,31 @@ karta · Utforska · Live · venue-kort   (alla via samma funktion)
 
 **Kritiskt:** HTML byggs som strängar med inline `onclick`. ES-moduler har inget globalt scope, så
 varje funktion som används i en `onclick` **måste** läggas till i `Object.assign(window, {...})`
-längst ned i `src/main.js:3247`. Annars kastar klicket `ReferenceError`.
+längst ned i `src/main.js`. Annars kastar klicket `ReferenceError`.
 
 ## Var logiken finns
 
-| Vad | Var |
+Sök på funktionsnamnet — **inte på radnummer.** Dokumentationen innehöll tidigare radnummer och de
+blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
+`grep -n "function estimateWait" src/main.js`.
+
+| Vad | Funktioner |
 |---|---|
-| **Väntetidsmodellen** | `src/main.js:226–430` — `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `computeStatus` |
-| Venue-data | `src/main.js:159–187` — `VENUES`, 28 objekt. **Inte i databasen** — ändring = deploy |
-| Supabase-läsning | `loadReports()` `:1251` — de 100 senaste icke-utgångna rapporterna |
-| Rapportering | `submitReport()` `:1409`, `submitSessionReport()` `:1483` |
-| Historisk dörrtakt | `loadHistoricalRates()` `:1590`, `historicalRateFor()` `:285` |
-| Kalibrering | `computeCalibration()` `:1619` — skriv `qbCalibration()` i konsolen |
-| Karta och lager | `src/main.js:940–1195` |
-| Sökning | `venueScore()` `:1985`, `venueSearch()` `:2021` |
-| XSS-skydd | `escapeHtml()` `:423` |
+| **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
+| Venue-data | `VENUES` — 28 objekt. **Inte i databasen** — ändring = deploy |
+| Supabase-läsning | `loadReports` — de 100 senaste icke-utgångna rapporterna |
+| Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
+| Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
+| Kalibrering | `computeCalibration` — skriv `qbCalibration()` i konsolen |
+| Karta och lager | mellan `showMapError` och `getUserId`: `registerTypePins`, `addTypePin`, `updateMapStatuses` |
+| Utforska-summering | `computeExploreSummary`, `exsumText`, `renderExploreSummary` |
+| Sökning | `venueScore`, `venueSearch`, `_searchNorm` |
+| XSS-skydd | `escapeHtml` — fyra anropsställen |
 
 ### Den enda vägen till en väntetid
 
-Varje väntetid på varje skärm går genom **`venueWaitText(venueId)`** (`:386`). Det finns ingen
-annan väg och det ska förbli så. `getStatusLabel()` (`:406`) ger fasta strängar och är **bara**
+Varje väntetid på varje skärm går genom **`venueWaitText(venueId)`**. Det finns ingen
+annan väg och det ska förbli så. `getStatusLabel()` ger fasta strängar och är **bara**
 reserv för gamla rapporter utan `people_ahead`.
 
 ## Kommandon
@@ -76,7 +81,7 @@ reserv för gamla rapporter utan `people_ahead`.
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 npm run build              # produktionsbygge till dist/
-node scripts/check.js      # 57 strukturkontroller — MÅSTE passera före commit
+node scripts/check.js      # 53 strukturkontroller — MÅSTE passera före commit
 ```
 
 Det finns **inga enhetstester, ingen linter och ingen CI.** `check.js` söker efter textsträngar i
@@ -118,7 +123,7 @@ Fullständigt designsystem: **`/premium-design`**.
 ## Färger (verifierade i koden)
 
 Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getStatusColor()`
-(`src/main.js:410`).
+(`src/main.js`).
 
 | Status | Hex | Betyder |
 |---|---|---|
@@ -126,18 +131,27 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 | `short` | `#FFD23F` | under 18 min |
 | `medium` | `#FF8A3D` | 18–30 min |
 | `long` | `#FF4D5E` | över 30 min, eller "Fullt" |
-| `unknown` | `#7C8194` | ingen data |
+| `unknown` | två värden — se nedan | ingen data |
 
 ⚠️ **Känt problem:** status­färgerna är definierade på **fyra** ställen — CSS `--status-*`,
-`getStatusColor()` (`:410`), `STATUS_COLORS` (`:1247`) och `heroColors` (`:2295`). De är inte
-synkroniserade: `getStatusColor('unknown')` ger `#7C8194` medan `STATUS_COLORS.unknown` ger
-`#4A4F60`. Lägg inte till en femte källa. Använd `getStatusColor()`.
+`getStatusColor()`, `STATUS_COLORS` och `heroColors`.
+
+Den neutrala paletten synkroniserade `free`, `short`, `medium` och `long` över alla fyra. **`unknown`
+är fortfarande osynkroniserad**, verifierat på HEAD `28040f2`:
+
+| Källa | `unknown` |
+|---|---|
+| `getStatusColor('unknown')` och `heroColors`-fallback | `#85858A` |
+| `STATUS_COLORS.unknown` och CSS `--status-unknown` | `#55555B` |
+
+`renderExploreVenueRow` använder `STATUS_COLORS[cls] || getStatusColor('unknown')`, så raden kan få
+antingen värdet beroende på väg. Lägg inte till en femte källa. Använd `getStatusColor()`.
 
 ## Viktiga CSS-klasser
 
 - `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--long/--free` — nivå
 - `.erow-pulse-dot` — blinkande röd punkt vid lång kö
-- `.exsum` — widgeten "Stockholm just nu"
+- `.exsum-line` — färskhetsraden i Utforska ("17 av 28 ställen har färsk rapport · senast 3 min sedan")
 - `.venue-group` — grupperad container med `1px solid rgba(255,255,255,0.09)`
 - `.qs-*` — kö-sessionsbanner · `.tl-*` — Live-flödets rader
 - `.toast` — texten **måste** vara `var(--bg-primary)`, bakgrunden är `--text-primary`
@@ -158,7 +172,8 @@ aggregeringen eller säkerheten gör det.
 
 ## Regler för avgränsad implementation
 
-- **Ändra inte väntetidsmodellen** (`:226–430`) utan att det är uppgiften. Den är appens kärna.
+- **Ändra inte väntetidsmodellen** (blocket från `PACE_RATE` till `getStatusLabel`) utan att det är
+  uppgiften. Den är appens kärna.
 - **Bygg inte om fungerande delar** för att en annan arkitektur vore finare.
 - **Dela inte upp `src/main.js`** utan att fråga.
 - **Rör inte `VENUES`** om uppgiften inte uttryckligen handlar om venue-data.
@@ -171,13 +186,13 @@ aggregeringen eller säkerheten gör det.
 ## Säkerhet
 
 **Committa aldrig `.env`** — ligger i `.gitignore`. Just nu finns ingen `.env`: Mapbox-token,
-Supabase-URL och anon-nyckel ligger i klartext i `src/main.js:62, 66–67`. Det är avsiktligt och
+Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt och
 säkert **förutsatt** att RLS är korrekt satt i databasen — vilket inte kunnat verifieras. Se
 [docs/DATA_MODEL.md](docs/DATA_MODEL.md) avsnitt 8.
 
 All text från databasen **måste** gå genom `escapeHtml()` innan den hamnar i en HTML-sträng.
 `venue_id` skrivs oescapat i `onclick` och är säkert **bara** tack vare filtret i `loadReports`
-(`:1277`) — ta inte bort det filtret.
+som släpper igenom enbart kända venue_id — ta inte bort det filtret.
 
 ## Commit-konvention
 
@@ -198,8 +213,13 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - `@keyframes rowInEmpty` kodar `opacity: 0.55` i `to` — sätt aldrig opacity direkt på `.erow--empty`
 - Tomma kort **måste** sorteras sist — använd alltid `localeCompare(b.name, 'sv')`
 - `STATUS_RANK`: `{free: 0, none: 0, short: 1, medium: 2, long: 3}` — för trendberäkning
-- `computeExploreSummary()` använder 30 min färskhetsgräns och 2 timmars fönster
-- `_exsumFirstRender` styr countUp — animerar bara vid första renderingen
+- Färskhetsraden ersatte den gamla "Stockholm just nu"-widgeten med räknare per status. Antalen
+  finns redan i filterchipsen, så raden visar bara det chipsen inte säger — hur färsk datan är.
+  Lägg inte tillbaka räknarna; det är redundans (princip 5)
+- `venueFreshStatus()` använder 45 min som färskhetsgräns, samma som `estimateWait`
+- `computeExploreSummary()` returnerar `{fresh, venueTotal, lastTs, total}`; `exsumText()` formaterar
+- `renderExploreSummary()` sätter om sitt 30-sekundersintervall vid varje rendering, så raden
+  åldras även utan ny data
 - Pulsanimation: ta bort klassen → tvinga reflow (`void el.offsetWidth`) → lägg tillbaka
 - Väntetid är aldrig en fast sträng per status — alltid `venueWaitText()`
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
@@ -217,7 +237,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 Dokumenterad i [docs/](docs/). De allvarligaste:
 
 1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
-2. **Serverfel visas som "inga rapporter"** i widgeten "Stockholm just nu" och i Live-flödet
+2. **Serverfel visas som "inga rapporter"** i färskhetsraden och i Live-flödet. Verifierat på
+   HEAD `28040f2`: vid HTTP 500 säger båda exakt samma sak som när databasen är tom
 3. **Väntetidsmodellen har inga tester** — `check.js` kan inte upptäcka ett räknefel
 4. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
 5. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
