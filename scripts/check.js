@@ -87,6 +87,9 @@ const paceCount = (venuesBlock.match(/pace: '(slow|normal|fast)'/g) || []).lengt
 check('Wait model: every venue has pace slow/normal/fast', venueCount > 0 && paceCount === venueCount);
 check('Wait model: estimateWait + formatWait defined', js.includes('function estimateWait(') && js.includes('function formatWait('));
 check('Wait model: fixed wait strings only in getStatusLabel fallback', (js.match(/'~25 min'/g) || []).length === 1);
+// "Ingen kö" har width 0. Utan den här vakten blir en stillastående nollsession en uppmätt
+// dörrtakt på 0, vilket förlänger alla andras väntetid och kan visa "Fullt". Se tests/sessions.test.js.
+check('Wait model: width-guess requires a non-zero bucket width', js.includes('aheadBucket(first.people_ahead).width > 0'));
 check('Reports store people_ahead + report_type', js.includes('people_ahead: peopleAhead') && js.includes("report_type: 'initial'"));
 check('Report buttons ask for people ahead', html.includes('pickAhead(') && html.includes('quickPickAhead('));
 check('History reads queue_status (no level column)', !js.includes("select('venue_id, level"));

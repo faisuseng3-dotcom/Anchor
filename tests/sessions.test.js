@@ -84,60 +84,67 @@ describe('sessionRates — när någon står kvar i samma intervall', () => {
     expect(sessionRates(session('spy-bar', 's1', [[10, 17], [0, 17]]))).toHaveLength(1);
   });
 
-  // ── KÄND BUGG — dokumenterad, inte åtgärdad ───────────────────────────────
+  // ── Regressionsskydd: "Ingen kö" får aldrig bli en uppmätt dörrtakt ───────
   //
-  // aheadBucket(0).width är 0, så en session där båda mätpunkterna är "Ingen kö"
-  // ger (0/2)/mins = 0. Vakten är `if (rate !== null)`, och noll passerar den.
-  // Resultatet är en UPPMÄTT DÖRRTAKT PÅ NOLL från någon som rapporterade att det
-  // inte fanns någon kö.
+  // aheadBucket(0).width är 0, så `(width/2)/mins` blev 0 för en session där båda
+  // mätpunkterna var "Ingen kö" — och vakten `rate !== null` släppte igenom nollan.
+  // Det gav en UPPMÄTT DÖRRTAKT PÅ NOLL från någon som rapporterade att det inte
+  // fanns någon kö. Effekten: längre väntetider för alla andra, och "Fullt" när kön
+  // började byggas.
   //
-  // RÄTT BETEENDE: sessionen ska förkastas. Att ingen kö fanns säger ingenting om
-  // hur snabbt dörren släpper in folk.
-  //
-  // ÅTGÄRD: kräv att intervallet har en bredd innan det gissas på den, alltså
+  // Åtgärdat genom att kräva att intervallet har en bredd innan det gissas på den:
   //   else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0)
   //
-  // När buggen är åtgärdad fallerar de tre testerna nedan. Vänd då på dem:
-  // toHaveLength(0), och ta bort "KÄND BUGG" ur namnen.
-  it('KÄND BUGG: en session med "Ingen kö" i båda ändar ger takten 0', () => {
-    const rates = sessionRates(session('spy-bar', 's1', [[20, 0], [0, 0]]));
-    expect(rates).toHaveLength(1);
-    expect(rates[0].rate).toBe(0);
+  // Fallerar något av testerna nedan är vakten borta igen.
+  it('en session med "Ingen kö" i båda ändar förkastas', () => {
+    // Att ingen kö fanns säger ingenting om hur snabbt dörren släpper in folk.
+    expect(sessionRates(session('spy-bar', 's1', [[20, 0], [0, 0]]))).toHaveLength(0);
   });
 
-  it('KÄND BUGG: nås genom ett normalt flöde — "Ingen kö" följt av "Jag är inne"', () => {
+  it('det normala flödet "Ingen kö" → "Jag är inne" ger ingen takt', () => {
     const flow = [
       report('kristall', 12, 0, { session: 'qs-1', type: 'initial' }),
       report('kristall', 0, 0, { session: 'qs-1', type: 'entered' })
     ];
-    expect(sessionRates(flow).map((r) => r.rate)).toEqual([0]);
+    expect(sessionRates(flow)).toHaveLength(0);
   });
 
-  it('KÄND BUGG: en nollsession gör den visade väntetiden längre', () => {
-    // kristall har pace normal (2,0 pers/min). 37 framför → 10–25 min.
-    // En session som rapporterat "ingen kö" drar takten till 1,33 → 20–35 min.
+  it('en nollsession påverkar inte den visade väntetiden', () => {
+    // kristall har pace normal (2,0 pers/min). 37 framför → 10–25 min, oavsett
+    // om någon dessutom rapporterat att det inte fanns någon kö tidigare.
     const utan = estimateWait('kristall', [report('kristall', 2, 37)], NOW);
     const med = estimateWait('kristall', [
       ...session('kristall', 's1', [[20, 0], [0, 0]]),
       report('kristall', 2, 37)
     ], NOW);
     expect(utan.rate).toBe(2.0);
-    expect(med.rate).toBeLessThan(utan.rate);
-    expect(formatWait(utan)).toBe('10–25 min');
-    expect(formatWait(med)).toBe('20–35 min');
+    expect(med.rate).toBe(2.0);
+    expect(formatWait(med)).toBe(formatWait(utan));
+    expect(formatWait(med)).toBe('10–25 min');
   });
 
-  it('KÄND BUGG: två nollsessioner får appen att visa "Fullt"', () => {
-    // Två personer gick rakt in tidigare under kvällen. Sedan börjar kön byggas.
-    // Appen svarar "Fullt" — på data som säger att det inte fanns någon kö.
+  it('två nollsessioner ger inte "Fullt" när kön börjar byggas', () => {
+    // Två personer gick rakt in tidigare under kvällen. Sedan kommer en rapport om
+    // 25–50 framför. Svaret ska komma från pace-priorn, inte från deras nollor.
     const reports = [
       ...session('kristall', 's1', [[25, 0], [5, 0]]),
       ...session('kristall', 's2', [[23, 0], [3, 0]]),
       report('kristall', 2, 37)
     ];
     const est = estimateWait('kristall', reports, NOW);
-    expect(est.full).toBe(true);
-    expect(formatWait(est)).toBe('Fullt');
+    expect(est.full).toBe(false);
+    expect(est.source).toBe('estimate'); // inga mätningar kvar att gå på
+    expect(formatWait(est)).toBe('10–25 min');
+  });
+
+  it('en session som faktiskt rört sig till noll mäts fortfarande', () => {
+    // 17 framför → inne efter 20 min är en riktig mätning och ska inte förkastas.
+    const rates = sessionRates([
+      report('kristall', 20, 17, { session: 'qs-2', type: 'initial' }),
+      report('kristall', 0, 0, { session: 'qs-2', type: 'entered' })
+    ]);
+    expect(rates).toHaveLength(1);
+    expect(rates[0].rate).toBeCloseTo(17 / 20, 5);
   });
 
   it('en längre stillastående session ger en lägre takt', () => {

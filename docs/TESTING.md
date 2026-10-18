@@ -8,8 +8,8 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 | Verktyg | Finns | Kommando |
 |---|---|---|
-| **Vitest — 110 enhetstester** | ✅ | `npm test` |
-| `scripts/check.js` — 53 strängkontroller | ✅ | `node scripts/check.js` |
+| **Vitest — 111 enhetstester** | ✅ | `npm test` |
+| `scripts/check.js` — 54 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | Produktionsbygge | ✅ | `npm run build` |
 | Utvecklingsserver | ✅ | `npm run dev` |
@@ -24,7 +24,7 @@ npm run verify   # vitest run && node scripts/check.js && vite build
 ```
 
 Kör det före varje commit. Senaste körning på HEAD `28040f2`:
-**110 tester, 53 kontroller, bygget igenom.**
+**111 tester, 54 kontroller, bygget igenom.**
 
 ### Testfilerna
 
@@ -32,7 +32,7 @@ Kör det före varje commit. Senaste körning på HEAD `28040f2`:
 |---|---|---|
 | `tests/harness.js` | — | Läser de rena funktionerna ur `src/main.js` + testdatabyggare |
 | `tests/wait.test.js` | 37 | `estimateWait`, `setWaitRange`, `formatWait`, `waitToStatus`, `aheadBucket`, `median` |
-| `tests/sessions.test.js` | 23 | `sessionRates`, `measureQueueRates` — alla ogiltighetsregler |
+| `tests/sessions.test.js` | 24 | `sessionRates`, `measureQueueRates` — alla ogiltighetsregler |
 | `tests/history.test.js` | 14 | `historicalRateFor`, `nightKey` |
 | `tests/search.test.js` | 22 | `venueScore`, `venueSearch`, `_searchNorm` |
 | `tests/venues.test.js` | 14 | `VENUES`-integritet, koordinater, överlappande kartnålar |
@@ -42,10 +42,9 @@ Testerna kör i tidszonen **Europe/Stockholm** (`vitest.config.js`). Det är int
 `closingHour()` jämför mot lokala klockslag. I UTC hamnar nattgränsen fel och ett test
 på lördag morgon ger fredag.
 
-### Tre tester är märkta KÄND BUGG
+### Fem tester skyddar sessionRates
 
-De låser fast ett **felaktigt** beteende så att det inte glöms. När buggen åtgärdas fallerar de,
-och då ska de vändas. Se avsnitt 3.
+De hindrar att "Ingen kö" åter blir en uppmätt dörrtakt på noll. Se avsnitt 3.
 
 ---
 
@@ -78,7 +77,7 @@ bör behållas. Den ska bara inte förväxlas med ett test av logiken.
 ### Resultat vid senaste körning
 
 ```
-53 passed, 0 failed
+54 passed, 0 failed
 All checks passed ✓
 ```
 
@@ -86,14 +85,14 @@ All checks passed ✓
 
 1. **Rad 38 och 39 är attrapper.** `check('.env not committed', !hasEnvFile || true)` är alltid
    sant oavsett om `.env` finns. Samma gäller `check('No hardcoded supabase key…', true)`.
-   Två av de 53 "godkända" kontrollerna kontrollerar ingenting.
+   Två av de 54 "godkända" kontrollerna kontrollerar ingenting.
 2. **Kontrollerna är hårt bundna till radformuleringar.** Flera letar efter exakt kod, t.ex.
    `js.includes('result.data.filter(function(r) { return getVenueById(r.venue_id); })')`.
    En ofarlig omformulering av samma logik får kontrollen att fallera.
 
 ---
 
-## 3. Buggen som testerna hittade
+## 3. Buggen som testerna hittade — och åtgärdade
 
 Första körningen av `tests/sessions.test.js` avslöjade ett fel i den viktigaste koden i appen.
 
@@ -122,16 +121,48 @@ Det andra fallet är det värsta: två personer som gick rakt in tidigare under 
 appen säger **"Fullt"** när kön börjar byggas — alltså i exakt det ögonblick någon står på
 gatan och behöver ett rätt svar.
 
-**Åtgärd** (en rad): kräv att intervallet har en bredd innan det gissas på den.
+### Åtgärdad
 
 ```js
-else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0)
+else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0) {
+  rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+}
 ```
 
-**Inte åtgärdad.** Tre tester i `tests/sessions.test.js` är märkta `KÄND BUGG` och låser fast
-dagens beteende. Rättas raden fallerar de, och då vänds de.
+Villkoret säger vad som faktiskt gäller: man kan bara gissa utifrån intervallets bredd om
+intervallet **har** en bredd. En session med 0 framför i båda ändar förkastas nu, som vilken annan
+session som inte mätt något.
 
-Ingen kontroll i `check.js` kunde ha hittat detta — koden ser korrekt ut, den räknar fel.
+**Hur åtgärden verifierades, i tre steg:**
+
+1. **Testerna fallerade först.** De fyra `KÄND BUGG`-testerna gick från grönt till rött när raden
+   ändrades, och exakt de fyra — de 19 övriga i filen fortsatte passera. Det bevisar att fixen biter
+   på rätt beteende och inget annat.
+2. **Testerna vändes.** De asserterar nu korrekt beteende: sessionen förkastas, väntetiden är
+   oförändrad, `full` är `false`. Ett femte test lades till som bevisar att en session som *faktiskt*
+   rört sig till noll (17 framför → inne efter 20 min) fortfarande mäts — fixen får inte kasta bort
+   riktiga mätningar.
+3. **Verifierat i webbläsare** med mockad Supabase: två nollsessioner för Kristall plus en rapport
+   om 37 framför, och ett kontrollställe med samma `pace` och samma kölängd utan nollsessioner.
+
+```
+Kristall    (två nollsessioner + 37 framför): 10–25 min
+Golden Hits (bara 37 framför, kontroll)    : 10–25 min
+```
+
+Före åtgärden visade Kristall **"Fullt"**.
+
+En kontroll i `check.js` letar nu efter vakten, så att den inte kan försvinna tyst:
+
+```js
+check('Wait model: width-guess requires a non-zero bucket width',
+  js.includes('aheadBucket(first.people_ahead).width > 0'));
+```
+
+**Lärdomen är viktigare än buggen.** Ingen kontroll i `check.js` kunde ha hittat detta från början
+— koden såg korrekt ut, den räknade fel. Det är hela skälet till att enhetstester av modellen var
+den högst prioriterade åtgärden, och buggen dök upp i det första testet som skrevs för
+`sessionRates`.
 
 ---
 
@@ -283,8 +314,9 @@ await page.route('**/*.supabase.co/**', r => r.fulfill({
 
 ### ✅ Klart — enhetstester på modellen och `npm run verify`
 
-Vitest, 110 tester i fem filer, och ett kommando som kör allt. Den första körningen hittade en
-bugg i `sessionRates` (avsnitt 3).
+Vitest, 111 tester i fem filer, och ett kommando som kör allt. Den första körningen hittade en
+bugg i `sessionRates`, som nu är åtgärdad och skyddad av fem tester plus en kontroll i
+`check.js` (avsnitt 3).
 
 ### Steg 1 — Spärr före commit
 
@@ -330,5 +362,5 @@ git ls-files --error-unmatch .env   # ska misslyckas
 ### Steg 5 — Flytta modellen till `src/model/`
 
 **Först nu**, när testerna finns. De bevisar att flytten inte ändrar beteendet: `tests/harness.js`
-byts mot vanliga `import`-satser och alla 110 testerna ska fortsätta passera. Det öppnar också för
+byts mot vanliga `import`-satser och alla 111 testerna ska fortsätta passera. Det öppnar också för
 att Expo-appen kan importera samma modell, som den i dag helt saknar.

@@ -79,10 +79,18 @@ Regler som gör en session ogiltig:
 Två utfall:
 
 - **`rörelse > 0`** → `takt = rörelse / tid` personer per minut.
-- **`rörelse = 0` och `tid ≥ 10 min`** → personen står kvar i samma intervall. Rörelsen är okänd
-  men mindre än intervallets bredd, så takten uppskattas till `(width / 2) / tid`. Detta är
-  avsiktligt: att sätta takten till 0 vore att hävda att kön står helt still, vilket inte
+- **`rörelse = 0`, `tid ≥ 10 min` och `width > 0`** → personen står kvar i samma intervall.
+  Rörelsen är okänd men mindre än intervallets bredd, så takten uppskattas till `(width / 2) / tid`.
+  Detta är avsiktligt: att sätta takten till 0 vore att hävda att kön står helt still, vilket inte
   följer av datan.
+- **`rörelse = 0` och `width = 0`** → sessionen förkastas. Intervallet "Ingen kö" har bredden 0,
+  och någon som rapporterat 0 framför i båda ändar har inte mätt dörren alls.
+
+Villkoret `width > 0` i sista punkten är inte kosmetika. Utan det blev `(0/2)/tid` = **0**, och
+vakten `rate !== null` släppte igenom nollan som en uppmätt dörrtakt. Effekten var att en person
+som rapporterade att det inte fanns någon kö förlängde väntetiden för alla andra, och att två
+sådana sessioner fick appen att visa **"Fullt"** när kön började byggas. Låst fast av fem tester i
+`tests/sessions.test.js`.
 
 `measureQueueRates` hämtar kvällens sessioner: samma ställe, **senaste 45 minuterna**.
 
@@ -313,13 +321,30 @@ högst 1000 rader, och vilka 1000 är inte definierat. Resultatet lagras i `_his
 men påverkar inte väntetiden — bara en indikator i Utforska. `loadHistoricalRates`, som **faktiskt**
 påverkar väntetiden, sorterar däremot korrekt på `created_at desc`.
 
-### B-07 — Modellen har inga tester
+### ~~B-07 — Modellen har inga tester~~ — åtgärdat
 
-Det finns inget enhetstest för `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`,
-`historicalRateFor` eller `forecastWait`. `scripts/check.js` kontrollerar att funktionerna
-**existerar** genom strängsökning, aldrig att de **räknar rätt**. Siffrorna i avsnitt 5 i detta
-dokument räknades fram manuellt för den här genomgången och finns inte kvar som en körbar
-kontroll. Se [TESTING.md](TESTING.md).
+Modellen har nu 111 enhetstester i `tests/`, körbara med `npm test`. Räkneexemplen i avsnitt 5 finns
+som testfall i `tests/wait.test.js`. Se [TESTING.md](TESTING.md).
+
+### ~~B-08 — "Ingen kö" blev en uppmätt dörrtakt på noll~~ — åtgärdat
+
+`aheadBucket(0).width` är 0, så en session med 0 framför i båda ändar gav takten 0, och vakten
+`rate !== null` släppte igenom den. Nåddes genom ett normalt flöde: "Ingen kö" → "Jag är inne" tolv
+minuter senare.
+
+Verifierad effekt före åtgärden, på Kristall med 37 framför:
+
+| Nollsessioner i historiken | Appen visade |
+|---|---|
+| 0 | 10–25 min |
+| 1 | 20–35 min |
+| 2 | **"Fullt"** |
+
+Åtgärdat med `&& aheadBucket(first.people_ahead).width > 0` i `sessionRates`. Verifierat i
+webbläsare: Kristall visar nu 10–25 min, identiskt med ett kontrollställe med samma `pace` och samma
+kölängd men utan nollsessioner. Hittades av det första testet som skrevs för `sessionRates`, och är
+precis den klass av fel `scripts/check.js` aldrig kan upptäcka — koden såg korrekt ut, den räknade
+fel.
 
 ---
 

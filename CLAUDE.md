@@ -79,7 +79,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — MÅSTE passera före commit
-npm test                   # 110 enhetstester (Vitest)
+npm test                   # 111 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
@@ -98,9 +98,8 @@ De två kontrollerna gör olika saker och ersätter inte varandra:
 
 Ingen linter och ingen CI finns. Se [docs/TESTING.md](docs/TESTING.md).
 
-**Tre tester är märkta `KÄND BUGG`** i `tests/sessions.test.js`. De låser fast ett felaktigt
-beteende så att det inte glöms — se "Känd skuld" nedan. Åtgärdas buggen fallerar de, och då ska de
-vändas, inte tas bort.
+**Fem tester i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
+på noll. Fallerar något av dem är vakten `aheadBucket(first.people_ahead).width > 0` borta.
 
 **Testdata:** `?testdata=true` i URL:en, eller **Alt + 2** (Option + 2 på Mac; ignoreras i
 textfält där det skriver "@"). Växlar `qb_testdata` i localStorage och laddar om. Av som standard —
@@ -257,24 +256,22 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 
 Dokumenterad i [docs/](docs/). De allvarligaste:
 
-1. **`sessionRates` mäter takten 0 från en session som rapporterat "Ingen kö".**
-   `aheadBucket(0).width` är 0, så `(0/2)/mins` blir 0, och vakten `rate !== null` släpper igenom
-   det. Nås genom ett normalt flöde: "Ingen kö" → "Jag är inne" tolv minuter senare. **Verifierad
-   effekt:** en sådan session gör Kristall `20–35 min` i stället för `10–25 min`; två gör att appen
-   visar **"Fullt"** när kön börjar byggas. Åtgärd är en rad:
-   `else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0)`.
-   Låst fast av tre `KÄND BUGG`-tester i `tests/sessions.test.js`
-2. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
-3. **Serverfel visas som "inga rapporter"** i färskhetsraden och i Live-flödet. Verifierat på
+1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
+2. **Serverfel visas som "inga rapporter"** i färskhetsraden och i Live-flödet. Verifierat på
    HEAD `28040f2`: vid HTTP 500 säger båda exakt samma sak som när databasen är tom. Grundorsak:
    varken `exsumText` eller `renderLiveFeed` känner till om inläsningen misslyckades
-4. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
-5. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
-6. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
+3. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
+4. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
+5. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
    Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
-7. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
-8. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
-9. Ingen linter, ingen CI, ingen spärr före commit
+6. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
+7. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
+8. Ingen linter, ingen CI, ingen spärr före commit
+
+**Åtgärdat:** `sessionRates` mätte takten 0 från en session som rapporterat "Ingen kö"
+(`aheadBucket(0).width` är 0). Två sådana sessioner fick appen att visa "Fullt" när kön började
+byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
+`tests/sessions.test.js` och en kontroll i `check.js`.
 
 ## Vidare läsning
 

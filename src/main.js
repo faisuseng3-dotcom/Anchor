@@ -258,7 +258,12 @@ import './style.css';
         var rate = null;
         if (moved > 0) rate = moved / mins;
         // Samma intervall båda gångerna: rörelsen är okänd men under intervallets bredd.
-        else if (mins >= 10) rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+        // Kräver att intervallet HAR en bredd. "Ingen kö" har width 0, och en session som
+        // rapporterat 0 framför i båda ändar säger ingenting om hur snabbt dörren släpper
+        // in folk — utan den här vakten blev takten 0 och drog ner alla andras väntetid.
+        else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0) {
+          rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+        }
         if (rate !== null) out.push({ venueId: first.venue_id, rate: rate, startedAt: new Date(first.created_at).getTime() });
       });
       return out;
