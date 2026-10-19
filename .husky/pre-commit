@@ -1,0 +1,11 @@
+#!/bin/sh
+# Spärr före commit: inget trasigt ska kunna committas, oavsett vilket verktyg som
+# gjorde ändringen. src/main.js har trunkerats två gånger av AI-redigeringar, och en
+# trasig CLAUDE.md har committats en gång — båda hade stoppats här.
+#
+# Kör samma kedja som CLAUDE.md säger ska passera: tester, strukturkontroller, bygge.
+# Tar ~15 sekunder. Hoppa över med --no-verify endast när du vet varför.
+#
+# E2E-testerna ingår inte: de kräver en webbläsare som inte finns på alla maskiner
+# förrän `npx playwright install chromium` körts. CI kör dem.
+npm run verify
