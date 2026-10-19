@@ -71,4 +71,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: build
+          path: dist
+      
