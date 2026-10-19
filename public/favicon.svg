@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0B0B0D"/>
+  <!-- Tre köer av olika längd: kort, medel, lång. Samma statusfärger som i appen. -->
+  <rect x="96" y="132" width="140" height="64" rx="32" fill="#34E07F"/>
+  <rect x="96" y="224" width="240" height="64" rx="32" fill="#FFD23F"/>
+  <rect x="96" y="316" width="320" height="64" rx="32" fill="#FF4D5E"/>
+</svg>

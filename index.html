@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#0B0B0D">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;QueueBar&quot;,&quot;short_name&quot;:&quot;QueueBar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230B0B0D&quot;,&quot;theme_color&quot;:&quot;%230B0B0D&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.ico&quot;,&quot;sizes&quot;:&quot;any&quot;}]}">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;QueueBar&quot;,&quot;short_name&quot;:&quot;QueueBar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230B0B0D&quot;,&quot;theme_color&quot;:&quot;%230B0B0D&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.svg&quot;,&quot;sizes&quot;:&quot;any&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;purpose&quot;:&quot;any&quot;}]}">
   <title>QueueBar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -133,8 +135,11 @@
       </div>
 
       <div id="rs3" style="display:none">
-        <div class="rs-success-icon">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="rs-success-icon" id="rs-success-icon">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="rs-success-ring" cx="32" cy="32" r="24" transform="rotate(-90 32 32)"/>
+            <path class="rs-success-check" d="M22 33.5 L29.5 41 L43 25"/>
+          </svg>
         </div>
         <div class="rs-thanks">Tack — kön är uppdaterad</div>
         <p class="rs-next">Står du kvar? Vi frågar snart hur långt du kommit. Då kan vi mäta hur snabbt kön rör sig.</p>
@@ -202,7 +207,7 @@
 
   <div id="vc-overlay" onclick="closeVenueCard()"></div>
   <div id="venue-card">
-    <div class="vc-handle"></div>
+    <div class="vc-grab" id="vc-grab"><div class="vc-handle"></div></div>
     <div class="vc-header">
       <span id="vc-name"></span>
       <button id="vc-fav" class="vc-icon-btn" onclick="vcToggleFavorite(event)" aria-label="Favorit">
@@ -231,8 +236,9 @@
 
   <div id="consent-modal">
     <div class="consent-card">
-      <div class="consent-icon">
-        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><rect x="6" y="11" width="13" height="7" rx="3.5" fill="#34E07F"/><rect x="6" y="21" width="22" height="7" rx="3.5" fill="#FFD23F"/><rect x="6" y="31" width="30" height="7" rx="3.5" fill="#FF4D5E"/></svg>
+        <span>QueueBar</span>
       </div>
       <div class="consent-title">Innan du börjar</div>
       <div class="consent-text">Vi sparar ett anonymt ID på din enhet. Inget namn eller email.</div>
