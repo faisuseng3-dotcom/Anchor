@@ -109,7 +109,8 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   funktionerna ur `src/main.js` via `tests/harness.js` — **ingen kod har flyttats för att möjliggöra
   dem.**
 - **`check.js`** söker efter textsträngar och kontrollerar att funktioner och konventioner
-  **finns**. Den upptäcker att något raderats, aldrig att något räknar fel.
+  **finns**. Den upptäcker att något raderats, aldrig att något räknar fel. Den första kontrollen
+  i filen letar efter **git-difftext incheckad som källkod** — se nedan.
 - **`playwright`** kör appen i en riktig webbläsare på 390×844 med mockad Supabase. Täcker det som
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
@@ -118,6 +119,27 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
+
+## Difftext får aldrig checkas in som källkod
+
+Den 19 oktober ersattes alla 3 198 rader i `src/main.js` med **patch-texten** som skulle appliceras
+på filen. Filen blev en 47-radig unified diff, `vite build` dog på rad 1, och Vercels
+produktionsdeploy fallerade. Rollup läste `--- a/src/main.js` som en dekrementoperator.
+
+Första kontrollen i `scripts/check.js` letar nu efter fyra signaturer i alla `.js`, `.mjs`, `.cjs`,
+`.css`, `.html` och `.json` under repot:
+
+```
+diff --git a/…          "---" följt av "+++" på nästa rad
+@@ …                    index <sha>..<sha>
+```
+
+`.md` och `.yml` skannas **inte** — `---` är en vågrät linje i Markdown och en dokumentavgränsare i
+YAML, så de skulle ge falska träffar.
+
+`vite build` fångar också felet, men först när något kör bygget, och svarar med en rollup-stacktrace.
+Den här kontrollen är billigare, namnger filen och signalen, och täcker varje källfil i stället för
+bara de som nås från ingångspunkten.
 
 **Fem tester i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
 på noll. Fallerar något av dem är vakten `aheadBucket(first.people_ahead).width > 0` borta.

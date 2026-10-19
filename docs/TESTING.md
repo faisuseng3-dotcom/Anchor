@@ -10,7 +10,7 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 |---|---|---|
 | **Vitest — 120 enhetstester** | ✅ | `npm test` |
 | **Playwright — 10 E2E-tester** | ✅ | `npm run e2e` |
-| `scripts/check.js` — 55 strängkontroller | ✅ | `node scripts/check.js` |
+| `scripts/check.js` — 56 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | **Spärr före commit** | ✅ | automatiskt, `.husky/pre-commit` |
 | **CI vid varje push** | ✅ | `.github/workflows/verify.yml` |
@@ -90,7 +90,7 @@ bör behållas. Den ska bara inte förväxlas med ett test av logiken.
 ### Resultat vid senaste körning
 
 ```
-55 passed, 0 failed
+56 passed, 0 failed
 All checks passed ✓
 ```
 
@@ -98,7 +98,7 @@ All checks passed ✓
 
 1. **Rad 38 och 39 är attrapper.** `check('.env not committed', !hasEnvFile || true)` är alltid
    sant oavsett om `.env` finns. Samma gäller `check('No hardcoded supabase key…', true)`.
-   Två av de 55 "godkända" kontrollerna kontrollerar ingenting.
+   Två av de 56 "godkända" kontrollerna kontrollerar ingenting.
 2. **Kontrollerna är hårt bundna till radformuleringar.** Flera letar efter exakt kod, t.ex.
    `js.includes('result.data.filter(function(r) { return getVenueById(r.venue_id); })')`.
    En ofarlig omformulering av samma logik får kontrollen att fallera.

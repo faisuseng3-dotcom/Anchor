@@ -23,6 +23,59 @@ function check(label, condition) {
   }
 }
 
+// ── Diff-text checked in as source ───────────────────────────────────────────
+//
+// On 2026-10-19 a commit replaced all 3,198 lines of src/main.js with the PATCH
+// TEXT that was meant to be applied to it. The file became a 47-line unified diff,
+// `vite build` died on line 1, and the Vercel production deployment failed.
+//
+// vite build does catch it — but only once something runs the build. This check is
+// cheaper, names the problem instead of printing a rollup stack trace, and covers
+// every source file rather than just the ones reachable from the entry point.
+//
+// Scans .js/.mjs/.cjs/.css/.html/.json only. NOT .md or .yml: `---` is a horizontal
+// rule in Markdown and a document separator in YAML, so those would false-positive.
+
+const DIFF_SIGNS = [
+  { re: /^diff --git [ab]\//m, what: '"diff --git"-huvud' },
+  { re: /^--- [ab]?[/\s].*\r?\n\+\+\+ /m, what: '"---"/"+++" filhuvuden på rad efter rad' },
+  { re: /^@@(\s|$)/m, what: '"@@"-hunkhuvud' },
+  { re: /^index [0-9a-f]{7,}\.\.[0-9a-f]{7,}/m, what: '"index <sha>..<sha>"-rad' }
+];
+const SCAN_EXT = ['.js', '.mjs', '.cjs', '.css', '.html', '.json'];
+const SKIP_DIR = ['node_modules', 'dist', '.git', 'test-results', 'playwright-report', 'QueueBar'];
+
+function sourceFiles(dir, out) {
+  out = out || [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') && entry.name !== '.github') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!SKIP_DIR.includes(entry.name)) sourceFiles(full, out);
+    } else if (SCAN_EXT.includes(path.extname(entry.name))) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+const diffHits = [];
+for (const file of sourceFiles(root)) {
+  const text = fs.readFileSync(file, 'utf8');
+  for (const sign of DIFF_SIGNS) {
+    if (sign.re.test(text)) {
+      diffHits.push(path.relative(root, file) + ' — ' + sign.what);
+      break;
+    }
+  }
+}
+check('No git diff text checked in as source', diffHits.length === 0);
+if (diffHits.length) {
+  console.error('   En patch har skrivits IN i filen i stället för att appliceras på den:');
+  diffHits.forEach((h) => console.error('     ' + h));
+  console.error('   Återställ filen (git checkout <commit> -- <fil>) och applicera patchen på riktigt.');
+}
+
 // ── Architecture ─────────────────────────────────────────────────────────────
 check('Vite entry: src/main.js referenced in index.html', html.includes('src="/src/main.js"'));
 check('src/style.css exists', fs.existsSync(path.join(root, 'src/style.css')));
