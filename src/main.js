@@ -50,6 +50,11 @@ import './style.css';
       });
       if (name === 'home') setTimeout(function() { if (map) map.resize(); if (window.expandSheetHalf === undefined) {} }, 50);
       if (name === 'profile') loadUserHistory();
+      if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
+        selectedRV = null;
+        rsStep(1);
+        filterReportList();
+      }
       console.log('[QueueBar] Byter till skärm:', name);
     }
 
@@ -253,7 +258,12 @@ import './style.css';
         var rate = null;
         if (moved > 0) rate = moved / mins;
         // Samma intervall båda gångerna: rörelsen är okänd men under intervallets bredd.
-        else if (mins >= 10) rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+        // Kräver att intervallet HAR en bredd. "Ingen kö" har width 0, och en session som
+        // rapporterat 0 framför i båda ändar säger ingenting om hur snabbt dörren släpper
+        // in folk — utan den här vakten blev takten 0 och drog ner alla andras väntetid.
+        else if (mins >= 10 && aheadBucket(first.people_ahead).width > 0) {
+          rate = (aheadBucket(first.people_ahead).width / 2) / mins;
+        }
         if (rate !== null) out.push({ venueId: first.venue_id, rate: rate, startedAt: new Date(first.created_at).getTime() });
       });
       return out;
@@ -384,6 +394,14 @@ import './style.css';
       return getStatusLabel(computeStatus(venueId, allReports));
     }
 
+    // Siffran är hjälten, enheten är underordnad ("20–30" stort, "min" litet). Ren text ("Fri", "Fullt") lämnas orörd.
+    // Texten kommer från formatWait/getStatusLabel, aldrig från användare, så ingen escaping behövs.
+    function waitHtml(text) {
+      var m = /^(.*?)\s*(min)$/.exec(text || '');
+      if (!m || !m[1]) return text || '';
+      return m[1] + '<span class="wait-unit"> min</span>';
+    }
+
     function computeStatus(venueId, reports) {
       var est = estimateWait(venueId, reports);
       if (est) return waitToStatus(est);
@@ -403,7 +421,7 @@ import './style.css';
     }
 
     function getStatusColor(status) {
-      return { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: '#9CA3AF' }[status] || '#9CA3AF';
+      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#85858A' }[status] || '#85858A';
     }
 
     function getStatusClass(status) {
@@ -563,22 +581,44 @@ import './style.css';
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       document.getElementById('vc-name').textContent = venue.name;
       var est = estimateWait(venue.id, allReports);
+      var waitText = venueWaitText(venue.id);
+      var minsOld = reports.length ? (Date.now() - new Date(reports[0].created_at)) / 60000 : Infinity;
+      var card = document.getElementById('venue-card');
+      card.classList.toggle('vc--aging', minsOld >= 15 && minsOld < 45);
+      card.classList.toggle('vc--nodata', !waitText);
+      card.style.setProperty('--st', waitText ? getStatusColor(status) : '#55555B');
       var vcStatus = document.getElementById('vc-status');
-      vcStatus.textContent = venueWaitText(venue.id) || 'Ingen rapport';
-      vcStatus.style.color = getStatusColor(status);
+      vcStatus.innerHTML = waitText ? waitHtml(waitText) : '–';
+      vcStatus.style.color = waitText ? getStatusColor(status) : '';
+      // Rad under siffran: vad siffran bygger på (antal i kö, uppmätt eller uppskattad, ålder)
+      var subParts = [];
+      if (est) subParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
+      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('≈ uppskattning');
+      if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
+      document.getElementById('vc-sub').textContent = waitText ? subParts.join(' · ') : 'Ingen färsk rapport — var först att rapportera';
       var vcParts = [];
-      if (est) vcParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
-      if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · ' + timeAgo(reports[0].created_at));
-      if (est && !est.full && est.ahead && est.source !== 'live') vcParts.push('uppskattning');
+      if (reports.length) vcParts.push(reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + ' · senast ' + timeAgo(reports[0].created_at));
       var omwN = onMyWayCount(venue.id);
       if (omwN) vcParts.push('~' + omwN + ' på väg hit');
-      document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join(' · ') : 'Ingen rapport ännu';
+      document.getElementById('vc-info').textContent = vcParts.length ? vcParts.join('  ·  ') : 'Inga rapporter ännu i kväll';
       document.getElementById('vc-closing').textContent = 'Stänger ' + venue.closing;
-      document.getElementById('vc-area').textContent = venue.area;
+      document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type);
+      var favBtn = document.getElementById('vc-fav');
+      if (favBtn) favBtn.classList.toggle('fav', isFavorite(venue.id));
       document.getElementById('vc-overlay').style.display = 'block';
-      var card = document.getElementById('venue-card');
       card.style.display = 'block';
       card.style.animation = 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)';
+    }
+
+    // Kortets knappar — activeVenue är modul-lokal, så inline-onclick går via dessa
+    function vcOnMyWay() { if (activeVenue) goOnMyWay(activeVenue.id); }
+    function vcShare() { if (activeVenue) shareVenue(activeVenue.id); }
+    function vcToggleFavorite(event) {
+      if (!activeVenue) return;
+      var btn = event.currentTarget;
+      toggleFavorite(event, activeVenue.id).then(function() {
+        if (activeVenue) btn.classList.toggle('fav', isFavorite(activeVenue.id));
+      });
     }
 
     function closeVenueCard() {
@@ -598,9 +638,7 @@ import './style.css';
       if (activeVenue) {
         selectedRV = activeVenue;
         document.getElementById('rs-vname').textContent = activeVenue.name;
-        document.getElementById('rs1').style.display = 'none';
-        document.getElementById('rs2').style.display = 'flex';
-        document.getElementById('rp-step-counter').style.display = 'none';
+        rsStep(2);
       }
     }
 
@@ -638,7 +676,7 @@ import './style.css';
       var status = computeStatus(venue.id, allReports);
       var label = venueWaitText(venue.id);
       var cls = getStatusClass(status);
-      var dotColor = { free: '#22C55E', short: '#F59E0B', medium: '#EA7300', long: '#EF4444', unknown: '#D1D5DB' }[cls] || '#D1D5DB';
+      var dotColor = cls === 'unknown' ? '#55555B' : getStatusColor(cls);
       return '<div class="vcrow" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'), \'sheet\')">' +
         '<span class="vcrow-dot" style="background:' + dotColor + '"></span>' +
         '<div class="vcrow-info">' +
@@ -654,6 +692,38 @@ import './style.css';
       if (el) el.innerHTML = VENUES.map(renderCompactVenueRow).join('');
       var cnt = document.getElementById('sheet-count');
       if (cnt) cnt.textContent = VENUES.length + ' ställen nära dig';
+      renderBestNowCard();
+    }
+
+    // Kartans enda kort: svaret på "vart går vi nu?". Visar bara färsk data (computeBestNow: ≤30 min).
+    function renderBestNowCard() {
+      var card = document.getElementById('best-now-card');
+      if (!card) return;
+      var best = computeBestNow();
+      if (!best) {
+        var anyData = allReports.length > 0;
+        card.innerHTML = '<button class="bn-card bn-card--empty" onclick="showScreen(\'explore\')">' +
+          '<span class="bn-eyebrow">Bäst nu</span>' +
+          '<span class="bn-empty-text">' + (anyData ? 'Ingen färsk rapport om kort kö just nu' : 'Inga rapporter ännu i kväll') + '</span>' +
+          '<span class="bn-cta">Se alla ställen →</span>' +
+          '</button>';
+        return;
+      }
+      var v = best.venue;
+      var wait = venueWaitText(v.id) || 'Ingen kö';
+      var latest = allReports.filter(function(r) { return r.venue_id === v.id && isQueueReport(r); })
+        .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+      var meta = [v.area, venueTypeLabel(v.type)];
+      if (best.dist != null) meta.push(best.dist < 1 ? Math.round(best.dist * 10) * 100 + ' m' : best.dist.toFixed(1) + ' km');
+      if (latest) meta.push(timeAgo(latest.created_at));
+      card.innerHTML = '<button class="bn-card" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
+        '<span class="bn-eyebrow"><span class="bn-dot"></span>Bäst nu</span>' +
+        '<span class="bn-row">' +
+          '<span class="bn-name">' + v.name + '</span>' +
+          '<span class="bn-wait">' + waitHtml(wait) + '</span>' +
+        '</span>' +
+        '<span class="bn-meta">' + meta.filter(Boolean).join(' · ') + '</span>' +
+        '</button>';
     }
 
     console.log('[QueueBar] Renderar venues');
@@ -894,7 +964,7 @@ import './style.css';
       try {
         map = new mapboxgl.Map({
           container: 'map',
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: 'mapbox://styles/mapbox/dark-v11',
           center: [18.0686, 59.3293],
           zoom: 12.5,
           minZoom: 11,
@@ -920,7 +990,7 @@ import './style.css';
 
         // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
         var PIN_STATUS_COLORS = {
-          none: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: '#6B7280'
+          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: '#55555B'
         };
 
         // Ikoner i 24×24-viewBox. Bar = cocktailglas, klubb = musiknot.
@@ -938,45 +1008,43 @@ import './style.css';
           ctx.beginPath(); ctx.arc(18, 16, 3, 0, Math.PI * 2); ctx.fill();
         }
 
-        // Droppformad nål i statusfärg med vit typ-ikon. Ritas i 2x för skärpa.
+        // Rund statusskiva med typ-ikon (avgångstavla-stil). Okänd/ingen data = ihålig grå ring,
+        // så att avsaknad av data syns istället för att se ut som en status. Ritas i 2x för skärpa.
         function addTypePin(map, name, color, glyphFn) {
-          var PR = 2, W = 38, H = 48;
+          var PR = 2, W = 36, H = 36;
           var canvas = document.createElement('canvas');
           canvas.width = W * PR; canvas.height = H * PR;
           var ctx = canvas.getContext('2d');
           ctx.scale(PR, PR);
-          var cx = W / 2, r = 16, cy = r + 2, tipY = H - 3;
+          var cx = W / 2, cy = H / 2, r = 15;
+          var hollow = /-unknown$/.test(name);
 
-          function pinPath() {
-            ctx.beginPath();
-            ctx.moveTo(cx, tipY);
-            ctx.bezierCurveTo(cx - 4, tipY - 8, cx - r, cy + r * 0.55, cx - r, cy);
-            ctx.arc(cx, cy, r, Math.PI, 0);
-            ctx.bezierCurveTo(cx + r, cy + r * 0.55, cx + 4, tipY - 8, cx, tipY);
-            ctx.closePath();
+          // Mörk ring runt skivan skiljer nålen från kartan och från grannar
+          ctx.beginPath();
+          ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
+          ctx.fillStyle = '#0B0B0D';
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          if (hollow) {
+            ctx.fillStyle = '#151517';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#55555B';
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = color;
+            ctx.fill();
           }
 
-          ctx.save();
-          ctx.shadowColor = 'rgba(0,0,0,0.30)';
-          ctx.shadowBlur = 3;
-          ctx.shadowOffsetY = 1;
-          pinPath();
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.restore();
-
-          // Vit kant för kontrast mot alla kartfärger
-          pinPath();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.stroke();
-
-          var iconSize = 18, s = iconSize / 24;
+          var glyphColor = hollow ? '#85858A' : '#0B0B0D';
+          var iconSize = 17, s = iconSize / 24;
           ctx.save();
           ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
           ctx.scale(s, s);
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.fillStyle = '#FFFFFF';
+          ctx.strokeStyle = glyphColor;
+          ctx.fillStyle = glyphColor;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           glyphFn(ctx);
@@ -1003,17 +1071,25 @@ import './style.css';
 
           map.addSource('venues', {
             type: 'geojson', data: venueGeoJSON,
-            cluster: true, clusterMaxZoom: 13, clusterRadius: 40
+            cluster: true, clusterMaxZoom: 13, clusterRadius: 40,
+            // Räknar fria/korta ställen i klustret så ringen kan visa "finns det något bra där?"
+            clusterProperties: {
+              n_free: ['+', ['case', ['==', ['get', 'status'], 'none'], 1, 0]],
+              n_short: ['+', ['case', ['==', ['get', 'status'], 'short'], 1, 0]]
+            }
           });
 
           map.addLayer({
             id: 'clusters', type: 'circle', source: 'venues',
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': '#FFFFFF',
+              'circle-color': '#151517',
               'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#E5E7EB'
+              'circle-stroke-width': 3,
+              'circle-stroke-color': ['case',
+                ['>', ['get', 'n_free'], 0], getStatusColor('free'),
+                ['>', ['get', 'n_short'], 0], getStatusColor('short'),
+                'rgba(244,245,247,0.45)']
             }
           });
 
@@ -1021,7 +1097,7 @@ import './style.css';
             id: 'cluster-count', type: 'symbol', source: 'venues',
             filter: ['has', 'point_count'],
             layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 14, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'] },
-            paint: { 'text-color': '#1A1F36', 'text-halo-color': '#FFFFFF', 'text-halo-width': 1 }
+            paint: { 'text-color': '#F4F5F7' }
           });
 
           map.addLayer({
@@ -1033,8 +1109,8 @@ import './style.css';
                 ['match', ['get', 'type'], 'bar', 'pin-bar-', 'pin-club-'],
                 ['match', ['get', 'status'], ['none', 'short', 'medium', 'long'], ['get', 'status'], 'unknown']
               ],
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.1],
-              'icon-anchor': 'bottom',
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 15, 1.05],
+              'icon-anchor': 'center',
               'icon-allow-overlap': true,
               'icon-ignore-placement': true,
               // Längre köer ritas överst när nålar överlappar
@@ -1053,23 +1129,23 @@ import './style.css';
             id: 'venues-pulse', type: 'circle', source: 'venues',
             filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'status'], 'none']],
             paint: {
-              'circle-color': 'rgba(34,197,94,0)',
+              'circle-color': 'rgba(52,224,127,0)',
               'circle-radius': 8,
               'circle-stroke-width': 2,
-              'circle-stroke-color': 'rgba(34,197,94,0.4)'
+              'circle-stroke-color': 'rgba(52,224,127,0.4)'
             }
           });
 
           // animate pulse ring
-          var pulseSize = 11, pulseDir = 1;
+          var pulseSize = 18, pulseDir = 1;
           function animatePulse() {
             pulseSize += pulseDir * 0.2;
-            if (pulseSize >= 18) pulseDir = -1;
-            if (pulseSize <= 11) pulseDir = 1;
-            var opacity = (18 - pulseSize) / 7 * 0.4;
+            if (pulseSize >= 26) pulseDir = -1;
+            if (pulseSize <= 18) pulseDir = 1;
+            var opacity = (26 - pulseSize) / 8 * 0.5;
             if (map.getLayer('venues-pulse')) {
               map.setPaintProperty('venues-pulse', 'circle-radius', pulseSize);
-              map.setPaintProperty('venues-pulse', 'circle-stroke-color', 'rgba(34,197,94,' + opacity + ')');
+              map.setPaintProperty('venues-pulse', 'circle-stroke-color', 'rgba(52,224,127,' + opacity + ')');
             }
             requestAnimationFrame(animatePulse);
           }
@@ -1080,12 +1156,12 @@ import './style.css';
             filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'status'], 'unknown']],
             layout: {
               'text-field': ['get', 'wait_label'],
-              'text-size': 10, 'text-offset': ['literal', [0, 0.5]], 'text-anchor': 'top', 'text-allow-overlap': true,
-              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
+              'text-size': 12, 'text-offset': ['literal', [0, 1.5]], 'text-anchor': 'top', 'text-allow-overlap': true,
+              'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
             },
             paint: {
-              'text-color': ['match', ['get', 'status'], 'none', '#10B981', 'short', '#F59E0B', 'medium', '#EA7300', 'long', '#EF4444', '#9B91B0'],
-              'text-halo-color': 'rgba(255,255,255,0.92)', 'text-halo-width': 1.5
+              'text-color': ['match', ['get', 'status'], 'none', getStatusColor('free'), 'short', getStatusColor('short'), 'medium', getStatusColor('medium'), 'long', getStatusColor('long'), '#A8A8A4'],
+              'text-halo-color': 'rgba(11,11,13,0.95)', 'text-halo-width': 2
             }
           });
 
@@ -1169,21 +1245,23 @@ import './style.css';
         '</div>';
     }
 
-    function showFloatingPoints(pts) {
-      var app = document.getElementById('app');
-      var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-      var el = document.createElement('div');
-      el.className = 'fp-float';
-      el.textContent = '+' + (pts || 10) + ' poäng';
-      el.style.left = (ar.left + ar.width / 2 - 50) + 'px';
-      el.style.top = (ar.top + ar.height * 0.6) + 'px';
-      document.body.appendChild(el);
-      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 1500);
-    }
-
     var STATUS_COLORS = {
-      free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', unknown: 'rgba(255,255,255,0.18)'
+      free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#55555B'
     };
+
+    // Hur det gick med den senaste inläsningen: 'loading' | 'ok' | 'error'.
+    // Utan den här kan en tom vy inte skilja "inga rapporter i Stockholm" från "vi nådde
+    // inte servern", och ett serverfel visades som en lugn kväll.
+    var _loadState = 'loading';
+
+    // Vid fel: behåll rapporterna vi redan har, men märk dem som osäkra. Finns inga alls är
+    // felläget allt vi kan visa. Rör inte explore-listan när den har data — att tömma en
+    // fungerande lista för att en enda pollning missade är sämre än att visa den med varning.
+    function renderLoadFailure() {
+      if (!allReports.length) showExploreError();
+      if (typeof renderExploreSummary === 'function') renderExploreSummary();
+      if (typeof renderLiveFeed === 'function') renderLiveFeed();
+    }
 
     async function loadReports() {
       if (!supabase) {
@@ -1208,9 +1286,11 @@ import './style.css';
           '| error:', result.error || 'ingen');
         if (result.error) {
           console.error('[QueueBar] loadReports Supabase-fel (fullt objekt):', JSON.stringify(result.error));
-          showExploreError();
+          _loadState = 'error';
+          renderLoadFailure();
         }
         if (result.data) {
+          _loadState = 'ok';
           // Bara kända ställen: venue_id hamnar i onclick-attribut och okända id:n kan inte visas meningsfullt ändå.
           allReports = result.data.filter(function(r) { return getVenueById(r.venue_id); });
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
@@ -1226,7 +1306,8 @@ import './style.css';
         }
       } catch(err) {
         console.error('[QueueBar] loadReports kastade:', err);
-        showExploreError();
+        _loadState = 'error';
+        renderLoadFailure();
       }
     }
 
@@ -1462,7 +1543,6 @@ import './style.css';
         var mins = Math.max(1, Math.round((res.at - res.session.startedAt) / 60000));
         endQueueSession();
         if (supabase) await supabase.rpc('increment_points', { p_user_id: getUserId(), p_points: 5 });
-        showFloatingPoints(5);
         showToast('Inne efter ' + mins + ' min — tack!');
         loadReports();
       } catch(err) { showToast(reportErrorText(err)); }
@@ -1668,23 +1748,27 @@ import './style.css';
         arrow: 'arr-d', arrowX: '50%'
       },
       {
-        screen: 'profile',
-        title: 'Din profil',
-        subtitle: 'Håll koll på dina krogar',
-        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', right: '8px' },
-        arrow: 'arr-d', arrowX: '75%'
+        screen: 'home',
+        title: 'Står du i kö? Rapportera',
+        subtitle: 'Fem sekunder — och alla ser läget',
+        target: 'report-btn',
+        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)' },
+        arrow: 'arr-d', arrowX: '50%'
       }
     ];
     var obStep = 0;
 
-    function obGetTarget(screen) {
+    function obGetTarget(screen, s) {
+      if (s && s.target === 'report-btn') {
+        return document.querySelector('.tab--report .tab-report-disc') || document.querySelector('.tab--report');
+      }
       if (screen === 'explore') {
         return document.querySelector('#explore-list .erow:not(.erow--empty)') ||
                document.querySelector('#explore-list .erow');
       } else if (screen === 'live') {
         return document.querySelector('#live-feed > *');
       } else if (screen === 'profile') {
-        return document.querySelector('.pf-head');
+        return document.querySelector('#screen-profile .screen-head');
       }
       return null;
     }
@@ -1759,7 +1843,7 @@ import './style.css';
 
       var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
 
-      if (s.screen === 'home' && map && typeof map.project === 'function') {
+      if (s.screen === 'home' && !s.target && map && typeof map.project === 'function') {
         var venue = VENUES.find(function(v) { return v.id === 'spy-bar'; });
         if (venue) {
           var px = map.project([venue.lng, venue.lat]);
@@ -1796,7 +1880,7 @@ import './style.css';
       // Steps 2-4: spotlight the target widget, bubble adjacent to it
       var _dim = dim; var _spot = spot; var _bubble = bubble; var _ar = ar;
       setTimeout(function() {
-        var target = obGetTarget(s.screen);
+        var target = obGetTarget(s.screen, s);
         if (target) {
           obApplyWidgetSpot(_dim, _spot, _bubble, target, _ar, BW, EDGE);
         }
@@ -2031,143 +2115,68 @@ import './style.css';
     }
 
     var _exsumInterval = null;
-    var _exsumPrevCounts = null;
+
+    // Status bara om ett ställe har en kö-rapport från de senaste 45 min (samma gräns som "inaktuell" i listan).
+    function venueFreshStatus(venueId) {
+      var cutoff = Date.now() - 45 * 60 * 1000;
+      var fresh = allReports.some(function(r) {
+        return r.venue_id === venueId && isQueueReport(r) && new Date(r.created_at).getTime() > cutoff;
+      });
+      return fresh ? computeStatus(venueId, allReports) : 'unknown';
+    }
 
     function computeExploreSummary() {
-      var now = Date.now();
-      var cutoff30  = now - 30  * 60 * 1000;
-      var cutoff2h  = now - 120 * 60 * 1000;
-      // Latest report per venue within 2h
-      var venueLatest = {};
-      allReports.forEach(function(r) {
-        var t = new Date(r.created_at).getTime();
-        if (t < cutoff2h) return;
-        if (!venueLatest[r.venue_id] || t > new Date(venueLatest[r.venue_id].created_at).getTime()) {
-          venueLatest[r.venue_id] = r;
-        }
-      });
-      var freeCount = 0, medCount = 0, longCount = 0;
-      Object.keys(venueLatest).forEach(function(vid) {
-        var r = venueLatest[vid];
-        if (new Date(r.created_at).getTime() < cutoff30) return; // stale
-        var s = r.queue_status;
-        if (s === 'free' || s === 'none') freeCount++;
-        else if (s === 'short' || s === 'medium') medCount++;
-        else if (s === 'long') longCount++;
-      });
-      // Open venues (closing hour after current time)
-      var d = new Date();
-      var nowMins = d.getHours() * 60 + d.getMinutes();
-      var openCount = VENUES.filter(function(v) {
-        if (!v.closing) return true;
-        var parts = v.closing.split(':');
-        var close = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-        if (close < 360) close += 1440; // e.g. 02:00 → 1560 next-day
-        var open = 17 * 60; // assume bars open ~17:00
-        var cur = nowMins < 12 * 60 ? nowMins + 1440 : nowMins;
-        return cur >= open && cur < close;
-      }).length;
-      // Reports since 18:00 tonight
-      var today18 = new Date(d); today18.setHours(18, 0, 0, 0);
-      if (d.getHours() < 18) today18.setDate(today18.getDate() - 1);
-      var since18 = allReports.filter(function(r) {
-        return new Date(r.created_at).getTime() >= today18.getTime();
-      }).length;
-      // Last report time
+      var fresh = VENUES.filter(function(v) { return venueFreshStatus(v.id) !== 'unknown'; }).length;
       var lastTs = null;
       allReports.forEach(function(r) {
+        if (!isQueueReport(r)) return;
         var t = new Date(r.created_at).getTime();
         if (!lastTs || t > lastTs) lastTs = t;
       });
-      return { freeCount: freeCount, medCount: medCount, longCount: longCount,
-               openCount: openCount, since18: since18, lastTs: lastTs, total: allReports.length };
+      return { fresh: fresh, venueTotal: VENUES.length, lastTs: lastTs, total: allReports.length };
     }
 
     function exsumTimeSince(ms) {
       if (!ms) return null;
       var mins = Math.round((Date.now() - ms) / 60000);
-      if (mins < 1) return 'just nu';
+      if (mins < 1) return 'nyss';
       return mins + ' min sedan';
     }
 
-    function exsumCountUp(el, target) {
-      if (!el || target === 0) { if (el) el.textContent = '0'; return; }
-      var start = performance.now();
-      var dur = 500;
-      function step(now) {
-        var p = Math.min((now - start) / dur, 1);
-        var eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(target * eased);
-        if (p < 1) requestAnimationFrame(step);
-        else el.textContent = target;
+    // ── Färskhetsrad ──────────────────────────────────────────────────────────
+    // Ersätter den gamla "Stockholm just nu"-widgeten: antalen per status finns redan i filterchipsen,
+    // så här visas bara det chipsen inte säger — hur färsk datan är.
+    // `state` skickas in i stället för att läsas globalt, så funktionen är ren och testbar.
+    // Den måste kunna skilja tre lägen åt: vi nådde inte servern, Stockholm är tyst,
+    // eller här är datan. Slås de två första samman blir ett serverfel en lugn kväll.
+    function exsumText(d, state) {
+      if (state === 'error') {
+        return d.total
+          ? 'Ingen kontakt med servern · siffrorna kan vara gamla'
+          : 'Ingen kontakt med servern';
       }
-      el.textContent = '0';
-      requestAnimationFrame(step);
+      if (state === 'loading') return 'Hämtar rapporter…';
+      if (d.total === 0) return 'Inga rapporter än — bli först att rapportera';
+      var since = exsumTimeSince(d.lastTs);
+      return d.fresh + ' av ' + d.venueTotal + ' ställen har färsk rapport' + (since ? ' · senast ' + since : '');
     }
 
-    function pulseSummaryNum(index) {
-      var el = document.getElementById('exsum-n' + index);
-      if (!el) return;
-      el.classList.remove('exsum-num--pulse');
-      void el.offsetWidth; // reflow
-      el.classList.add('exsum-num--pulse');
-      el.addEventListener('animationend', function() { el.classList.remove('exsum-num--pulse'); }, { once: true });
-    }
-
-    function renderExploreSummary(animate) {
+    function renderExploreSummary() {
       var el = document.getElementById('explore-summary');
       if (!el) return;
-      var data = computeExploreSummary();
-      var noData = data.total === 0;
-      var freeShortCount = data.freeCount + data.medCount;
-      var footerText = noData
-        ? 'Inga rapporter än — bli först att rapportera'
-        : freeShortCount + ' ställen med kort eller ingen kö nu';
+      el.style.display = 'block';
+      // Felvarianten markeras med en prick via ::before, inte ett barnelement — intervallet
+      // nedan sätter textContent, vilket hade raderat ett <span>.
+      var cls = 'exsum-line' + (_loadState === 'error' ? ' exsum-line--error' : '');
+      el.innerHTML = '<div class="' + cls + '" id="exsum-line">' + exsumText(computeExploreSummary(), _loadState) + '</div>';
 
-      el.innerHTML =
-        '<div class="exsum">' +
-          '<div class="exsum-stats">' +
-            '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n0" style="color:#00E676">0</span>' +
-              '<span class="exsum-label">KORT KÖ</span>' +
-            '</div>' +
-            '<div class="exsum-sep"></div>' +
-            '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n1" style="color:#FFB300">0</span>' +
-              '<span class="exsum-label">MEDEL KÖ</span>' +
-            '</div>' +
-            '<div class="exsum-sep"></div>' +
-            '<div class="exsum-stat">' +
-              '<span class="exsum-num" id="exsum-n2" style="color:#FF3B3B">0</span>' +
-              '<span class="exsum-label">LÅNG KÖ</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="exsum-footer" id="exsum-footer">' + footerText + '</div>' +
-        '</div>';
-
-      var targets = [data.freeCount, data.medCount, data.longCount];
-      targets.forEach(function(t, i) {
-        var numEl = document.getElementById('exsum-n' + i);
-        if (animate) {
-          exsumCountUp(numEl, t);
-        } else {
-          if (numEl) numEl.textContent = t;
-          // Pulse changed bucket if re-render after new data
-          if (_exsumPrevCounts && _exsumPrevCounts[i] !== t) pulseSummaryNum(i);
-        }
-      });
-      _exsumPrevCounts = targets;
-
-      // 30s footer refresh
+      // Åldras även utan ny data
       clearInterval(_exsumInterval);
       _exsumInterval = setInterval(function() {
-        var footer = document.getElementById('exsum-footer');
-        if (!footer) { clearInterval(_exsumInterval); return; }
-        var d2 = computeExploreSummary();
-        var fs2 = d2.freeCount + d2.medCount;
-        footer.textContent = d2.total === 0
-          ? 'Inga rapporter än — bli först att rapportera'
-          : fs2 + ' ställen med kort eller ingen kö nu';
+        var line = document.getElementById('exsum-line');
+        if (!line) { clearInterval(_exsumInterval); return; }
+        line.className = 'exsum-line' + (_loadState === 'error' ? ' exsum-line--error' : '');
+        line.textContent = exsumText(computeExploreSummary(), _loadState);
       }, 30000);
     }
 
@@ -2185,7 +2194,7 @@ import './style.css';
       var status = computeStatus(venue.id, allReports);
       var est = estimateWait(venue.id, allReports);
       var cls = getStatusClass(status);
-      var color = STATUS_COLORS[cls] || '#D1D5DB';
+      var color = STATUS_COLORS[cls] || getStatusColor('unknown');
       var hasData = venueReports.length > 0;
       var minsOld = hasData && latestReport ? (now - new Date(latestReport.created_at)) / 60000 : Infinity;
       var isAging = hasData && minsOld >= 15 && minsOld < 45;
@@ -2204,7 +2213,7 @@ import './style.css';
         level = 'medium'; // short or medium
       }
 
-      var levelBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', empty: 'rgba(255,255,255,0.02)' }[level];
+      var levelBg = { long: 'rgba(255,77,94,0.06)', medium: 'rgba(255,138,61,0.04)', free: 'rgba(52,224,127,0.05)', empty: 'rgba(255,255,255,0.02)' }[level];
       var stateClass = isEmpty ? ' erow--empty' : (isAging ? ' erow--stale' : '');
       var agingStyle = '';
       var barColor = isEmpty ? 'rgba(255,255,255,0.08)' : color;
@@ -2212,12 +2221,12 @@ import './style.css';
       // Hero number
       var heroText, heroColor;
       if (!hasData) {
-        heroText = '–'; heroColor = '#D1D5DB';
+        heroText = '–'; heroColor = '#85858A';
       } else {
         heroText = (est ? est.ahead === 0 : (status === 'free' || status === 'none')) ? 'Fri' : venueWaitText(venue.id);
-        // Per-level hero color for better contrast
-        var heroColors = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
-        heroColor = heroColors[level] || 'rgba(255,255,255,0.18)';
+        // Nivån "medium" täcker kort+medel för bakgrunden — siffran får exakt statusfärg
+        var heroColors = { free: '#34E07F', medium: getStatusColor(status), long: '#FF4D5E' };
+        heroColor = heroColors[level] || '#85858A';
       }
 
       // Freshness check for pulse dot: only show if long AND report < 20 min old
@@ -2228,35 +2237,20 @@ import './style.css';
       // Trend (replaces badge — new information, not redundant with hero)
       var trendHtml = '';
       var STATUS_RANK = { free: 0, none: 0, short: 1, medium: 2, long: 3 };
-      if (hasData && venueReports.length === 1) {
-        trendHtml = '<span class="erow-trend erow-trend--single">· 1 rapport</span>';
-      } else if (hasData && venueReports.length >= 2) {
+      if (hasData && venueReports.length >= 2) {
         var r1 = venueReports[0].queue_status; // newest
         var r2 = venueReports[1].queue_status; // previous
         var rank1 = STATUS_RANK[r1] !== undefined ? STATUS_RANK[r1] : 1;
         var rank2 = STATUS_RANK[r2] !== undefined ? STATUS_RANK[r2] : 1;
         if (rank1 > rank2) {
-          trendHtml = '<span class="erow-trend erow-trend--up" style="color:' + color + '">↑ Ökar</span>';
+          trendHtml = '<span class="erow-trend erow-trend--up">↑ Ökar</span>';
         } else if (rank1 < rank2) {
           trendHtml = '<span class="erow-trend erow-trend--down">↓ Minskar</span>';
-        } else {
-          trendHtml = '<span class="erow-trend erow-trend--stable">→ Stabil</span>';
         }
       }
 
-      // Tertiary row
+      // Tertiary row: antal rapporter + ålder (ersätter konfidensstaplar, "pers bekräftade" och sparkline)
       var reportCount = venueReports.length;
-      var uniqueReporters = new Set(venueReports.map(function(r) { return r.user_id; })).size;
-      var lastTime = latestReport ? formatAbsTime(latestReport.created_at) : '–';
-      var confLevel = hasData ? computeConfidence(venueReports) : 0;
-      var confHtml = '';
-      if (hasData) {
-        var bars = '';
-        for (var i = 1; i <= 3; i++) {
-          bars += '<span class="conf-bar' + (i <= confLevel ? ' active' : '') + '"></span>';
-        }
-        confHtml = '<span class="conf-bars" style="color:' + heroColor + '">' + bars + '</span>';
-      }
 
       // Distance (if available)
       var typeLabel = venueTypeLabel(venue.type);
@@ -2280,23 +2274,24 @@ import './style.css';
         ? 'togglePlanVenue(\'' + venue.id + '\')'
         : 'openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')';
 
-      return '<div class="erow' + stateClass + levelClass + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
+      return '<div class="erow' + stateClass + levelClass + (isBest ? ' erow--best' : '') + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
           planBadge +
           '<div class="erow-body">' +
+            (isBest ? '<div class="bast-chip"><span class="bast-chip-dot"></span>Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</div>' : '') +
             '<div class="erow-name-row">' +
-              (isBest ? '<span class="bast-chip"><span class="bast-chip-dot"></span>Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</span>' : '') +
               pulseHtml +
-              '<div class="erow-name">' + venue.name + (isWatching(venue.id) ? '<svg viewBox="0 0 24 24" width="10" height="10" fill="rgba(255,255,255,0.5)" style="vertical-align:middle;margin-left:4px;flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') + '</div>' +
+              '<div class="erow-name">' + venue.name + '</div>' +
+              (isFavorite(venue.id) ? '<svg class="erow-fav" viewBox="0 0 24 24" aria-label="Favorit"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' : '') +
+              (isWatching(venue.id) ? '<svg class="erow-watch" viewBox="0 0 24 24" aria-label="Bevakas"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') +
             '</div>' +
-            '<div class="erow-meta">' + metaText +
-              (est && est.ahead && !est.full && est.source !== 'live' ? ' · <span class="erow-est-label">uppskattning</span>' : '') +
-            '</div>' +
+            '<div class="erow-meta">' + metaText + '</div>' +
             (function() {
               var pat = _historicalPatterns[venue.id];
-              var patLabels = { long: 'Vanligtvis lång kö nu', medium: 'Vanligtvis medel kö nu', short: 'Vanligtvis kort kö nu', free: 'Vanligtvis fri ingång nu' };
-              var patHtml = pat && patLabels[pat.level] ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
+              var patLabels = { long: 'Brukar vara lång kö nu', medium: 'Brukar vara medel kö nu', short: 'Brukar vara kort kö nu', free: 'Brukar vara fri ingång nu' };
+              // Historiskt mönster visas bara när färsk data saknas — annars konkurrerar det med verkligheten
+              var patHtml = (isEmpty && pat && patLabels[pat.level]) ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
               var recentWithComment = venueReports.filter(function(r) {
                 return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
               }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
@@ -2310,39 +2305,29 @@ import './style.css';
                 if (nowAdj < 12 * 60) nowAdj += 1440;
                 var minsLeft = cTotal - nowAdj;
                 if (minsLeft > 0 && minsLeft <= 90) {
-                  closingSoonHtml = '<span class="erow-tertiary-sep">·</span><span style="color:#FF7043;font-weight:600">Stänger ' + venue.closing + '</span>';
+                  closingSoonHtml = '<span class="erow-tertiary-sep">·</span><span class="erow-closing">Stänger ' + venue.closing + '</span>';
                 }
               }
-              var tertiaryHtml = hasData
+              var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ uppskattning</span>' : '';
+              var tertiaryHtml = (hasData && !isStale)
                 ? '<div class="erow-tertiary">' +
-                    confHtml +
-                    '<span>' + uniqueReporters + ' pers bekräftade</span>' +
+                    '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
                     '<span class="erow-tertiary-sep">·</span>' +
-                    '<span>senast ' + lastTime + '</span>' +
-                    (patHtml ? '<span class="erow-tertiary-sep">·</span>' + patHtml : '') +
+                    '<span' + (isAging ? ' class="erow-stale-label"' : '') + '>' + timeAgo(latestReport.created_at) + (isAging ? ' · äldre' : '') + '</span>' +
+                    estHtml +
                     closingSoonHtml +
-                    (isAging ? '<span class="erow-tertiary-sep">·</span><span class="erow-stale-label">Kan vara gammal</span>' : '') +
                   '</div>'
-                : (patHtml
-                    ? '<div class="erow-tertiary">' + patHtml + closingSoonHtml + '</div>'
-                    : '<div class="erow-tertiary"><span class="erow-empty-cta">Ingen data — var den första att rapportera</span>' + closingSoonHtml + '</div>');
+                : '<div class="erow-tertiary">' +
+                    (patHtml || '<span class="erow-empty-cta">' + (isStale ? 'Ingen färsk rapport' : 'Ingen data i kväll') + ' — rapportera</span>') +
+                    closingSoonHtml +
+                  '</div>';
               return tertiaryHtml + commentHtml;
             })() +
           '</div>' +
           '<div class="erow-right">' +
-            '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + heroText + '</span>' +
-            trendHtml +
-            (function() {
-              if (venueReports.length < 2) return '';
-              var STATUS_H = { free: 'free', short: 'short', medium: 'medium', long: 'long', none: 'free' };
-              var recent = venueReports.slice(0, 4).reverse();
-              return '<div class="erow-spark">' + recent.map(function(r) {
-                var cls = STATUS_H[r.queue_status] || 'free';
-                return '<span class="spark-blk spark-blk--' + cls + '"></span>';
-              }).join('') + '</div>';
-            })() +
+            '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + waitHtml(heroText) + '</span>' +
+            (isStale ? '' : trendHtml) +
           '</div>' +
-          '<button class="erow-report-btn" onclick="event.stopPropagation();openQuickReport(\'' + venue.id + '\')" aria-label="Rapportera"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
         '</div>' +
         '</div>';
     }
@@ -2366,12 +2351,14 @@ import './style.css';
       renderExploreVenues();
       // Update plan chip label
       var planChip = document.querySelector('.fbtn--plan');
-      if (planChip) planChip.textContent = _planningMode ? 'Avbryt' : 'Planera';
+      if (planChip) planChip.textContent = _planningMode ? 'Avbryt plan' : 'Planera kväll';
       // Legacy btn (no longer in DOM, guard kept)
       var btn = document.getElementById('plan-mode-btn');
       if (btn) btn.textContent = _planningMode ? 'Avbryt' : 'Planera kväll';
       var bar = document.getElementById('plan-bar');
       if (bar) bar.style.display = _planningMode ? 'flex' : 'none';
+      var createBtn = document.getElementById('plan-create-btn');
+      if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Välj 2–4 ställen'; }
     }
 
     function togglePlanVenue(venueId) {
@@ -2427,30 +2414,29 @@ import './style.css';
     }
 
     function showEveningPlan(scored) {
-      var STATUS_COLOR = { free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B', none: 'rgba(255,255,255,0.3)' };
-
       var items = scored.map(function(s, i) {
-        var color = STATUS_COLOR[s.status] || 'rgba(255,255,255,0.3)';
-        var label = venueWaitText(s.id) || 'Okänd kö';
-        var closing = s.venue && s.venue.closing ? ' · Stänger ' + s.venue.closing : '';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.07)">'
-          + '<div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);flex-shrink:0">' + (i+1) + '</div>'
-          + '<div style="flex:1;min-width:0">'
-          + '<div style="font-size:15px;font-weight:600;color:#fff">' + (s.venue ? s.venue.name : s.id) + '</div>'
-          + '<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">' + label + closing + '</div>'
+        var label = venueWaitText(s.id);
+        var color = label ? getStatusColor(s.status) : 'var(--text-muted)';
+        var closing = s.venue && s.venue.closing ? 'Stänger ' + s.venue.closing : '';
+        var area = s.venue ? s.venue.area : '';
+        return '<div class="plan-item">'
+          + '<div class="plan-item-num">' + (i + 1) + '</div>'
+          + '<div class="plan-item-body">'
+          + '<div class="plan-item-name">' + (s.venue ? s.venue.name : s.id) + '</div>'
+          + '<div class="plan-item-meta">' + [area, closing].filter(Boolean).join(' · ') + '</div>'
           + '</div>'
-          + '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>'
+          + '<div class="plan-item-wait" style="color:' + color + '">' + (label || 'Ingen data') + '</div>'
           + '</div>';
       }).join('');
 
       var modal = document.createElement('div');
       modal.id = 'plan-modal';
-      modal.style.cssText = 'position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;justify-content:flex-end';
-      modal.innerHTML = '<div onclick="closePlanModal()" style="flex:1;background:rgba(0,0,0,0.6)"></div>'
-        + '<div style="background:#0D0F1A;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,0.1);padding:24px 20px 40px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif">'
-        + '<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.4);margin-bottom:16px">DIN KVÄLLSPLAN</div>'
+      modal.innerHTML = '<div class="plan-modal-dim" onclick="closePlanModal()"></div>'
+        + '<div class="plan-modal-sheet">'
+        + '<div class="plan-modal-eyebrow">Din kvällsplan</div>'
+        + '<div class="plan-modal-sub">Ordning efter stängningstid, sedan kö just nu</div>'
         + items
-        + '<button onclick="closePlanModal()" style="margin-top:20px;width:100%;height:48px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Stäng</button>'
+        + '<button class="plan-modal-close" onclick="closePlanModal()">Klar</button>'
         + '</div>';
       document.body.appendChild(modal);
 
@@ -2458,9 +2444,7 @@ import './style.css';
       _planVenues = [];
       renderExploreVenues();
       var planChip = document.querySelector('.fbtn--plan');
-      if (planChip) planChip.textContent = 'Planera';
-      var planBtn = document.getElementById('plan-mode-btn');
-      if (planBtn) planBtn.textContent = 'Planera kväll';
+      if (planChip) planChip.textContent = 'Planera kväll';
       var bar = document.getElementById('plan-bar');
       if (bar) bar.style.display = 'none';
     }
@@ -2525,10 +2509,8 @@ import './style.css';
       return candidates[0] || null;
     }
 
-    var _exsumFirstRender = true;
-    function renderExploreVenues() {
-      renderExploreSummary(_exsumFirstRender);
-      _exsumFirstRender = false;
+        function renderExploreVenues() {
+      renderExploreSummary();
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
@@ -2574,16 +2556,16 @@ import './style.css';
         var filterLabels = { free: 'fri ingång', short: 'kort kö', long: 'lång kö', bar: 'typ bar', klubb: 'typ klubb' };
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
-          emptyTitle = 'Inga venues med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
-          emptySub = 'Kolla tillbaka lite senare';
+          emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
+          emptySub = 'Färsk data saknas eller ingen matchar — kolla igen om en stund';
         } else {
-          var term = rawQ ? '”' + rawQ + '”' : '';
+          var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
           emptySub = 'Prova ett annat namn eller område';
         }
-        el.innerHTML = '<div class=”explore-empty”>' +
-          '<div class=”explore-empty-title”>' + emptyTitle + '</div>' +
-          '<div class=”explore-empty-sub”>' + emptySub + '</div>' +
+        el.innerHTML = '<div class="explore-empty">' +
+          '<div class="explore-empty-title">' + emptyTitle + '</div>' +
+          '<div class="explore-empty-sub">' + emptySub + '</div>' +
           '</div>';
         updateFilterCounts();
         return;
@@ -2642,7 +2624,7 @@ import './style.css';
         }
       }
 
-      el.innerHTML = '<div class=”venue-group”>' + list.map(function(v, i) {
+      el.innerHTML = '<div class="venue-group">' + list.map(function(v, i) {
         return renderExploreVenueRow(v, i, v.id === bestVenueId ? best : null);
       }).join('') + '</div>';
 
@@ -2673,36 +2655,50 @@ import './style.css';
     // ── Live-feed ─────────────────────────────────────────────────────────────
     var _liveExpanded = new Set();
 
-    function _liveRowHtml(r, isSub) {
+    function _liveRowHtml(r, isSub, olderCount) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
-      var liveColors = { none: '#00E676', free: '#00E676', short: '#FFB300', medium: '#FF7043', long: '#FF3B3B' };
       var qs = r.queue_status;
       var descriptor = liveDescriptors[qs];
       if (!descriptor) return '';
-      var hasCount = r.people_ahead != null;
-      if (hasCount) descriptor = aheadBucket(r.people_ahead).label + (r.people_ahead ? ' i kö' : '');
-      var waitTime = isSub ? '' : venueWaitText(r.venue_id);
-      if (waitTime === descriptor) waitTime = '';
-      var color = liveColors[qs] || '#9CA3AF';
+      // Hjälten är det som faktiskt rapporterades — inte appens uppskattning.
+      if (r.people_ahead != null) descriptor = r.people_ahead ? aheadBucket(r.people_ahead).label + ' före' : 'Ingen kö';
+      var color = getStatusColor(qs);
+      var d = new Date(r.created_at);
+      var clock = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      if (isSub) {
+        return '<div class="lv-old"><span class="lv-old-time">' + clock + '</span>' +
+          '<span class="lv-old-val" style="color:' + color + '">' + descriptor + '</span>' +
+          (r.comment ? '<span class="lv-old-note">"' + escapeHtml(r.comment) + '"</span>' : '') + '</div>';
+      }
       var venue = getVenueById(r.venue_id);
       var name = venue ? venue.name : escapeHtml(r.venue_name || r.venue_id);
-      var area = venue ? venue.area : '';
-      if (isSub) {
-        var subLabel = descriptor;
-        return '<div class="live-sub-row">' +
-          '<div class="live-sub-wait" style="color:' + color + '">' + subLabel + '</div>' +
-          '<div class="live-sub-meta">' + timeAgo(r.created_at) + '</div></div>';
+      var nowWait = venueWaitText(r.venue_id);
+      var area = venue ? venue.area + ' · ' + venueTypeLabel(venue.type) : '';
+      // Hjälten är rapporterat antal; "framför" som enhet. Ren text (t.ex. "Kort kö") får ingen enhet.
+      var hasCount = r.people_ahead != null && r.people_ahead > 0;
+      var heroText = hasCount ? aheadBucket(r.people_ahead).label : (r.people_ahead === 0 ? 'Ingen kö' : descriptor);
+      var heroSmall = !hasCount ? ' style="color:' + color + ';font-size:18px;letter-spacing:-0.03em"' : ' style="color:' + color + '"';
+      var subParts = [timeAgo(r.created_at)];
+      if (nowWait) subParts.push('nu ' + nowWait);
+      var olderBtn = '';
+      if (olderCount) {
+        var open = _liveExpanded.has(r.venue_id);
+        olderBtn = '<button class="lv-more' + (open ? ' lv-more--open' : '') + '" aria-expanded="' + open + '" ' +
+          'aria-label="' + (open ? 'Dölj tidigare rapporter' : olderCount + ' tidigare ' + (olderCount === 1 ? 'rapport' : 'rapporter')) + '" ' +
+          'onclick="event.stopPropagation();toggleLiveVenue(\'' + r.venue_id + '\')">' +
+          '<span>' + (open ? 'Dölj' : '+' + olderCount + ' tidigare') + '</span>' +
+          '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>';
       }
-      var liveBg = { long: 'rgba(255,59,59,0.06)', medium: 'rgba(255,112,67,0.04)', free: 'rgba(0,230,118,0.04)', none: 'rgba(0,230,118,0.04)' }[qs] || '';
-      var heroHtml = waitTime
-        ? '<div class="live-wait">' + waitTime + '</div><div class="live-cat">' + descriptor + '</div>'
-        : '<div class="live-wait">' + descriptor + '</div>';
-      var venueLiveType = venue ? venueTypeLabel(venue.type) : '';
-      var typeBadgeHtml = venueLiveType ? '<span class="type-badge">' + venueLiveType.toUpperCase() + '</span>' : '';
-      return '<div class="live-row"' + (liveBg ? ' style="background:' + liveBg + '"' : '') + '>' +
-        '<div class="live-status" style="color:' + color + '">' + heroHtml + '</div>' +
-        '<div class="live-right"><div class="live-name">' + name + typeBadgeHtml + '</div>' +
-        '<div class="live-meta">' + (area ? area + ' · ' : '') + timeAgo(r.created_at) + '</div></div></div>';
+      return '<div class="lv-row" role="button" tabindex="0" onclick="openVenueCard(\'' + r.venue_id + '\')">' +
+        '<span class="lv-bar" style="background:' + color + '"></span>' +
+        '<div class="lv-inner"><div class="lv-body">' +
+          '<div class="lv-name">' + name + '</div>' +
+          (area ? '<div class="lv-meta">' + area + '</div>' : '') +
+          (r.comment ? '<div class="lv-comment">"' + escapeHtml(r.comment) + '"</div>' : '') +
+          '<div class="lv-sub">' + subParts.join(' · ') + '</div>' +
+        '</div>' +
+        '<div class="lv-right"><span class="lv-hero"' + heroSmall + '>' + heroText + '</span>' +
+          (hasCount ? '<span class="lv-unit">framför</span>' : '') + olderBtn + '</div></div></div>';
     }
 
     // Senaste "Jag är inne" — verklig väntetid från en kö-session, inte en uppskattning.
@@ -2715,7 +2711,8 @@ import './style.css';
         .reduce(function(min, r) { var t = new Date(r.created_at).getTime(); return t < min ? t : min; }, Infinity);
       var mins = Math.round((new Date(entered.created_at).getTime() - start) / 60000);
       if (!isFinite(mins) || mins < 1) return '';
-      return '<div class="live-entered">Någon kom in efter ' + mins + ' min · ' + timeAgo(entered.created_at) + '</div>';
+      return '<div class="lv-entered"><span class="lv-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>' +
+        '<span>Någon kom in efter <b>' + mins + ' min</b></span><small>uppmätt · ' + timeAgo(entered.created_at) + '</small></div>';
     }
 
     function toggleLiveVenue(venueId) {
@@ -2726,15 +2723,30 @@ import './style.css';
     function renderLiveFeed() {
       var el = document.getElementById('live-feed');
       if (!el) return;
+      var subText = document.getElementById('live-sub-text');
       if (!supabase) {
-        el.innerHTML = '<div class="empty"><p>Livedata är inte tillgänglig</p><button class="empty-btn" onclick="retrySupabase()">Försök igen</button></div>';
+        if (subText) subText.textContent = 'Offline';
+        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>' +
+          '<div class="lv-empty-title">Ingen anslutning</div><p class="lv-empty-sub">Livedata är inte tillgänglig just nu.</p>' +
+          '<button class="empty-btn" onclick="retrySupabase()">Försök igen</button></div>';
         return;
       }
       var now = new Date();
       var cutoff = now - 45 * 60 * 1000;
       var recent = allReports.filter(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > cutoff; });
+      // Nådde vi inte servern vet vi ingenting om kvällen. Säg det, i stället för att
+      // visa samma tomma läge som när Stockholm faktiskt är tyst.
+      if (_loadState === 'error' && !recent.length) {
+        if (subText) subText.textContent = 'Ingen kontakt';
+        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>' +
+          '<div class="lv-empty-title">Ingen kontakt med servern</div><p class="lv-empty-sub">Vi vet inte hur köerna ser ut just nu.</p>' +
+          '<button class="empty-btn" onclick="loadReports()">Försök igen</button></div>';
+        return;
+      }
       if (!recent.length) {
-        el.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p>Inga rapporter ännu.<br>Gå ut och rapportera!</p></div>';
+        if (subText) subText.textContent = 'Inga rapporter senaste 45 min';
+        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>' +
+          '<div class="lv-empty-title">Inga rapporter ännu</div><p class="lv-empty-sub">Nya köuppdateringar dyker upp här så fort någon rapporterar.</p></div>';
         return;
       }
       // Group by venue, sort each group newest-first
@@ -2750,27 +2762,31 @@ import './style.css';
       var venueIds = Object.keys(groups).sort(function(a, b) {
         return new Date(groups[b][0].created_at) - new Date(groups[a][0].created_at);
       });
-      el.innerHTML = venueIds.map(function(vid) {
+      var items = venueIds.map(function(vid) {
         var reports = groups[vid];
-        var latest = reports[0];
         var older = reports.slice(1);
-        var mainRow = _liveRowHtml(latest, false);
+        var mainRow = _liveRowHtml(reports[0], false, older.length);
         if (!mainRow) return '';
         var html = mainRow + _liveEnteredHtml(vid, cutoff);
-        if (older.length) {
-          var expanded = _liveExpanded.has(vid);
-          if (expanded) {
-            html += older.map(function(r) { return _liveRowHtml(r, true); }).filter(Boolean).join('');
-            html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">↑ Dölj tidigare rapporter</button>';
-          } else {
-            html += '<button class="live-expand-btn" onclick="toggleLiveVenue(\'' + vid + '\')">+' + older.length + ' tidigare ' + (older.length === 1 ? 'rapport' : 'rapporter') + ' · visa</button>';
-          }
+        if (older.length && _liveExpanded.has(vid)) {
+          html += '<div class="lv-older">' + older.map(function(r) { return _liveRowHtml(r, true); }).filter(Boolean).join('') + '</div>';
         }
-        return html;
-      }).filter(Boolean).join('');
+        return '<div class="lv-item">' + html + '</div>';
+      }).filter(Boolean);
+      if (subText) {
+        subText.textContent = _loadState === 'error'
+          ? 'Ingen kontakt · kan vara gammalt'
+          : items.length + (items.length === 1 ? ' ställe' : ' ställen') + ' · 45 min';
+      }
+      el.innerHTML = '<div class="lv-group">' + items.join('') + '</div>';
     }
 
     renderLiveFeed();
+    (function() {
+      var wrap = document.getElementById('live-list-wrap');
+      var sticky = document.getElementById('live-sticky');
+      if (wrap && sticky) wrap.addEventListener('scroll', function() { sticky.classList.toggle('scrolled', wrap.scrollTop > 4); });
+    })();
     setInterval(function() { if (typeof renderLiveFeed === 'function') renderLiveFeed(); }, 30000);
 
     // ── På väg ────────────────────────────────────────────────────────────────
@@ -2873,9 +2889,10 @@ import './style.css';
       var minsLeft = Math.round((_onMyWay.arrivalTime - Date.now()) / 60000);
       var arrived = minsLeft <= 0;
 
-      var title, sub, actions;
+      var kicker, big, sub, actions;
       if (arrived) {
-        title = 'Framme vid ' + name + '?';
+        kicker = 'Framme?';
+        big = name;
         sub = 'Hur många står framför dig?';
         actions = '<button class="qs-btn" onclick="cancelOnMyWay()">Kom inte dit</button>'
           + '<button class="qs-btn qs-btn--primary" onclick="onMyWayReport()">Rapportera kön</button>';
@@ -2886,14 +2903,16 @@ import './style.css';
         var fc = forecastWait(_onMyWay.venueId, minsLeft, Math.max(0, onMyWayCount(_onMyWay.venueId) - 1));
         var fcText = fc ? formatWait(fc) : '';
         var context = fc ? (fcText === 'Ingen kö' ? 'troligen ingen kö då' : 'troligen ' + fcText + ' kö då')
-          : waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || '';
-        title = 'På väg · ' + name;
-        sub = 'Framme om ca ' + minsLeft + ' min' + (context ? ' · ' + context : '');
+          : waitNow ? 'kön nu ' + waitNow : (pat && hintMap[pat.level]) || 'ingen färsk rapport';
+        kicker = 'På väg · ' + name;
+        big = '<span class="qs-num">~' + minsLeft + ' min</span> <span class="qs-unit">kvar</span>';
+        sub = context;
         actions = '<button class="qs-btn" onclick="onMyWayArrived()">Jag är framme</button>';
       }
       banner.style.display = 'block';
       banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
-        + '<div class="qs-title">' + title + '</div>'
+        + '<div class="qs-kicker"><span class="qs-live"></span>' + kicker + '</div>'
+        + '<div class="qs-title">' + big + '</div>'
         + '<div class="qs-sub">' + sub + '</div></div>'
         + '<button class="qs-close" onclick="cancelOnMyWay()" aria-label="Avbryt">×</button></div>'
         + '<div class="qs-actions">' + actions + '</div>';
@@ -2902,12 +2921,15 @@ import './style.css';
     function renderQueueSessionBanner(banner, qs) {
       var sinceLast = Date.now() - qs.lastAt;
       var canUpdate = sinceLast >= QS_MIN_GAP && qs.followups < QS_MAX_FOLLOWUPS;
+      var inQueue = Math.max(0, Math.round((Date.now() - (qs.startedAt || qs.lastAt)) / 60000)) || 0;
+      var ahead = aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför' : '');
       var sub = canUpdate
-        ? 'Står du kvar? Hur många är framför dig nu?'
-        : aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför dig' : '') + ' · ' + timeAgo(new Date(qs.lastAt).toISOString());
+        ? ahead + ' · ' + timeAgo(new Date(qs.lastAt).toISOString()) + ' · hur många nu?'
+        : ahead + ' · ' + timeAgo(new Date(qs.lastAt).toISOString());
       banner.style.display = 'block';
       banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
-        + '<div class="qs-title">I kön · ' + qs.venueName + '</div>'
+        + '<div class="qs-kicker"><span class="qs-live"></span>I kön · ' + qs.venueName + '</div>'
+        + '<div class="qs-title"><span class="qs-num">' + inQueue + ' min</span> <span class="qs-unit">i kön</span></div>'
         + '<div class="qs-sub">' + sub + '</div></div>'
         + '<button class="qs-close" onclick="dismissQueueSession()" aria-label="Avsluta">×</button></div>'
         + '<div class="qs-actions">'
@@ -2915,6 +2937,16 @@ import './style.css';
         + '<button class="qs-btn qs-btn--primary" onclick="queueSessionEntered()">Jag är inne</button>'
         + '</div>';
     }
+
+    // Bannerns höjd skjuter ner kartans sökfält och skärmrubriker så att inget döljs.
+    (function() {
+      var b = document.getElementById('omw-banner');
+      if (!b || typeof ResizeObserver === 'undefined') return;
+      new ResizeObserver(function() {
+        var h = b.style.display === 'none' ? 0 : b.offsetHeight + 8;
+        document.documentElement.style.setProperty('--banner-h', h + 'px');
+      }).observe(b);
+    })();
 
     restoreOnMyWay();
     updateOnMyWayUI();
@@ -2935,9 +2967,17 @@ import './style.css';
         if (!latestTs[r.venue_id] || t > latestTs[r.venue_id]) latestTs[r.venue_id] = t;
       });
       var list = q ? venueSearch(q, VENUES) : VENUES.slice();
-      // When no query: sort by recency; when searching: preserve relevance order
+      var pos = window._userPos;
+      function distM(v) {
+        if (!pos) return null;
+        var dLat = (v.lat - pos.lat) * 111320;
+        var dLng = (v.lng - pos.lng) * 111320 * Math.cos(pos.lat * Math.PI / 180);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+      }
+      // Utan sökord: närmast först om platsen är känd, annars senast rapporterat. Med sökord: relevans.
       if (!q) {
         list.sort(function(a, b) {
+          if (pos) return distM(a) - distM(b);
           var at = latestTs[a.id] || 0;
           var bt = latestTs[b.id] || 0;
           if (at && !bt) return -1;
@@ -2946,25 +2986,39 @@ import './style.css';
           return bt - at;
         });
       }
+      var freshCut = Date.now() - 45 * 60 * 1000;
       el.innerHTML = list.map(function(v) {
         var rsTypeLbl = venueTypeLabel(v.type);
-        var rsAreaText = v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '');
-        return '<div class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
-          '<div><div class="rs-name">' + v.name + '</div><div class="rs-area">' + rsAreaText + '</div></div>' +
-          '<span class="rs-arrow">→</span></div>';
+        var fresh = latestTs[v.id] && latestTs[v.id] > freshCut;
+        var dotColor = fresh ? getStatusColor(computeStatus(v.id, allReports)) : 'transparent';
+        var d = distM(v);
+        var metaParts = [v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '')];
+        if (d != null) metaParts.push(d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1).replace('.', ',') + ' km');
+        var ago = latestTs[v.id] ? timeAgo(new Date(latestTs[v.id]).toISOString()) : 'ingen rapport ikväll';
+        return '<button class="rs-item" onclick="pickRV(\'' + v.id + '\')">' +
+          '<span class="rs-dot' + (fresh ? '' : ' rs-dot--none') + '" style="background:' + dotColor + '"></span>' +
+          '<span class="rs-text"><span class="rs-name">' + v.name + '</span><span class="rs-area">' + metaParts.join(' · ') + '</span></span>' +
+          '<span class="rs-ago">' + ago + '</span></button>';
       }).join('');
+    }
+
+    // Visar ett av de tre stegen och håller stegräknaren i synk.
+    function rsStep(n) {
+      document.getElementById('rs1').style.display = n === 1 ? 'block' : 'none';
+      document.getElementById('rs2').style.display = n === 2 ? 'flex' : 'none';
+      document.getElementById('rs3').style.display = n === 3 ? 'flex' : 'none';
+      var c = document.getElementById('rp-step-counter');
+      if (c) { c.textContent = n + ' / 3'; c.style.display = ''; }
     }
 
     function pickRV(id) {
       selectedRV = getVenueById(id);
       document.getElementById('rs-vname').textContent = selectedRV.name;
-      document.getElementById('rs1').style.display = 'none';
-      document.getElementById('rs2').style.display = 'flex';
+      rsStep(2);
     }
 
     function backToRs1() {
-      document.getElementById('rs1').style.display = 'block';
-      document.getElementById('rs2').style.display = 'none';
+      rsStep(1);
     }
 
     async function pickAhead(peopleAhead) {
@@ -2975,18 +3029,15 @@ import './style.css';
         await submitReport(selectedRV.id, selectedRV.name, peopleAhead, comment);
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
-        showFloatingPoints(10);
-        document.getElementById('rs2').style.display = 'none';
-        document.getElementById('rs3').style.display = 'flex';
+        rsStep(3);
         var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
         selectedRV = null;
         setTimeout(function() {
-          document.getElementById('rs3').style.display = 'none';
-          document.getElementById('rs1').style.display = 'block';
+          rsStep(1);
           document.getElementById('rs-search').value = '';
           filterReportList();
           if (dest) showScreen(dest);
-        }, 1500);
+        }, 2800);
       } catch(err) { showToast(reportErrorText(err)); }
     }
 
@@ -3027,7 +3078,6 @@ import './style.css';
       try {
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
-        showFloatingPoints(10);
         showToast('Rapport skickad — tack!');
         loadReports();
       } catch(e) {
@@ -3038,85 +3088,20 @@ import './style.css';
     filterReportList();
 
     // ── Profil ────────────────────────────────────────────────────────────────
-    function computeStreak(reports) {
-      if (!reports.length) return 0;
-      var dates = new Set(reports.map(function(r) { return r.created_at.slice(0, 10); }));
-      var today = new Date();
-      var todayStr = today.toISOString().slice(0, 10);
-      var yestStr = new Date(today - 86400000).toISOString().slice(0, 10);
-      if (!dates.has(todayStr) && !dates.has(yestStr)) return 0;
-      var cursor = dates.has(todayStr) ? today : new Date(today - 86400000);
-      var count = 0;
-      while (dates.has(cursor.toISOString().slice(0, 10))) {
-        count++;
-        cursor = new Date(cursor - 86400000);
-      }
-      return count;
-    }
-
     function updateProfileStats() {
       var userId = getUserId();
       var allMine = userHistory.length > 0
         ? userHistory
         : allReports.filter(function(r) { return r.user_id === userId; });
       var mine = allMine.filter(isQueueReport);
-      var enteredCount = allMine.filter(function(r) { return r.report_type === 'entered'; }).length;
-      var pts = mine.length * 10 + enteredCount * 5;
 
       var sr = document.getElementById('stat-r');
-      var sp = document.getElementById('stat-p');
+      var text = document.getElementById('pf-reports-text');
       if (sr) sr.textContent = mine.length;
-      if (sp) sp.textContent = pts;
-
-      var levels = [
-        { name: 'Ny', min: 0, next: 50 },
-        { name: 'Aktiv', min: 50, next: 150 },
-        { name: 'Stamgäst', min: 150, next: 400 },
-        { name: 'Insider', min: 400, next: 1000 },
-        { name: 'Legend', min: 1000, next: 9999 }
-      ];
-      var lvl = levels[0];
-      for (var i = 0; i < levels.length; i++) { if (pts >= levels[i].min) lvl = levels[i]; }
-
-      var badge = document.querySelector('#screen-profile .level-badge');
-      if (badge) badge.textContent = lvl.name;
-
-      var pct = Math.min(100, ((pts - lvl.min) / (lvl.next - lvl.min)) * 100);
-      var pl = document.getElementById('plabel');
-      var pb = document.getElementById('pbar');
-      if (pl) pl.textContent = pts + ' / ' + lvl.next + ' poäng till nästa nivå';
-      if (pb) pb.style.width = pct + '%';
-
-      var daysEl = document.querySelector('#screen-profile .days-count');
-      if (daysEl) {
-        var streak = computeStreak(mine);
-        daysEl.textContent = streak;
-        daysEl.classList.remove('streak-warm', 'streak-fire');
-        if (streak >= 7) daysEl.classList.add('streak-fire');
-        else if (streak >= 3) daysEl.classList.add('streak-warm');
-      }
-
-      var badgeRow = document.querySelector('#screen-profile .badges-row');
-      if (badgeRow) {
-        var BADGE_ICONS = [
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-          '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>'
-        ];
-        var defs = [
-          { icon: BADGE_ICONS[0], name: 'Första rapport', req: 1 },
-          { icon: BADGE_ICONS[1], name: '10 rapporter', req: 10 },
-          { icon: BADGE_ICONS[2], name: 'Stamgäst', req: 25 },
-          { icon: BADGE_ICONS[3], name: 'Legend', req: 100 }
-        ];
-        badgeRow.innerHTML = defs.map(function(b) {
-          var on = mine.length >= b.req;
-          return '<div class="badge-item' + (on ? ' badge-item--on' : ' badge-item--locked') + '">' +
-            '<div class="badge-item-icon">' + b.icon + '</div>' +
-            '<div class="badge-item-label">' + b.name + '</div>' +
-            '</div>';
-        }).join('');
+      if (text) {
+        text.textContent = mine.length === 0
+          ? 'Du har inte rapporterat någon kö än.'
+          : (mine.length === 1 ? 'kö du har hjälpt andra med' : 'köer du har hjälpt andra med');
       }
     }
 
@@ -3195,4 +3180,8 @@ Object.assign(window, {
   toggleFavorite,
   toggleLiveVenue,
   togglePlanningMode,
+  togglePlanVenue,
+  vcOnMyWay,
+  vcShare,
+  vcToggleFavorite,
 });
