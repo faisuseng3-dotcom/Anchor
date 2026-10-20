@@ -106,9 +106,12 @@ const LINE_COUNT_PATTERNS = [
 const SHA_PATTERN = /\b[0-9a-f]{7,40}\b/;
 
 // Radnummer som källhänvisning. CLAUDE.md kräver fil + funktionsnamn, aldrig radnummer.
-// Varning, inte fel: de 15 som finns i dag kom in före regeln och ska bort i en egen
-// commit. Gör om detta till error() när de är borta.
-const LINE_REF_RE = /`:\d+`|\.(?:js|css|html):\d+/;
+// Det är ett FEL, inte en varning: referenserna i first-principles-engineering pekade på
+// src/main.js som den såg ut på en annan gren och var fel redan när de skrevs. Ett
+// funktionsnamn som grep hittar överlever varje commit; ett radnummer gör det inte.
+// Mönstret måste tåla intervall och tankstreck: `:2201–2202` slank igenom en tidigare
+// version som krävde backtick direkt efter siffrorna, och referensen låg kvar i skillen.
+const LINE_REF_RE = /`:\d+[^`]*`|\.(?:js|css|html):\d+/;
 
 for (const rel of DOCS) {
   const text = fs.readFileSync(path.join(root, rel), 'utf8');
@@ -154,8 +157,8 @@ for (const rel of DOCS) {
     }
 
     if (LINE_REF_RE.test(line)) {
-      warn(rel, n, 'radnummer används som källhänvisning',
-        'använd fil + funktionsnamn — radnummer ruttnar');
+      error(rel, n, 'radnummer används som källhänvisning',
+        'använd fil + funktionsnamn — radnummer ruttnar, funktionsnamn går att grepa');
     }
   });
 

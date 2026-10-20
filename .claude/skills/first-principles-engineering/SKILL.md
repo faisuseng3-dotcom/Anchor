@@ -79,18 +79,18 @@ same boundary the model uses, so a report leaves the data and the display at the
 
 | Window | Treatment |
 |--------|-----------|
-| 0–45 min | Fresh — counted by `estimateWait` (`:307`) and `venueFreshStatus` (`:2121`) |
-| 15–45 min | Aging: colour fades, age is shown with "· äldre" (`isAging`, `:2200`) |
-| > 45 min | `expires_at` has passed; `loadReports` only reads non-expired rows (`:1443`) |
+| 0–45 min | Fresh — counted by `estimateWait` and `venueFreshStatus` |
+| 15–45 min | Aging: colour fades, age is shown with "· äldre" (`isAging` in `renderExploreVenueRow`) |
+| > 45 min | `expires_at` has passed (set in `submitReport`); `loadReports` only reads non-expired rows |
 
 **Naming trap:** the CSS class `.erow--stale` is set by the variable `isAging`, not `isStale`
-(`:2217`). `isStale` means ≥45 min, and a row that old renders as `.erow--empty` instead
-(`:2201–2202`). Read the variable, not the class name.
+(both in `renderExploreVenueRow`). `isStale` means ≥45 min, and a row that old renders as
+`.erow--empty` instead — `isEmpty` is `!hasData || isStale`. Read the variable, not the class name.
 
 **45 minutes is the only freshness boundary in the code.** There is no 25-minute window and no
 30-minute cutoff anywhere. The model and the summary line use the same number on purpose.
 
-**`computeStatus(venueId, reports)` — what it actually does (`:405`):**
+**`computeStatus(venueId, reports)` — what it actually does:**
 - Calls `estimateWait` first. If that returns an estimate, the status is `waitToStatus(est)`.
 - Only when `estimateWait` returns null does it fall back to reported `queue_status` values:
   a majority vote across reports fresher than 45 min, else the single most recent report.
@@ -163,14 +163,14 @@ QueueBar's current security boundary (verified):
 
 **Layer 1 — Input validation**
 
-Current client-side validation (verified in `submitReport`, `src/main.js:1427`):
-- The venue comes from `getVenueById(id)` and the flow aborts on `if (!selectedRV) return`
-  (`:3015`, `:3025`), so a venue outside VENUES cannot be picked through the UI
+Current client-side validation (verified in `submitReport` in `src/main.js`):
+- The venue comes from `getVenueById(id)` in `pickRV`, and `pickAhead` aborts on
+  `if (!selectedRV) return`, so a venue outside VENUES cannot be picked through the UI
 - There is NO status validation, because the user never picks one — `queue_status` is derived
-  by `waitToStatus(estimateWait(...))` (`:1439`)
+  in `submitReport` by `waitToStatus(estimateWait(...))`
 - `people_ahead` is not range-checked in JS; it comes from fixed buttons in the UI
-- Comment length is capped by `maxlength="80"` in `index.html:126` — an HTML attribute, not a
-  JS check, so a direct API call ignores it
+- Comment length is capped by `maxlength="80"` on `#rs-comment` in `index.html` — an HTML
+  attribute, not a JS check, so a direct API call ignores it
 
 **Gap**: all validation is client-side. A direct Supabase API call bypasses it entirely.
 
@@ -191,9 +191,9 @@ Three limits already exist. Do not re-invent them:
 
 | Limit | Where | Value |
 |---|---|---|
-| Between initial reports, per user, across ALL venues | `src/main.js:1431` | 20 min |
-| Between follow-ups inside a queue session | `src/main.js:1479` (`QS_MIN_GAP`) | 4 min |
-| Server-side rejection | error path at `src/main.js:1469` (`rate_limited`) | **VERIFIERA** |
+| Between initial reports, per user, across ALL venues | `submitReport` | 20 min |
+| Between follow-ups inside a queue session | `QS_MIN_GAP` | 4 min |
+| Server-side rejection | `rate_limited` path in `reportErrorText` | **VERIFIERA** |
 
 The first two are client-side: UX, not a security boundary. A direct API call bypasses both.
 
@@ -219,7 +219,7 @@ Current failure modes (verified):
 - Supabase unavailable → `_loadState = 'error'` → "Ingen kontakt med servern", and rows that
   already loaded are KEPT (`renderLoadFailure`). A server failure must never read as a quiet
   night — see the four load states in `CLAUDE.md`
-- Mapbox error → `map.on('error')` sets `map = null` and calls `showMapError` (`:1194`). An
+- Mapbox error → `map.on('error')` sets `map = null` and calls `showMapError`. An
   error state IS shown, but ANY error kills the map permanently, including a single dropped
   tile request (known debt 6)
 - Network loss mid-report → submit fails → user sees error toast (verify this actually fires)
