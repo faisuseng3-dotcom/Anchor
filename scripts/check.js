@@ -76,6 +76,91 @@ if (diffHits.length) {
   console.error('   Återställ filen (git checkout <commit> -- <fil>) och applicera patchen på riktigt.');
 }
 
+// ── Filstorlek ───────────────────────────────────────────────────────────────
+//
+// src/main.js har trunkerats två gånger av AI-redigeringar, och en gång ersatts av
+// patch-text. Spärren ovanför fångar patch-texten; den här fångar motsatsen — en fil
+// som växer okontrollerat, eller en ny monolit som smyger in bredvid.
+//
+// De två befintliga monoliterna är FRYSTA med marginal. Allt nytt under src/ får 400
+// rader. Syftet är att hindra NÄSTA monolit, inte att krympa dessa två.
+//
+// Höj aldrig en gräns för att bli grön. Dela upp filen, eller lägg till en rad här med
+// en motivering i kommentaren. En gräns som flyttas vid varje rött bygge skyddar inget.
+
+const SIZE_LIMITS = {
+  'src/main.js': 3500,   // monoliten. Dela inte upp utan en testlåst refactor-plan.
+  'src/style.css': 1600  // befintlig, fryst med marginal.
+};
+const DEFAULT_SRC_LIMIT = 400;
+
+// Samma räkning som `wc -l`: en avslutande radbrytning är inte en egen rad. Utan
+// avdraget rapporterar kontrollen en rad för mycket och gränserna här nedan, som är
+// satta mot `wc -l`, blir förskjutna med ett.
+function lineCount(file) {
+  const text = fs.readFileSync(file, 'utf8');
+  return text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+}
+
+function filesUnder(dir, out) {
+  out = out || [];
+  if (!fs.existsSync(dir)) return out;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) filesUnder(full, out);
+    else out.push(full);
+  }
+  return out;
+}
+
+const sizeHits = [];
+for (const file of filesUnder(path.join(root, 'src'))) {
+  const rel = path.relative(root, file).split(path.sep).join('/');
+  const limit = SIZE_LIMITS[rel] !== undefined ? SIZE_LIMITS[rel] : DEFAULT_SRC_LIMIT;
+  const lines = lineCount(file);
+  if (lines > limit) sizeHits.push(rel + ' — ' + lines + ' rader, gränsen är ' + limit);
+}
+check('File size: every file under src/ is within its limit', sizeHits.length === 0);
+if (sizeHits.length) {
+  sizeHits.forEach((h) => console.error('     ' + h));
+  console.error('   Dela upp filen. Höj gränsen i SIZE_LIMITS bara med en motivering.');
+}
+
+// ── onclick måste vara exponerat på window ────────────────────────────────────
+//
+// ES-moduler har inget globalt scope. En funktion i ett onclick-attribut som inte ligger
+// i Object.assign(window, …) längst ned i src/main.js kastar ReferenceError vid klick —
+// tyst, ända tills någon trycker. Inget enhetstest fångar det: DOM-strängarna byggs vid
+// rendering, inte vid import.
+//
+// BEGRÄNSNING: vissa onclick byggs dynamiskt, t.ex. onclick="' + rowOnClick + '". De kan
+// inte kontrolleras statiskt och ingår inte. Kontrollen täcker de literala namnen.
+
+const winBlockStart = js.indexOf('Object.assign(window');
+const winBlock = winBlockStart === -1 ? '' : js.slice(winBlockStart, js.indexOf('});', winBlockStart));
+const exposed = new Set((winBlock.match(/^\s+([A-Za-z_$][\w$]*)\s*[,:]/gm) || [])
+  .map((m) => m.trim().replace(/[,:]$/, '')));
+
+const ONCLICK_RE = /onclick=\\?["']?\s*([A-Za-z_$][\w$]*)\s*\(/g;
+const onclickHits = [];
+for (const [rel, text] of [['index.html', html], ['src/main.js', js]]) {
+  let m;
+  ONCLICK_RE.lastIndex = 0;
+  while ((m = ONCLICK_RE.exec(text)) !== null) {
+    if (exposed.has(m[1])) continue;
+    const line = text.slice(0, m.index).split('\n').length;
+    onclickHits.push(rel + ':' + line + ' — ' + m[1] + '()');
+  }
+}
+check('onclick handlers are exposed via Object.assign(window, …)',
+  winBlockStart !== -1 && onclickHits.length === 0);
+if (winBlockStart === -1) console.error('     Object.assign(window, …) hittades inte i src/main.js');
+if (onclickHits.length) {
+  console.error('   Dessa anropas från onclick men finns inte på window — klicket kastar ReferenceError:');
+  [...new Set(onclickHits)].forEach((h) => console.error('     ' + h));
+}
+
 // ── Architecture ─────────────────────────────────────────────────────────────
 check('Vite entry: src/main.js referenced in index.html', html.includes('src="/src/main.js"'));
 check('src/style.css exists', fs.existsSync(path.join(root, 'src/style.css')));

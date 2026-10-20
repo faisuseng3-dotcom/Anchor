@@ -12,12 +12,12 @@ siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
 Produktion: `anchor-queuebar.vercel.app` (använd **aldrig** en Vercel-URL med slumpkod i mitten —
 de är frysta ögonblicksbilder).
 
-## Teknisk stack (verifierad 2026-10-18)
+## Teknisk stack
 
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 139 rader), `src/style.css` (1 370 rader), `index.html` (273 rader) |
+| Kod | `src/main.js` (monoliten), `src/style.css`, `index.html` (skal) — radantalen spärras maskinellt i `scripts/check.js`, inte här |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -53,7 +53,7 @@ längst ned i `src/main.js`. Annars kastar klicket `ReferenceError`.
 ## Var logiken finns
 
 Sök på funktionsnamnet — **inte på radnummer.** Dokumentationen innehöll tidigare radnummer och de
-blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
+blev felaktiga inom ett dygn när en commit ändrade filens längd. Använd
 `grep -n "function estimateWait" src/main.js`.
 
 | Vad | Funktioner |
@@ -79,11 +79,11 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 120 enhetstester (Vitest)
+npm test                   # enhetstester (Vitest) — antalet rapporteras av körningen
 npm run test:watch         # kör om vid varje sparning
-npm run e2e                # 10 webbläsartester (Playwright) — kräver en webbläsare, se nedan
+npm run e2e                # webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
-npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
+npm run dev + ?testdata=true   # testrapporter för ett urval ställen (antalet: `injectTestData`)
 ```
 
 `npm run verify` är `vitest run && node scripts/check.js && vite build`. Kör det, inte delarna var
@@ -115,15 +115,15 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 3 187-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på monoliten i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
 
 ## Difftext får aldrig checkas in som källkod
 
-Den 19 oktober ersattes alla 3 198 rader i `src/main.js` med **patch-texten** som skulle appliceras
-på filen. Filen blev en 47-radig unified diff, `vite build` dog på rad 1, och Vercels
+Den 19 oktober ersattes hela `src/main.js` med **patch-texten** som skulle appliceras
+på filen. Filen blev en unified diff, `vite build` dog på rad 1, och Vercels
 produktionsdeploy fallerade. Rollup läste `--- a/src/main.js` som en dekrementoperator.
 
 Första kontrollen i `scripts/check.js` letar nu efter fyra signaturer i alla `.js`, `.mjs`, `.cjs`,
@@ -141,9 +141,9 @@ YAML, så de skulle ge falska träffar.
 Den här kontrollen är billigare, namnger filen och signalen, och täcker varje källfil i stället för
 bara de som nås från ingångspunkten.
 
-**Fem tester i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
+**Testerna i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
 på noll. Fallerar något av dem är vakten `aheadBucket(first.people_ahead).width > 0` borta.
-**Nio tester i `tests/loadstate.test.js`** plus tre i `e2e/app.spec.js` skyddar mot att ett
+**`tests/loadstate.test.js`** och feltillstånds-testerna i `e2e/app.spec.js` skyddar mot att ett
 serverfel åter ser ut som en tyst kväll.
 
 ## Fyra inläsningslägen — de får aldrig slås samman
@@ -216,7 +216,7 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 `getStatusColor()`, `STATUS_COLORS` och `heroColors`.
 
 Den neutrala paletten synkroniserade `free`, `short`, `medium` och `long` över alla fyra. **`unknown`
-är fortfarande osynkroniserad**, verifierat på HEAD `28040f2`:
+är fortfarande osynkroniserad** — kontrollera med `grep -n "STATUS_COLORS" src/main.js`:
 
 | Källa | `unknown` |
 |---|---|
@@ -262,12 +262,22 @@ aggregeringen eller säkerheten gör det.
 - **Skriv aldrig om en hel fil.** Kirurgiska ändringar.
 - **Läs filen efter varje mönsterbaserad ändring** (`sed`, `perl`, `awk`, sök-och-ersätt). Ett
   mönster som matchar fel ändrar inte en rad utan alla, och det syns inte i utdata. En
-  `perl`-ersättning avsedd för en rad i `CLAUDE.md` sprutade in sig före alla 256 raderna och
-  tredubblade filen — `npm run verify` var grönt hela tiden, för ett testsvit verifierar inte en
+  `perl`-ersättning avsedd för en rad i `CLAUDE.md` sprutade in sig före varje rad i filen och
+  tredubblade den — `npm run verify` var grönt hela tiden, för ett testsvit verifierar inte en
   Markdown-fil. Föredra exakta redigeringar framför regex när träffarna är få.
 - **Verifiera det du faktiskt ändrade**, inte bara att något annat fortfarande fungerar. Gröna
   tester är inget bevis för att den redigerade filen är hel.
 - Skilj alltid **befintliga problem** från problem din ändring orsakade.
+- **Lita inte på radantal, commit-SHA:or eller minnesbilder av filstrukturen.** Verifiera mot
+  aktuell kod. Radantal spärras maskinellt i `scripts/check.js` — skriv dem inte i dokumentation,
+  de ruttnar inom ett dygn.
+- **`src/main.js` är den stora monolitfilen.** Bryt inte ut kod ur den utan en separat,
+  testlåst refactor-plan: testerna läser modellen ur filen via `tests/harness.js`, så en flytt
+  bryter dem tyst.
+- **Varje påstående om beteende, gräns, schema eller flöde ska ha en källhänvisning: fil +
+  funktionsnamn, aldrig radnummer.** Funktionsnamnet räcker när `grep` hittar det unikt; lägg
+  till filnamnet bara när namnet är tvetydigt. Saknas källa är påståendet en hypotes och ska
+  märkas **VERIFIERA**. Skriv aldrig "verifierat" om något du inte kört.
 
 ## Säkerhet
 
@@ -310,9 +320,12 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Väntetid är aldrig en fast sträng per status — alltid `venueWaitText()`
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
-- Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)
+- Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum
+  (`QS_MIN_GAP`). Servern avvisar också med `rate_limited` (`reportErrorText`) — gränsen uppges
+  vara 3 min, men **VERIFIERA**: ingen SQL finns i repot, se Känd skuld 1
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
-- "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
+- "På väg"-antal hämtas från RPC `on_my_way_counts()` (`loadOnMyWayCounts`); klienten döljer
+  antal under 3. **RPC:n saknas i databasen** — se Känd skuld 10
 - `forecastWait()` visas bara med ≥3 initial-rapporter på 30 min över ≥10 min
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.
   Priorn väger som 2 sessioner, så den är **trög** — med 3 mätningar väger den fortfarande 40 %
@@ -333,15 +346,18 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 8. `limit(100)` i `loadReports` kan tysta hastighetsmätningen en full fredag (B-05 i
    [docs/QUEUE_LOGIC.md](docs/QUEUE_LOGIC.md))
 9. Realtime och 30-sekunderspollningen körs samtidigt; varje `insert` får alla klienter att läsa om
+10. **`on_my_way_counts`-RPC:n finns inte heller.** Svarade `404 — Could not find the function
+    public.on_my_way_counts` vid körning i webbläsare 2026-10-19 (`loadOnMyWayCounts` loggar felet
+    och returnerar tomt). "På väg"-räknaren har alltså aldrig visat serverdata
 
 **Åtgärdat:**
 
 - `sessionRates` mätte takten 0 från en session som rapporterat "Ingen kö"
   (`aheadBucket(0).width` är 0). Två sådana sessioner fick appen att visa "Fullt" när kön började
-  byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
-  `tests/sessions.test.js`
+  byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av regressionstester
+  i `tests/sessions.test.js`
 - Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
-- Modellen hade inga tester. 120 enhetstester + 10 E2E-tester finns nu
+- Modellen hade inga tester. Enhetstester (Vitest) och E2E-tester (Playwright) finns nu
 - Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
   `.github/workflows/verify.yml`
 
