@@ -40,17 +40,23 @@ For any non-trivial change:
 4. Run `node scripts/check.js`. A failing baseline check means the system is already broken.
 5. Identify the most consequential verified weakness — not a hypothetical.
 
-**The data flow in QueueBar (as of this session):**
+**The data flow in QueueBar (verified in `src/main.js`):**
 
 ```
-User submits report
-  → client validates (venue ID, level, optional comment)
-  → Supabase insert (reports table: venue_id, level, created_at, comment)
-  → loadReports() polls on load + after submit
-  → allReports[] (raw merged array)
-  → computeStatus(venueId, reports) → status string
-  → render functions (explore, live, map markers, venue card)
+User picks a venue and HOW MANY PEOPLE ARE AHEAD — never a status level
+  → submitReport: venue from getVenueById, people_ahead, optional comment
+  → queue_status is DERIVED, not chosen: waitToStatus(estimateWait(...))   :1439
+  → Supabase insert: venue_id, venue_name, queue_status, user_id, people_ahead,
+                     report_type, queue_session, expires_at (= now + 45 min), comment
+  → loadReports() — 30 s poll + Realtime + after submit; keeps known venue_id only
+  → allReports[]
+  → estimateWait() → formatWait() → venueWaitText()
+  → map · explore · live · venue card   (all through venueWaitText)
 ```
+
+`venueWaitText(venueId)` is the only path to a wait time on any screen. Keep it that way.
+`getStatusLabel()` returns fixed strings and is ONLY a fallback for old reports that carry no
+`people_ahead`.
 
 Keep this mental model current. If a refactor changes the flow, update it here.
 
@@ -63,29 +69,39 @@ A submitted report is not ground truth. Design the system to reflect that.
 **Explicit lifecycle states:**
 
 ```
-submitted → [client validation] → stored → fresh → aging → stale → expired
+submitted → [client validation] → stored → fresh → aging → expired
 ```
 
-**Rules (current implementation, verified):**
+There is no separate "stale but still shown" state: `expires_at` is `created_at + 45 min`, the
+same boundary the model uses, so a report leaves the data and the display at the same moment.
+
+**Rules (verified in `src/main.js`):**
 
 | Window | Treatment |
 |--------|-----------|
-| 0–25 min | Fresh — full weight in computeStatus |
-| 25–45 min | Aging — included but should be visually degraded |
-| 45 min–2 h | Stale — computeExploreSummary uses 30-min cutoff; explore sort treats as empty |
-| > 2 h | Not considered in aggregation |
+| 0–45 min | Fresh — counted by `estimateWait` (`:307`) and `venueFreshStatus` (`:2121`) |
+| 15–45 min | Aging: colour fades, age is shown with "· äldre" (`isAging`, `:2200`) |
+| > 45 min | `expires_at` has passed; `loadReports` only reads non-expired rows (`:1443`) |
 
-**computeStatus behavior (verify before changing):**
-- Takes the most recent report within the freshness window
-- Does NOT average or weight multiple reports
-- Returns 'none' when no fresh reports exist
+**Naming trap:** the CSS class `.erow--stale` is set by the variable `isAging`, not `isStale`
+(`:2217`). `isStale` means ≥45 min, and a row that old renders as `.erow--empty` instead
+(`:2201–2202`). Read the variable, not the class name.
 
-**What this does not yet handle (verified gaps):**
-- Duplicate detection: a user can submit the same status for the same venue in quick succession
-- Outlier resistance: a single "long" report when all others say "free" is taken at face value
-- Confidence signal: one report has the same display weight as ten independent reports
+**45 minutes is the only freshness boundary in the code.** There is no 25-minute window and no
+30-minute cutoff anywhere. The model and the summary line use the same number on purpose.
 
-When improving aggregation, start simple. A recency-weighted median over the last 3 fresh reports is more robust than the current last-report-wins approach and still explainable. Introduce complexity only when a simpler method demonstrably fails.
+**`computeStatus(venueId, reports)` — what it actually does (`:405`):**
+- Calls `estimateWait` first. If that returns an estimate, the status is `waitToStatus(est)`.
+- Only when `estimateWait` returns null does it fall back to reported `queue_status` values:
+  a majority vote across reports fresher than 45 min, else the single most recent report.
+- Returns `'unknown'` — not `'none'` — when the venue has no usable reports.
+
+It is a status classifier for colour and label. The wait time itself comes from `estimateWait`.
+
+**What the system does not yet handle (verified gaps):**
+- Duplicate detection: two users can report the same venue seconds apart; nothing merges them
+- Outlier resistance: one extreme `people_ahead` moves the estimate at face value
+- Confidence signal: `computeConfidence` exists but is dead code — nothing displays confidence
 
 ---
 
@@ -102,9 +118,9 @@ This is QueueBar's hardest product problem. Communicate it honestly in every lay
 
 **Display rules:**
 - Fresh + single report: show status with hedged language ("Verkar kort kö")
-- Fresh + agreement (≥ 2 reports same level): show with confidence
-- Fresh + conflict (reports disagree on level): show most recent, add uncertainty indicator
-- Aging (25–45 min): dim the status, show age prominently
+- Fresh + agreement (≥ 2 reports same `queue_status`): show with confidence
+- Fresh + conflict (reports disagree): show the estimate, add an uncertainty indicator
+- Aging (15–45 min): dim the status, show age prominently
 - Stale / expired: show empty state — "Senast: X min sedan" as context only
 
 **Language:** "~15 min" not "15 min". Swedish: "Verkar...", "Troligtvis...", "Ingen aktuell data".
@@ -113,32 +129,25 @@ This is QueueBar's hardest product problem. Communicate it honestly in every lay
 
 ## 5. Queue estimation — what to measure before changing
 
-Before modifying `computeStatus` or the aggregation logic:
+The wait time is `people ahead ÷ door rate`. It is not a vote over reported statuses.
+Read `docs/QUEUE_LOGIC.md` before touching it.
 
-1. Print `allReports` for one venue and read it. What does the raw data look like?
-2. How many reports does a typical active venue have in a 25-minute window?
-3. What is the median report age at time of display?
+**The block from `PACE_RATE` to `getStatusLabel` in `src/main.js` is the core of the app.**
+Do not change it unless changing it is the task. It is covered by the unit tests in `tests/`.
 
-Current method: last-report-wins (most recent report within window). Weaknesses:
-- One outlier report immediately replaces all prior signals
-- No minimum evidence threshold
-- No confidence quantification
+Three rate layers, in order of preference (`estimateWait`):
+1. Tonight's measured sessions for this venue — `measureQueueRates`, 45-min window
+2. Same weekday ±1 h with ≥3 sessions — `historicalRateFor`
+3. The `venue.pace` prior — weighs as 2 sessions, so it is deliberately slow to move
 
-Better method (implement only when measurably needed):
-```
-function computeStatusRobust(venueId, reports) {
-  var window = Date.now() - 25 * 60 * 1000;
-  var fresh = reports
-    .filter(r => r.venue_id === venueId && new Date(r.created_at) > window)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  if (!fresh.length) return { status: 'none', confidence: 0, count: 0 };
-  // Weight: 1.0 for < 10 min, decay linearly to 0.3 at 25 min
-  // Take weighted majority across fresh reports
-  // Return { status, confidence: 0–1, count, latestAge }
-}
-```
+Before proposing any change, measure:
+1. Print `allReports` for one venue. What do the raw rows actually look like?
+2. Run `qbCalibration()` in the console: median error, bias, share inside the range.
+   A positive bias means the app promised a shorter wait than reality.
+3. How many measured sessions does an active venue really have within 45 minutes?
 
-Do not show artificial confidence percentages. Use thresholds: low / medium / high.
+Change the model when calibration shows it is wrong — not because another method sounds more
+principled. Do not show artificial confidence percentages. Use thresholds: low / medium / high.
 
 ---
 
@@ -147,17 +156,21 @@ Do not show artificial confidence percentages. Use thresholds: low / medium / hi
 **Map the actual architecture first. Do not assume.**
 
 QueueBar's current security boundary (verified):
-- Frontend: `index.html` — client-side JS, visible to all users
+- Frontend: `src/main.js` — all client-side JS, visible to all users. `index.html` is only the shell
 - Backend: Supabase (PostgreSQL + REST API via `@supabase/supabase-js`)
 - Auth: anonymous (no login) — the Supabase anon key is embedded in client code
 - RLS: unknown until inspected — **verify before assuming policies exist**
 
 **Layer 1 — Input validation**
 
-Current client-side validation (verified in `submitReport`):
-- Checks that `selectedRV` is a valid venue ID from VENUES array
-- Checks that level is one of: free/short/medium/long
-- Validates comment length (80 chars max)
+Current client-side validation (verified in `submitReport`, `src/main.js:1427`):
+- The venue comes from `getVenueById(id)` and the flow aborts on `if (!selectedRV) return`
+  (`:3015`, `:3025`), so a venue outside VENUES cannot be picked through the UI
+- There is NO status validation, because the user never picks one — `queue_status` is derived
+  by `waitToStatus(estimateWait(...))` (`:1439`)
+- `people_ahead` is not range-checked in JS; it comes from fixed buttons in the UI
+- Comment length is capped by `maxlength="80"` in `index.html:126` — an HTML attribute, not a
+  JS check, so a direct API call ignores it
 
 **Gap**: all validation is client-side. A direct Supabase API call bypasses it entirely.
 
@@ -166,27 +179,28 @@ Fix: add Supabase Row Level Security policies that enforce the same constraints 
 **Layer 2 — Authorization**
 
 Current state: anonymous submissions, no user identity.
-- Anyone can submit any status for any venue
-- No authentication required
-- Rate limiting: none (verified gap)
+- Anyone can submit a report for any venue
+- No authentication required; `user_id` is generated client-side and proves nothing
+- Rate limiting exists — see Layer 3. Do not add a fourth limit without reading them
 
 For anonymous apps, the practical defense is rate-limiting + duplicate detection, not auth.
 
 **Layer 3 — Rate limiting and spam**
 
-Current state: none (verified).
+Three limits already exist. Do not re-invent them:
 
-Minimum viable protection:
-```js
-// Client-side cooldown (UX only, not a security boundary)
-var _lastReportTime = {};
-function canSubmitReport(venueId) {
-  var last = _lastReportTime[venueId] || 0;
-  return Date.now() - last > 5 * 60 * 1000; // 5 min per venue
-}
-```
+| Limit | Where | Value |
+|---|---|---|
+| Between initial reports, per user, across ALL venues | `src/main.js:1431` | 20 min |
+| Between follow-ups inside a queue session | `src/main.js:1479` (`QS_MIN_GAP`) | 4 min |
+| Server-side rejection | error path at `src/main.js:1469` (`rate_limited`) | **VERIFIERA** |
 
-Server-side rate limiting requires Supabase Edge Functions or a middleware layer.
+The first two are client-side: UX, not a security boundary. A direct API call bypasses both.
+
+The server limit is real — the client has a dedicated error path for `rate_limited` — but its
+value is not in this repo. `CLAUDE.md` states 3 min for follow-ups. **VERIFIERA in the database
+before relying on it:** no SQL is under version control (known debt 1), so no policy or trigger
+can be read from here.
 
 **Layer 4 — Coordinated manipulation**
 
@@ -202,16 +216,23 @@ Do not permanently penalize reporters based on one event.
 **Layer 5 — Operational resilience**
 
 Current failure modes (verified):
-- Supabase unavailable → `loadReports()` fails → `allReports` stays empty → empty state shown (correct)
-- Mapbox unavailable → map fails to load → no graceful fallback to explore list
+- Supabase unavailable → `_loadState = 'error'` → "Ingen kontakt med servern", and rows that
+  already loaded are KEPT (`renderLoadFailure`). A server failure must never read as a quiet
+  night — see the four load states in `CLAUDE.md`
+- Mapbox error → `map.on('error')` sets `map = null` and calls `showMapError` (`:1194`). An
+  error state IS shown, but ANY error kills the map permanently, including a single dropped
+  tile request (known debt 6)
 - Network loss mid-report → submit fails → user sees error toast (verify this actually fires)
 
 Never expose Supabase keys beyond the public anon key. The anon key is intentionally public but must be URL-restricted in Supabase dashboard settings.
 
 **Layer 6 — Privacy**
 
-Current data collected per report: `venue_id`, `level`, `created_at`, optional `comment`.
-- No user identity stored
+Current data collected per report: `venue_id`, `venue_name`, `queue_status`, `people_ahead`,
+`report_type`, `queue_session`, `user_id`, `created_at`, `expires_at`, optional `comment`.
+- `user_id` is an anonymous id generated and stored on the device (`getUserId`), not a login
+- `select('*')` in `loadReports` returns other users' `user_id` to every client —
+  **VERIFIERA** whether RLS should restrict that column
 - No IP address stored in client-visible data
 - Location used client-side only (distance calculation, "på väg" mode) — not transmitted
 
@@ -248,10 +269,10 @@ QueueBar has three search surfaces sharing one implementation (`venueSearch`):
 | -1 | No match | — |
 
 **Before modifying search:**
-1. Run the node test in the last search commit to establish a baseline.
-2. Add the failing case as a new test assertion.
+1. Run `npx vitest run tests/search.test.js` to establish a baseline.
+2. Add the failing case as a new assertion in that file.
 3. Fix the algorithm.
-4. Verify all prior assertions still pass.
+4. Run `npm run verify` and confirm every prior assertion still passes.
 
 ---
 
@@ -335,7 +356,9 @@ Only act on verified issues in Phase C. Document hypotheticals for future invest
 - Test the failure case, not just the success case. If you added rate limiting, verify it actually blocks the second submission.
 - Do not claim a security control works until you have sent the request it is supposed to block.
 - Preserve working behavior. When refactoring aggregation, verify `?testdata=true` still renders correctly.
-- Never commit `.env` or any private key. The Supabase anon key in HTML is intentionally public (URL-restricted).
+- Never commit `.env` or any private key. The Mapbox token, Supabase URL and anon key sit in
+  plain text in `src/main.js`. That is intentional and safe ONLY if RLS is correct — which is
+  unverified (`CLAUDE.md`, known debt 1).
 
 ---
 
