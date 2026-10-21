@@ -118,6 +118,28 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
 **Ingen linter finns.** ESLint på monoliten i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
+### Sök och läs smalt
+
+Kontexten är en budget. En bred sökning eller en helfilsläsning kan kosta mer än hela
+uppgiften den skulle lösa.
+
+- **Sök aldrig brett.** Använd `grep -rn <mönster> src tests scripts`, aldrig
+  `grep -rn <mönster> .` — den senare går in i `node_modules` och ger hundratals gånger
+  fler träffar, nästan alla ur beroenden.
+- **Uteslut alltid `node_modules/`, `QueueBar/`, `dist/` och `data/`** i sökningar.
+  `QueueBar/` är det separata Expo-projektet; `data/` är kandidatdata som appen aldrig
+  läser.
+- **Börja all diff-granskning med `git diff --stat`.** Diffa sedan en fil i taget. En full
+  `git diff origin/main...HEAD` är i storleksordningen hundra gånger större.
+- **Läs aldrig `src/main.js` i sin helhet.** Använd
+  `grep -n "function <namn>" -A30 src/main.js` eller motsvarande riktad läsning — samma
+  svar, en bråkdel av kostnaden.
+- **Läs aldrig binärfiler, lockfiles, byggartefakter eller filer under `QueueBar/`.**
+  `.claude/settings.json` nekar läsning av `QueueBar/`, `data/`, `dist/` och
+  `node_modules/`. Vid test nekades `Read`, `Grep` **och** ett `cat` i skalet. Spärren är
+  ändå ett skyddsräcke och inte en mur: reglerna ovan gäller eftersom de styr *hur* du
+  söker, inte bara vad du får öppna.
+
 Se [docs/TESTING.md](docs/TESTING.md).
 
 ## Difftext får aldrig checkas in som källkod
