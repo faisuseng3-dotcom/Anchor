@@ -31,7 +31,10 @@ function between(startAnchor, endAnchor) {
 const venuesBlock = between('const VENUES = [', '\n    ];') + '\n    ];';
 
 // Väntetidsmodellen: allt mellan takt-konstanterna och den första DOM-beroende funktionen.
-const modelBlock = between('var PACE_RATE', 'function getStatusLabel');
+// Slutankaret är getStatusColor, inte getStatusLabel, så att getStatusLabel kommer med:
+// venueWaitText faller tillbaka på den när estimateWait returnerar null, och utan den
+// kastar det anropet ReferenceError. getStatusLabel är en ren objektuppslagning.
+const modelBlock = between('var PACE_RATE', 'function getStatusColor');
 
 // Fuzzy-sökningen. Stoppar före "── Utforska", som rör document.
 const searchBlock = between('function _searchNorm', '// ── Utforska');
@@ -44,6 +47,9 @@ const exsumBlock = between('function exsumTimeSince', 'function renderExploreSum
 const shims = `
   function getVenueById(id) { return VENUES.find(function(v) { return v.id === id; }); }
   var allReports = [];
+  // venueWaitText läser allReports ur modulscopet i stället för att ta det som argument.
+  // Sättaren finns bara för att testerna ska kunna nå den vägen utan att röra src/main.js.
+  function _setAllReports(rows) { allReports = rows || []; }
 `;
 
 const exported = [
@@ -52,7 +58,8 @@ const exported = [
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
   'getVenueById', '_searchNorm', 'venueScore', 'venueSearch',
-  'exsumText', 'exsumTimeSince'
+  'exsumText', 'exsumTimeSince',
+  'venueWaitText', 'getStatusLabel', '_setAllReports'
 ];
 
 const box = {};
@@ -71,7 +78,8 @@ export const {
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
   getVenueById, _searchNorm, venueScore, venueSearch,
-  exsumText, exsumTimeSince
+  exsumText, exsumTimeSince,
+  venueWaitText, getStatusLabel, _setAllReports
 } = box;
 
 // ── Testdatabyggare ─────────────────────────────────────────────────────────
