@@ -38,7 +38,10 @@ jobs:
 
   e2e:
     name: E2E i webbläsare
-    runs-on: ubuntu-latest
+    # Låst, inte ubuntu-latest: den pekade om till en Ubuntu-version som Playwright 1.56 inte
+    # stödjer, och jobbet dog vid "playwright install --with-deps" innan något test kördes.
+    # Höj versionen här först när Playwright i package.json stödjer den nya.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
