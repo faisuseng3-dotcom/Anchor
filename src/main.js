@@ -2622,6 +2622,11 @@ import './style.css';
       var el = document.getElementById('explore-list');
       if (!el) return;
 
+      // Serverfel utan data: felkortet står kvar. Utan den här vakten skrev varje omritning (skärmbyte,
+      // sökning, filter) över det med en lista av tomma rader, och felet såg ut som en tyst kväll.
+      // Samma villkor som renderLoadFailure använder för att visa kortet.
+      if (_loadState === 'error' && !allReports.length) { showExploreError(); return; }
+
       // Base list: fuzzy search, preserves relevance order when query present
       var list = q ? venueSearch(q, VENUES) : VENUES.slice();
 
