@@ -3,29 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#08090F">
+  <meta name="theme-color" content="#0B0B0D">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;QueueBar&quot;,&quot;short_name&quot;:&quot;QueueBar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%2308090F&quot;,&quot;theme_color&quot;:&quot;%2308090F&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.ico&quot;,&quot;sizes&quot;:&quot;any&quot;}]}">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;QueueBar&quot;,&quot;short_name&quot;:&quot;QueueBar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230B0B0D&quot;,&quot;theme_color&quot;:&quot;%230B0B0D&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.svg&quot;,&quot;sizes&quot;:&quot;any&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;purpose&quot;:&quot;any&quot;}]}">
   <title>QueueBar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.fontshare.com">
-  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,600,500,400&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,600,500,400&display=swap" rel="stylesheet">
   <script type="module" src="/src/main.js"></script>
 </head>
 <body>
-  <div id="omw-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:800;padding:12px 16px;background:rgba(13,15,26,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08);align-items:center;gap:12px"></div>
+  <div id="omw-banner" role="status" aria-live="polite" style="display:none"></div>
 
-  <div class="bg-orbs">
-    <div class="bg-orb bg-orb-1"></div>
-    <div class="bg-orb bg-orb-2"></div>
-  </div>
   <div id="app">
     <section id="screen-home" class="screen active">
       <div id="map"></div>
-      <div class="map-pill">QueueBar</div>
+      <div class="map-topbar">
       <div class="map-search-float" id="map-search-float">
         <div class="map-search-inner">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -38,12 +35,17 @@
         </div>
         <div id="map-search-results"></div>
       </div>
+      <button class="avatar-btn" onclick="showScreen('profile')" aria-label="Profil">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+      </button>
+      </div>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
         <span class="err-toast-msg">Livedata kunde inte laddas</span>
         <button class="err-toast-retry" onclick="retrySupabase()">Försök igen</button>
       </div>
-      <div id="nearby-sheet">
+      <div id="best-now-card"></div>
+      <div id="nearby-sheet" style="display:none">
         <div class="sheet-handle-row" id="sheet-handle-row">
           <div class="sheet-handle"></div>
           <div class="sheet-count" id="sheet-count">Laddar...</div>
@@ -54,48 +56,61 @@
 
     <section id="screen-explore" class="screen">
       <div class="explore-sticky" id="explore-sticky">
-        <h1 class="explore-title">Utforska</h1>
+        <div class="screen-head">
+          <h1 class="explore-title">Just nu</h1>
+          <button class="avatar-btn avatar-btn--sm" onclick="showScreen('profile')" aria-label="Profil">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+          </button>
+        </div>
         <div class="search-box">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="explore-search" type="search" placeholder="Café Opera, Spy Bar, Södermalm…" autocomplete="off" oninput="debouncedFilterExplore()">
+          <input id="explore-search" type="search" placeholder="Sök ställe eller område" autocomplete="off" oninput="debouncedFilterExplore()">
         </div>
         <div class="filter-row" id="filter-row">
           <div class="chips-scroll">
             <button class="fbtn active" data-filter="all" onclick="setExploreFilter('all')">Alla <span class="fcount" id="fc-all"></span></button>
-            <button class="fbtn" data-filter="free" onclick="setExploreFilter('free')">Fri <span class="fcount fcount--free" id="fc-free"></span></button>
-            <button class="fbtn" data-filter="short" onclick="setExploreFilter('short')">Kort <span class="fcount fcount--short" id="fc-short"></span></button>
-            <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')">Lång <span class="fcount fcount--long" id="fc-long"></span></button>
+            <button class="fbtn" data-filter="free" onclick="setExploreFilter('free')"><span class="fdot fdot--free"></span>Ingen kö <span class="fcount" id="fc-free"></span></button>
+            <button class="fbtn" data-filter="short" onclick="setExploreFilter('short')"><span class="fdot fdot--short"></span>Kort <span class="fcount" id="fc-short"></span></button>
+            <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')"><span class="fdot fdot--long"></span>Lång <span class="fcount" id="fc-long"></span></button>
             <button class="fbtn" data-filter="bar" onclick="setExploreFilter('bar')">Barer</button>
             <button class="fbtn" data-filter="klubb" onclick="setExploreFilter('klubb')">Klubbar</button>
-            <button class="fbtn fbtn--plan" onclick="togglePlanningMode()">Planera</button>
+            <button class="fbtn fbtn--plan" onclick="togglePlanningMode()">Planera kväll</button>
           </div>
         </div>
       </div>
       <div id="explore-list-wrap">
         <div id="explore-summary" style="display:none"></div>
-        <div id="filter-context" style="display:none;font-size:10px;color:rgba(255,255,255,0.3);padding:8px 0 0"></div>
+        <div id="filter-context" style="display:none"></div>
         <div id="explore-list"></div>
       </div>
-      <div id="plan-bar" style="display:none;position:sticky;bottom:80px;left:0;right:0;padding:12px 16px;z-index:50">
-        <button id="plan-create-btn" onclick="computeEveningPlan()" disabled style="width:100%;height:52px;border-radius:14px;background:rgba(255,255,255,0.92);color:#0D0F1A;font-size:16px;font-weight:700;border:none;cursor:pointer;transition:opacity 150ms">Välj 2 till</button>
+      <div id="plan-bar" style="display:none">
+        <button id="plan-create-btn" onclick="computeEveningPlan()" disabled>Välj 2–4 ställen</button>
       </div>
     </section>
 
     <section id="screen-live" class="screen">
-      <div class="live-header">
-        <h1 class="screen-title">Live</h1>
-        <span id="live-dot"></span>
+      <div class="explore-sticky" id="live-sticky">
+        <div class="screen-head">
+          <div class="live-titles">
+            <h1 class="explore-title">Live</h1>
+            <div class="live-sub"><span id="live-dot"></span><span id="live-sub-text">Senaste 45 min</span></div>
+          </div>
+          <button class="avatar-btn avatar-btn--sm" onclick="showScreen('profile')" aria-label="Profil">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+          </button>
+        </div>
       </div>
-      <div id="live-feed"></div>
+      <div id="live-list-wrap">
+        <div id="live-feed"></div>
+      </div>
     </section>
 
     <section id="screen-report" class="screen">
       <div class="rp-wrap">
-        <div class="rp-header-row">
-          <h1 class="screen-title">Rapportera</h1>
+        <div class="screen-head">
+          <h1 class="explore-title">Rapportera</h1>
           <span id="rp-step-counter" class="rp-step-counter" style="display:none">1 / 3</span>
         </div>
-        <p class="rp-sub">Hjälp andra — tar 5 sekunder</p>
       </div>
 
       <div id="rs1">
@@ -110,85 +125,64 @@
       <div id="rs2" style="display:none">
         <div id="rs-vname"></div>
         <div class="rs-question">Hur många står framför dig?</div>
-        <button class="q-btn q-btn-count" onclick="pickAhead(0)"><span class="q-btn-num">Ingen kö</span><span class="q-btn-sub">gå rakt in</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
-        <button class="q-btn q-btn-count" onclick="pickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
-        <div style="margin-top:12px">
-          <input id="rs-comment" type="text" maxlength="80" placeholder="Valfri kommentar: fri entré, dresscode, VIP-kö öppen…" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;font-size:14px;color:rgba(255,255,255,0.8);font-family:inherit;outline:none" />
-        </div>
+        <input id="rs-comment" class="rs-comment" type="text" maxlength="80" placeholder="Kommentar (valfritt): fri entré, dresscode, VIP-kö…" />
+        <button class="q-btn q-btn-count q-fill-0" onclick="pickAhead(0)"><span class="q-btn-num">0</span><span class="q-btn-sub">Ingen kö — gå rakt in</span></button>
+        <button class="q-btn q-btn-count q-fill-1" onclick="pickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count q-fill-2" onclick="pickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count q-fill-3" onclick="pickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
+        <button class="q-btn q-btn-count q-fill-4" onclick="pickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
         <button class="rs-back" onclick="backToRs1()">← Byt ställe</button>
       </div>
 
       <div id="rs3" style="display:none">
-        <div class="rs-success-icon">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="rs-success-icon" id="rs-success-icon">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="rs-success-ring" cx="32" cy="32" r="24" transform="rotate(-90 32 32)"/>
+            <path class="rs-success-check" d="M22 33.5 L29.5 41 L43 25"/>
+          </svg>
         </div>
-        <div class="rs-thanks">Tack för din rapport!</div>
-        <div class="rs-points">+10 poäng</div>
+        <div class="rs-thanks">Tack — kön är uppdaterad</div>
+        <p class="rs-next">Står du kvar? Vi frågar snart hur långt du kommit. Då kan vi mäta hur snabbt kön rör sig.</p>
       </div>
     </section>
 
     <section id="screen-profile" class="screen">
-      <div class="pf-head">
-        <div class="pf-avatar">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+      <div class="screen-head">
+        <div>
+          <h1 class="explore-title">Profil</h1>
+          <div class="pf-sub" id="pf-sub">Anonym · inget konto</div>
         </div>
-        <div class="pf-name">Anonym Användare</div>
-        <span class="pf-level level-badge">Ny</span>
-      </div>
-
-      <div class="pf-stats">
-        <div class="pf-stat"><b id="stat-r">0</b><span>Rapporter</span></div>
-        <div class="pf-stat"><b id="stat-p">0</b><span>Poäng</span></div>
-        <div class="pf-stat"><b id="stat-d" class="days-count">0</b><span>Streak</span></div>
-      </div>
-
-      <div class="pf-card">
-        <div id="plabel">0 / 50 poäng till nästa nivå</div>
-        <div class="pf-track"><div id="pbar"></div></div>
       </div>
 
       <div class="pf-section">
-        <div class="rs-label">Dina badges</div>
-        <div class="pf-badges badges-row">
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="badge-item-label">Första rapport</div></div>
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><div class="badge-item-label">10 rapporter</div></div>
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="badge-item-label">Stamgäst</div></div>
-          <div class="badge-item"><div class="badge-item-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="badge-item-label">Legend</div></div>
+        <div class="rs-label">Dina rapporter</div>
+        <div class="pf-card pf-reports">
+          <b id="stat-r">0</b>
+          <span id="pf-reports-text">Du har inte rapporterat någon kö än.</span>
         </div>
       </div>
 
       <div class="pf-section">
         <div class="rs-label">Inställningar</div>
-        <div class="pf-card" style="padding-top:2px;padding-bottom:2px">
+        <div class="pf-card" style="padding-top:0;padding-bottom:0">
           <a class="pf-row" href="mailto:support@queuebar.se"><span>Kontakta oss<small>support@queuebar.se</small></span><span class="arrow">→</span></a>
+          <a class="pf-row" href="mailto:hello@queuebar.se"><span>Äger du ett ställe?<small>hello@queuebar.se</small></span><span class="arrow">→</span></a>
           <button class="pf-row" onclick="showPrivacyPolicy()"><span>Integritetspolicy</span><span class="arrow">→</span></button>
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span><span class="arrow">→</span></button>
         </div>
       </div>
-
-      <div class="pf-section">
-        <div class="pf-card pf-b2b">
-          <div class="pf-b2b-eyebrow">För krogar</div>
-          <div class="pf-b2b-title">Äger du ett ställe?</div>
-          <div class="pf-b2b-body">Realtidsdata om din kö · Se när gäster väljer bort dig</div>
-          <a class="pf-b2b-link" href="mailto:hello@queuebar.se">hello@queuebar.se →</a>
-        </div>
-      </div>
     </section>
 
-    <div id="qr-overlay" onclick="closeQuickReport()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);"></div>
-    <div id="qr-sheet" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:390px;background:#0D0F1A;border:1px solid rgba(255,255,255,0.09);border-bottom:none;border-radius:20px 20px 0 0;padding:20px 20px 48px;z-index:201;">
-      <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 20px;"></div>
-      <div id="qr-vname" style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;"></div>
-      <div id="qr-question" style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:20px;">Hur många står framför dig?</div>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(0)"><span class="q-btn-num">Ingen kö</span><span class="q-btn-sub">gå rakt in</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
-      <button class="q-btn q-btn-count" onclick="quickPickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
+    <div id="qr-overlay" class="qr-overlay" onclick="closeQuickReport()" style="display:none"></div>
+    <div id="qr-sheet" class="qr-sheet" role="dialog" aria-labelledby="qr-vname" style="display:none">
+      <div class="qr-handle"></div>
+      <div id="qr-vname" class="qr-vname"></div>
+      <div id="qr-question" class="qr-question">Hur många står framför dig?</div>
+      <button class="q-btn q-btn-count q-fill-0" onclick="quickPickAhead(0)"><span class="q-btn-num">0</span><span class="q-btn-sub">Ingen kö — gå rakt in</span></button>
+      <button class="q-btn q-btn-count q-fill-1" onclick="quickPickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count q-fill-2" onclick="quickPickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count q-fill-3" onclick="quickPickAhead(37)"><span class="q-btn-num">25–50</span><span class="q-btn-sub">personer framför</span></button>
+      <button class="q-btn q-btn-count q-fill-4" onclick="quickPickAhead(60)"><span class="q-btn-num">50+</span><span class="q-btn-sub">ser inte slutet</span></button>
     </div>
 
     <nav id="bottom-nav">
@@ -197,51 +191,54 @@
         Karta
       </button>
       <button class="tab" data-screen="explore" onclick="showScreen('explore')">
-        <span class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><line x1="16" y1="16" x2="21" y2="21"/></svg></span>
-        Utforska
+        <span class="icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg></span>
+        Lista
+      </button>
+      <button class="tab tab--report" data-screen="report" onclick="showScreen('report')" aria-label="Rapportera kön">
+        <span class="tab-report-disc"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        Rapportera
       </button>
       <button class="tab" data-screen="live" onclick="showScreen('live')">
         <span class="icon"><svg viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><span class="live-dot"></span></span>
         Live
-      </button>
-      <button class="tab" data-screen="report" onclick="showScreen('report')">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M17.586 3.414a2 2 0 0 1 2.828 2.828L12 14.657l-4 1 1-4 8.586-8.243z"/></svg></span>
-        Rapportera
-      </button>
-      <button class="tab" data-screen="profile" onclick="showScreen('profile')">
-        <span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span>
-        Profil
       </button>
     </nav>
   </div>
 
   <div id="vc-overlay" onclick="closeVenueCard()"></div>
   <div id="venue-card">
-    <div class="vc-handle"></div>
+    <div class="vc-grab" id="vc-grab"><div class="vc-handle"></div></div>
     <div class="vc-header">
       <span id="vc-name"></span>
-      <button id="vc-close" onclick="closeVenueCard()" aria-label="Stäng">×</button>
+      <button id="vc-fav" class="vc-icon-btn" onclick="vcToggleFavorite(event)" aria-label="Favorit">
+        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </button>
+      <button id="vc-close" class="vc-icon-btn" onclick="closeVenueCard()" aria-label="Stäng">×</button>
+    </div>
+    <div class="vc-row">
+      <span id="vc-area"></span>
+      <span id="vc-closing"></span>
     </div>
     <div id="vc-status"></div>
-    <div id="vc-info"></div>
+    <div id="vc-sub"></div>
     <div class="vc-sep"></div>
-    <div class="vc-row">
-      <span id="vc-closing"></span>
-      <span id="vc-area"></span>
+    <div id="vc-info"></div>
+    <div class="vc-actions-main">
+      <button class="vc-btn vc-omw" onclick="vcOnMyWay()">På väg dit</button>
+      <button class="vc-btn vc-primary" onclick="goToReport()">Rapportera kön</button>
     </div>
-    <button class="vc-btn vc-primary" onclick="goToReport()">Rapportera köläge</button>
     <div class="vc-actions">
-      <button class="vc-btn vc-secondary" onclick="if(activeVenue)goOnMyWay(activeVenue.id)">På väg dit</button>
-      <button class="vc-btn vc-secondary" onclick="if(activeVenue)shareVenue(activeVenue.id)">Dela</button>
-      <button class="vc-btn vc-secondary" onclick="openDirections()">Vägbeskrivning</button>
-      <button class="vc-btn vc-secondary" onclick="closeVenueCard()">Tillbaka</button>
+      <button class="vc-link" onclick="openDirections()">Vägbeskrivning</button>
+      <span class="vc-link-sep">·</span>
+      <button class="vc-link" onclick="vcShare()">Dela</button>
     </div>
   </div>
 
   <div id="consent-modal">
     <div class="consent-card">
-      <div class="consent-icon">
-        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><rect x="6" y="11" width="13" height="7" rx="3.5" fill="#34E07F"/><rect x="6" y="21" width="22" height="7" rx="3.5" fill="#FFD23F"/><rect x="6" y="31" width="30" height="7" rx="3.5" fill="#FF4D5E"/></svg>
+        <span>QueueBar</span>
       </div>
       <div class="consent-title">Innan du börjar</div>
       <div class="consent-text">Vi sparar ett anonymt ID på din enhet. Inget namn eller email.</div>
@@ -270,13 +267,13 @@
   </div>
 
 
-  <div id="install-prompt" style="display:none;position:fixed;bottom:88px;left:16px;right:16px;z-index:700;background:rgba(13,15,26,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;align-items:center;gap:12px">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:600;color:#fff;line-height:1.3">Lägg till på hemskärmen</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px">Öppna QueueBar snabbt utan webbläsaren</div>
+  <div id="install-prompt" class="install-prompt" style="display:none">
+    <div class="ip-text">
+      <div class="ip-title">Lägg till på hemskärmen</div>
+      <div class="ip-sub">Öppna QueueBar direkt — utan webbläsaren</div>
     </div>
-    <button onclick="acceptInstall()" style="flex-shrink:0;height:36px;padding:0 16px;border-radius:20px;background:rgba(255,255,255,0.92);color:#0D0F1A;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap;font-family:inherit">Lägg till</button>
-    <button onclick="dismissInstall()" style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-family:inherit">×</button>
+    <button class="ip-accept" onclick="acceptInstall()">Lägg till</button>
+    <button class="ip-close" onclick="dismissInstall()" aria-label="Stäng">×</button>
   </div>
 </body>
 </html>

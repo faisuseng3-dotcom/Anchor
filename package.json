@@ -5,7 +5,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "vitest run && node scripts/check.js && vite build",
+    "prepare": "husky",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@frontman-ai/vite": "^2.0.1",
@@ -13,6 +19,9 @@
     "mapbox-gl": "^3.9.4"
   },
   "devDependencies": {
-    "vite": "^6.0.0"
+    "@playwright/test": "^1.56.1",
+    "husky": "^9.1.7",
+    "vite": "^6.0.0",
+    "vitest": "^5.0.5"
   }
 }

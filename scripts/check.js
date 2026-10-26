@@ -23,6 +23,59 @@ function check(label, condition) {
   }
 }
 
+// ── Diff-text checked in as source ───────────────────────────────────────────
+//
+// On 2026-10-19 a commit replaced all 3,198 lines of src/main.js with the PATCH
+// TEXT that was meant to be applied to it. The file became a 47-line unified diff,
+// `vite build` died on line 1, and the Vercel production deployment failed.
+//
+// vite build does catch it — but only once something runs the build. This check is
+// cheaper, names the problem instead of printing a rollup stack trace, and covers
+// every source file rather than just the ones reachable from the entry point.
+//
+// Scans .js/.mjs/.cjs/.css/.html/.json only. NOT .md or .yml: `---` is a horizontal
+// rule in Markdown and a document separator in YAML, so those would false-positive.
+
+const DIFF_SIGNS = [
+  { re: /^diff --git [ab]\//m, what: '"diff --git"-huvud' },
+  { re: /^--- [ab]?[/\s].*\r?\n\+\+\+ /m, what: '"---"/"+++" filhuvuden på rad efter rad' },
+  { re: /^@@(\s|$)/m, what: '"@@"-hunkhuvud' },
+  { re: /^index [0-9a-f]{7,}\.\.[0-9a-f]{7,}/m, what: '"index <sha>..<sha>"-rad' }
+];
+const SCAN_EXT = ['.js', '.mjs', '.cjs', '.css', '.html', '.json'];
+const SKIP_DIR = ['node_modules', 'dist', '.git', 'test-results', 'playwright-report', 'QueueBar'];
+
+function sourceFiles(dir, out) {
+  out = out || [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') && entry.name !== '.github') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!SKIP_DIR.includes(entry.name)) sourceFiles(full, out);
+    } else if (SCAN_EXT.includes(path.extname(entry.name))) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+const diffHits = [];
+for (const file of sourceFiles(root)) {
+  const text = fs.readFileSync(file, 'utf8');
+  for (const sign of DIFF_SIGNS) {
+    if (sign.re.test(text)) {
+      diffHits.push(path.relative(root, file) + ' — ' + sign.what);
+      break;
+    }
+  }
+}
+check('No git diff text checked in as source', diffHits.length === 0);
+if (diffHits.length) {
+  console.error('   En patch har skrivits IN i filen i stället för att appliceras på den:');
+  diffHits.forEach((h) => console.error('     ' + h));
+  console.error('   Återställ filen (git checkout <commit> -- <fil>) och applicera patchen på riktigt.');
+}
+
 // ── Architecture ─────────────────────────────────────────────────────────────
 check('Vite entry: src/main.js referenced in index.html', html.includes('src="/src/main.js"'));
 check('src/style.css exists', fs.existsSync(path.join(root, 'src/style.css')));
@@ -30,7 +83,7 @@ check('src/main.js exists', fs.existsSync(path.join(root, 'src/main.js')));
 check('vite.config.js exists', fs.existsSync(path.join(root, 'vite.config.js')));
 check('Font: Satoshi loaded', html.includes('satoshi'));
 check('Font var: --font-base Satoshi', css.includes("--font-base: 'Satoshi'"));
-check('Mapbox streets-v12', js.includes('streets-v12'));
+check('Mapbox dark-v11 (night design)', js.includes('dark-v11'));
 check('Supabase npm import', js.includes('supabase-js'));
 
 // ── Security ──────────────────────────────────────────────────────────────────
@@ -39,7 +92,7 @@ check('.env not committed', !hasEnvFile || true); // .gitignore handles it; warn
 check('No hardcoded supabase key in plain text (anon key OK)', true); // informational
 
 // ── Design system ─────────────────────────────────────────────────────────────
-check('Status colors defined: free/short/medium/long/unknown', js.includes("free: '#00E676'"));
+check('Status colors defined: free/short/medium/long/unknown', js.includes("free: '#34E07F'") && js.includes("long: '#FF4D5E'"));
 check('STATUS_RANK map defined', js.includes('STATUS_RANK'));
 check('erow--empty uses rowInEmpty keyframe', css.includes('rowInEmpty'));
 // opacity 0.55 is allowed ONLY inside prefers-reduced-motion (fallback for no-animation)
@@ -50,23 +103,27 @@ check('animation-fill-mode forwards on rowIn keyframes', css.includes('forwards'
 // ── Explore screen ────────────────────────────────────────────────────────────
 check('explore-summary widget exists in HTML', html.includes('id="explore-summary"'));
 check('renderExploreSummary function defined', js.includes('function renderExploreSummary('));
-check('renderExploreSummary called in renderExploreVenues', js.includes('renderExploreSummary(_exsumFirstRender)'));
-check('_exsumFirstRender flag exists', js.includes('_exsumFirstRender'));
-check('Summary: KORT KÖ label', js.includes('KORT KÖ'));
-check('Summary: MEDEL KÖ label', js.includes('MEDEL KÖ'));
-check('Summary: LÅNG KÖ label', js.includes('LÅNG KÖ'));
-check('Summary: 30s interval for footer', js.includes('30000'));
-check('Summary: countUp ease-out cubic', js.includes('Math.pow(1 - p, 3)'));
+check('renderExploreSummary called in renderExploreVenues', js.includes('renderExploreSummary();'));
+check('Summary: freshness line replaces widget', js.includes('exsum-line'));
+check('Summary: 30s interval for freshness line', js.includes('30000'));
+// Ett serverfel får aldrig se ut som en tyst kväll. _loadState håller lägena åtskilda och
+// exsumText tar det som argument för att vara testbar. Se tests/loadstate.test.js.
+check('Error states: _loadState separates server failure from an empty city',
+  js.includes("var _loadState = 'loading'") &&
+  js.includes('function exsumText(d, state)') &&
+  js.includes("if (state === 'error')") &&
+  js.includes('function renderLoadFailure('));
 check('No-data message in summary', js.includes('Inga rapporter än'));
 
 // ── Venue rows ────────────────────────────────────────────────────────────────
 check('erow-pulse-dot for long queue', js.includes('erow-pulse-dot'));
 check('pulseDot keyframe animation', css.includes('@keyframes pulseDot'));
-check('Level backgrounds: long rgba(255,59,59,0.06)', js.includes('rgba(255,59,59,0.06)'));
+check('Level backgrounds: long rgba(255,77,94,0.06)', js.includes('rgba(255,77,94,0.06)'));
 check('Level backgrounds: empty rgba(255,255,255,0.02)', js.includes('rgba(255,255,255,0.02)'));
-check('Hero color long: #FF3B3B', js.includes('#FF3B3B'));
+check('Hero color long: #FF4D5E', js.includes('#FF4D5E'));
 check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
-check('Trend indicator: ↑ Ökar / ↓ Minskar / → Stabil', js.includes('↑ Ökar') && js.includes('↓ Minskar') && js.includes('→ Stabil'));
+// "Stabil" visades på varje rad utan att säga något nytt — bara ändring visas nu.
+check('Trend indicator: ↑ Ökar / ↓ Minskar', js.includes('↑ Ökar') && js.includes('↓ Minskar'));
 check('Sorting: Swedish localeCompare for empty venues', js.includes("localeCompare(b.name, 'sv')"));
 check('Sorting: newest-report-first for venues with data', js.includes('bLatest - aLatest'));
 check('background-color transition 300ms', css.includes('background-color 300ms ease-out'));
@@ -90,6 +147,9 @@ const paceCount = (venuesBlock.match(/pace: '(slow|normal|fast)'/g) || []).lengt
 check('Wait model: every venue has pace slow/normal/fast', venueCount > 0 && paceCount === venueCount);
 check('Wait model: estimateWait + formatWait defined', js.includes('function estimateWait(') && js.includes('function formatWait('));
 check('Wait model: fixed wait strings only in getStatusLabel fallback', (js.match(/'~25 min'/g) || []).length === 1);
+// "Ingen kö" har width 0. Utan den här vakten blir en stillastående nollsession en uppmätt
+// dörrtakt på 0, vilket förlänger alla andras väntetid och kan visa "Fullt". Se tests/sessions.test.js.
+check('Wait model: width-guess requires a non-zero bucket width', js.includes('aheadBucket(first.people_ahead).width > 0'));
 check('Reports store people_ahead + report_type', js.includes('people_ahead: peopleAhead') && js.includes("report_type: 'initial'"));
 check('Report buttons ask for people ahead', html.includes('pickAhead(') && html.includes('quickPickAhead('));
 check('History reads queue_status (no level column)', !js.includes("select('venue_id, level"));

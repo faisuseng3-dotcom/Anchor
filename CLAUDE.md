@@ -1,135 +1,356 @@
 # QueueBar — Claude Project Memory
 
-## What this project is
+## Vad projektet är
 
-Single-file web app (`index.html`) for real-time queue status at Stockholm bars and clubs.
-Vanilla JS + CSS, no framework, no build step. Mapbox GL JS + Supabase via CDN.
-Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `main` for deploy.
+Mobil webbapp som visar köstatus och uppskattad väntetid för **28 barer och nattklubbar** i
+Stockholms innerstad. All data kommer från användarnas egna rapporter — det finns ingen extern
+datakälla för kölängder.
 
-## Architecture
+Den svåraste uppgiften i projektet är att omvandla enstaka opålitliga människorapporter till en
+siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
 
-- **One file**: all HTML, CSS, JS in `index.html`. Never split into separate files without asking.
-- **Screens**: `#screen-home` (map), `#screen-explore` (list), `#screen-live` (feed), `#screen-profile`
-- **Data flow**: `loadReports()` → `allReports` → all renders. `injectTestData()` runs only when `testDataEnabled()`.
-- **Test mode**: `?testdata=true` in URL, or the secret shortcut Alt + 2 (Option + 2 on Mac; ignored in text fields where it types "@") — toggles `qb_testdata` in localStorage and reloads, injects 48 test reports for 17 venues. Off by default — production never shows fake reports.
-- **Font**: Plus Jakarta Sans (Google Fonts) — sans-serif. CSS var: `--font-base: 'Plus Jakarta Sans', sans-serif`.
-- **Map**: Mapbox GL JS v3.9.4, style `streets-v12`, center Stockholm `[18.0686, 59.3293]`.
+Produktion: `anchor-queuebar.vercel.app` (använd **aldrig** en Vercel-URL med slumpkod i mitten —
+de är frysta ögonblicksbilder).
 
-## Product thinking (applies to all tasks)
+## Teknisk stack (verifierad 2026-10-18)
 
-QueueBar is a real-time decision tool used at 23:00, in low light, under social pressure. Apply the precision and honesty of fintech product discipline to the specific constraints of that context. Do not make it look like a banking app.
+| | |
+|---|---|
+| Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
+| Kod | `src/main.js` (3 139 rader), `src/style.css` (1 370 rader), `index.html` (273 rader) |
+| Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
+| Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
+| Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
+| Hosting | Vercel |
+| Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) |
 
-Act as an independent product designer. Challenge weak suggestions, form your own opinion, fix the right thing. Load **`/fintech-product-thinking`** for the full operating framework.
+`QueueBar/` i repot är ett **separat, ofullständigt Expo-projekt** — 22 ställen i stället för 28
+och ingen väntetidsmodell. Det är inte produktion och delar ingen kod. Rör det inte om uppgiften
+handlar om webbappen.
 
-Core obligations:
-- Every number on screen comes from real data — never a placeholder or fabricated default
-- Communicate uncertainty honestly: "~15 min" not "15 min", stale data must be visually degraded
-- The most important information (queue status, wait time) always has the most visual weight
-- Design for readability at arm's length in low ambient light — minimum 13px body, high contrast
-- States must be complete: empty, stale, error — never hide the absence of data
-- Challenge redundancy before adding anything new
-- Verify with `?testdata=true` before declaring work complete
+## Arkitektur i korthet
 
-These apply whether the task is a feature, a bug fix, a spacing change, or a refactor.
-
-## Design principles (non-negotiable)
-
-1. **DATA FÖRST** — real numbers, never placeholders or lorem ipsum
-2. **HIERARKI I ALLT** — most important info gets most visual weight
-3. **SIFFROR ÄR KUNG** — metrics in 22px+/700, labels in 10-12px
-4. **KONSISTENS** — match existing patterns before inventing new ones
-5. **REDUNDANS ÄR FÖRBJUDEN** — if two elements show the same info, remove one
-6. **BORDER INTE SKUGGA** — dark system uses `1px solid rgba(255,255,255,0.09)` on surfaces, `border-color` for hover states, no box-shadow on cards. See `/premium-design` for full design system values.
-
-## Color system (status)
-
-| Status  | Hero color | Left bar   |
-|---------|------------|------------|
-| long    | #FF3B3B    | #EF4444    |
-| medium  | #FF7043    | #F59E0B    |
-| short   | #FFB300    | #F59E0B    |
-| free    | #00E676    | #22C55E    |
-| empty   | #D1D5DB    | rgba(255,255,255,0.08) |
-
-Full status color system and dark-palette values: `/premium-design`.
-
-## Key CSS classes
-
-- `.erow` — venue row in Utforska (explore list)
-- `.erow--empty` — no-data state (0.55 opacity, #FAFAFA bg)
-- `.erow--long/--free` — level backgrounds
-- `.erow-pulse-dot` — blinking 6px red dot for long queue
-- `.exsum` — "Stockholm just nu" summary widget
-- `.venue-group` — grouped container with `1px solid rgba(255,255,255,0.09)` border
-
-## Key JS globals
-
-- `VENUES` — array of 27 venue objects `{id, name, address, area, type, lat, lng, closing}`
-- `allReports` — live + test reports merged
-- `computeStatus(venueId, reports)` — returns status string
-- `getStatusClass(status)` — maps to CSS class
-- `STATUS_COLORS` — `{free, short, medium, long, unknown}` → hex
-- `renderExploreVenues()` — re-renders the explore list + summary widget
-- `renderExploreSummary(animate)` — updates "Stockholm just nu" widget
-- `injectTestData()` — 48 test reports for 17 venues
-- `estimateWait(venueId, reports)` — wait = people ahead ÷ queue rate (measured sessions blended with `venue.pace` prior)
-- `formatWait(est)` / `venueWaitText(venueId)` — the only source of wait text on every screen
-
-## Engineering philosophy
-
-QueueBar is a real-time information system, not merely a map app. The hardest problem is turning unreliable human reports into trustworthy, honest information. Every architectural decision should support that.
-
-Core principles:
-- **Understand before changing** — trace data flows, read existing code, run check.js first
-- **Simplest reliable solution** — prefer explainable deterministic algorithms over clever abstractions
-- **Verified, not assumed** — distinguish what you have tested from what you believe to be true
-- **Security is layered** — client validation is UX; server-side RLS is the actual boundary
-- **Uncertainty is honest** — stale data must look stale; missing data must say so; never invent
-- **Evidence over intuition** — observe behavior, form a hypothesis, make the minimal change, inspect the result
-
-Load **`/first-principles-engineering`** for the complete methodology: queue-report lifecycle, freshness model, security layers, search architecture, hypothesis-driven debugging, and the repeatable inspect→diagnose→implement→verify workflow.
-
-Scale depth to risk: a CSS tweak does not need a full audit. An aggregation change or security fix does.
-
-## Security constraints
-
-**NEVER commit `.env`** — already in `.gitignore`. Mapbox token in HTML is public-safe (URL-restricted).
-
-## Commit convention
+Allt ligger i **en fil**: `src/main.js`. Dela inte upp den utan att fråga först.
 
 ```
-Short imperative title
+index.html  →  <script type="module" src="/src/main.js">
+               ↓
+VENUES (28 hårdkodade objekt)  +  allReports (från Supabase)
+               ↓
+estimateWait()  →  formatWait()  →  venueWaitText()
+               ↓
+karta · Utforska · Live · venue-kort   (alla via samma funktion)
+```
 
-Body explaining what and why (not how).
+**Skärmar:** `#screen-home` (karta), `#screen-explore` (lista), `#screen-live` (flöde),
+`#screen-report` (tre steg), `#screen-profile`. Växlas av `showScreen()` — ingen router, URL:en
+ändras inte.
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+**Kritiskt:** HTML byggs som strängar med inline `onclick`. ES-moduler har inget globalt scope, så
+varje funktion som används i en `onclick` **måste** läggas till i `Object.assign(window, {...})`
+längst ned i `src/main.js`. Annars kastar klicket `ReferenceError`.
+
+## Var logiken finns
+
+Sök på funktionsnamnet — **inte på radnummer.** Dokumentationen innehöll tidigare radnummer och de
+blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
+`grep -n "function estimateWait" src/main.js`.
+
+| Vad | Funktioner |
+|---|---|
+| **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
+| Venue-data | `VENUES` — 28 objekt. **Inte i databasen** — ändring = deploy |
+| Supabase-läsning | `loadReports` — de 100 senaste icke-utgångna rapporterna |
+| Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
+| Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
+| Kalibrering | `computeCalibration` — skriv `qbCalibration()` i konsolen |
+| Karta och lager | mellan `showMapError` och `getUserId`: `registerTypePins`, `addTypePin`, `updateMapStatuses` |
+| Utforska-summering | `computeExploreSummary`, `exsumText`, `renderExploreSummary` |
+| Sökning | `venueScore`, `venueSearch`, `_searchNorm` |
+| XSS-skydd | `escapeHtml` — fyra anropsställen |
+
+### Den enda vägen till en väntetid
+
+Varje väntetid på varje skärm går genom **`venueWaitText(venueId)`**. Det finns ingen
+annan väg och det ska förbli så. `getStatusLabel()` ger fasta strängar och är **bara**
+reserv för gamla rapporter utan `people_ahead`.
+
+## Kommandon
+
+```bash
+npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
+npm test                   # 120 enhetstester (Vitest)
+npm run test:watch         # kör om vid varje sparning
+npm run e2e                # 10 webbläsartester (Playwright) — kräver en webbläsare, se nedan
+npm run dev                # Vite på http://localhost:5173
+npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
+```
+
+`npm run verify` är `vitest run && node scripts/check.js && vite build`. Kör det, inte delarna var
+för sig.
+
+**Spärren före commit kör `npm run verify` automatiskt** (husky, `.husky/pre-commit`). Den sätts upp
+av `npm install` — du behöver inte göra något. Tar ~15 sekunder. `--no-verify` hoppar över den; gör
+det bara när du vet varför.
+
+**CI** kör samma kedja plus E2E vid varje push (`.github/workflows/verify.yml`). Det är den enda
+kontrollen som inte går att hoppa över.
+
+**E2E-testerna ingår inte i `verify`** eftersom de kräver en webbläsarbinär. Första gången:
+
+```bash
+npx playwright install chromium
+```
+
+De tre kontrollerna gör olika saker och ersätter inte varandra:
+
+- **`vitest`** testar att de rena funktionerna **räknar rätt**. Täcker väntetidsmodellen,
+  kö-sessionerna, historiken, sökningen, `VENUES`-integriteten och inläsningslägena. Testerna läser
+  funktionerna ur `src/main.js` via `tests/harness.js` — **ingen kod har flyttats för att möjliggöra
+  dem.**
+- **`check.js`** söker efter textsträngar och kontrollerar att funktioner och konventioner
+  **finns**. Den upptäcker att något raderats, aldrig att något räknar fel. Den första kontrollen
+  i filen letar efter **git-difftext incheckad som källkod** — se nedan.
+- **`playwright`** kör appen i en riktig webbläsare på 390×844 med mockad Supabase. Täcker det som
+  bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
+  fungerar, och att en rapport skickas med rätt fält.
+
+**Ingen linter finns.** ESLint på en 3 187-radersfil i ES5-stil skulle ge hundratals varningar och
+kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
+
+Se [docs/TESTING.md](docs/TESTING.md).
+
+## Difftext får aldrig checkas in som källkod
+
+Den 19 oktober ersattes alla 3 198 rader i `src/main.js` med **patch-texten** som skulle appliceras
+på filen. Filen blev en 47-radig unified diff, `vite build` dog på rad 1, och Vercels
+produktionsdeploy fallerade. Rollup läste `--- a/src/main.js` som en dekrementoperator.
+
+Första kontrollen i `scripts/check.js` letar nu efter fyra signaturer i alla `.js`, `.mjs`, `.cjs`,
+`.css`, `.html` och `.json` under repot:
+
+```
+diff --git a/…          "---" följt av "+++" på nästa rad
+@@ …                    index <sha>..<sha>
+```
+
+`.md` och `.yml` skannas **inte** — `---` är en vågrät linje i Markdown och en dokumentavgränsare i
+YAML, så de skulle ge falska träffar.
+
+`vite build` fångar också felet, men först när något kör bygget, och svarar med en rollup-stacktrace.
+Den här kontrollen är billigare, namnger filen och signalen, och täcker varje källfil i stället för
+bara de som nås från ingångspunkten.
+
+**Fem tester i `tests/sessions.test.js`** skyddar mot att "Ingen kö" åter blir en uppmätt dörrtakt
+på noll. Fallerar något av dem är vakten `aheadBucket(first.people_ahead).width > 0` borta.
+**Nio tester i `tests/loadstate.test.js`** plus tre i `e2e/app.spec.js` skyddar mot att ett
+serverfel åter ser ut som en tyst kväll.
+
+## Fyra inläsningslägen — de får aldrig slås samman
+
+`_loadState` är `'loading' | 'ok' | 'error'` och sätts i `loadReports`. Utan den kan en tom vy inte
+skilja "inga rapporter i Stockholm" från "vi nådde inte servern", och då blir ett serverfel en lugn
+kväll. Verifierat i webbläsare:
+
+| Läge | Färskhetsraden | Live-flödets underrad | Rader |
+|---|---|---|---|
+| Tom databas | "Inga rapporter än — bli först att rapportera" | "Inga rapporter senaste 45 min" | 28 |
+| **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge |
+| **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | 28 **behållna** |
+| Normalt | "17 av 28 ställen har färsk rapport · senast 3 min sedan" | "17 ställen · 45 min" | 28 |
+
+Två regler som följer av det:
+
+- **`exsumText(d, state)` tar tillståndet som argument, inte från en global.** Det är därför den är
+  ren och testbar utan DOM. Görs den om till att läsa `_loadState` direkt försvinner testerna.
+- **`renderLoadFailure()` kastar inte bort data som redan finns.** Att tömma en fungerande lista
+  för att en enda pollning missade är sämre än att visa den med en varning. `showExploreError()`
+  körs bara när `allReports` är tom.
+
+**Testdata:** `?testdata=true` i URL:en, eller **Alt + 2** (Option + 2 på Mac; ignoreras i
+textfält där det skriver "@"). Växlar `qb_testdata` i localStorage och laddar om. Av som standard —
+produktionen visar aldrig falska rapporter. **Verifiera alltid med testdata innan arbete
+rapporteras klart.**
+
+## Produkttänkande (gäller alla uppgifter)
+
+QueueBar används klockan 23:00, i dåligt ljus, under social press. Tillämpa fintechs precision och
+ärlighet på den situationen — men få det inte att se ut som en bankapp.
+
+Agera som en självständig produktdesigner. Ifrågasätt svaga förslag, bilda en egen uppfattning,
+laga rätt sak. Ladda **`/fintech-product-thinking`** för hela ramverket.
+
+- Varje siffra på skärmen kommer från verklig data — aldrig en platshållare
+- Kommunicera osäkerhet ärligt: "~15 min", inte "15 min". Gammal data ska **se** gammal ut
+- Det viktigaste (köstatus, väntetid) har alltid mest visuell tyngd
+- Läsbart på armlängds avstånd i svag belysning — minst 13 px brödtext, hög kontrast
+- Tillstånden ska vara kompletta: tom, gammal, fel — dölj aldrig att data saknas
+- Ifrågasätt redundans innan du lägger till något nytt
+
+## Designprinciper (ej förhandlingsbara)
+
+1. **DATA FÖRST** — verkliga siffror, aldrig platshållare
+2. **HIERARKI I ALLT** — viktigast info får mest visuell tyngd
+3. **SIFFROR ÄR KUNG** — mätvärden 22 px+/700, etiketter 10–12 px
+4. **KONSISTENS** — matcha befintliga mönster innan du hittar på nya
+5. **REDUNDANS ÄR FÖRBJUDEN** — visar två element samma sak, ta bort ett
+6. **BORDER INTE SKUGGA** — `1px solid rgba(255,255,255,0.09)`, `border-color` vid hover,
+   ingen `box-shadow` på kort
+
+Fullständigt designsystem: **`/premium-design`**.
+
+## Färger (verifierade i koden)
+
+Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getStatusColor()`
+(`src/main.js`).
+
+| Status | Hex | Betyder |
+|---|---|---|
+| `none` / free | `#34E07F` | ingen kö |
+| `short` | `#FFD23F` | under 18 min |
+| `medium` | `#FF8A3D` | 18–30 min |
+| `long` | `#FF4D5E` | över 30 min, eller "Fullt" |
+| `unknown` | två värden — se nedan | ingen data |
+
+⚠️ **Känt problem:** status­färgerna är definierade på **fyra** ställen — CSS `--status-*`,
+`getStatusColor()`, `STATUS_COLORS` och `heroColors`.
+
+Den neutrala paletten synkroniserade `free`, `short`, `medium` och `long` över alla fyra. **`unknown`
+är fortfarande osynkroniserad**, verifierat på HEAD `28040f2`:
+
+| Källa | `unknown` |
+|---|---|
+| `getStatusColor('unknown')` och `heroColors`-fallback | `#85858A` |
+| `STATUS_COLORS.unknown` och CSS `--status-unknown` | `#55555B` |
+
+`renderExploreVenueRow` använder `STATUS_COLORS[cls] || getStatusColor('unknown')`, så raden kan få
+antingen värdet beroende på väg. Lägg inte till en femte källa. Använd `getStatusColor()`.
+
+## Viktiga CSS-klasser
+
+- `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--long/--free` — nivå
+- `.erow-pulse-dot` — blinkande röd punkt vid lång kö
+- `.exsum-line` — färskhetsraden i Utforska ("17 av 28 ställen har färsk rapport · senast 3 min sedan")
+- `.venue-group` — grupperad container med `1px solid rgba(255,255,255,0.09)`
+- `.qs-*` — kö-sessionsbanner · `.tl-*` — Live-flödets rader
+- `.toast` — texten **måste** vara `var(--bg-primary)`, bakgrunden är `--text-primary`
+
+## Ingenjörsprinciper
+
+- **Förstå innan du ändrar** — följ dataflödet, läs koden, kör `check.js` först
+- **Enklast tillförlitliga lösning** — förklarlig determinism framför smarta abstraktioner
+- **Verifierat, inte antaget** — skilj det du testat från det du tror
+- **Säkerhet är lagrad** — klientvalidering är UX, serverns RLS är den verkliga gränsen
+- **Osäkerhet är ärlighet** — gammal data ska se gammal ut, saknad data ska sägas, hitta aldrig på
+- **Bevis framför intuition** — observera, formulera hypotes, gör minsta ändring, inspektera
+
+Fullständig metodik: **`/first-principles-engineering`**.
+
+Anpassa djupet till risken: en CSS-justering behöver ingen revision. En ändring i
+aggregeringen eller säkerheten gör det.
+
+## Regler för avgränsad implementation
+
+- **Ändra inte väntetidsmodellen** (blocket från `PACE_RATE` till `getStatusLabel`) utan att det är
+  uppgiften. Den är appens kärna.
+- **Bygg inte om fungerande delar** för att en annan arkitektur vore finare.
+- **Dela inte upp `src/main.js`** utan att fråga.
+- **Rör inte `VENUES`** om uppgiften inte uttryckligen handlar om venue-data.
+- **En ändring i taget**, aldrig parallella redigeringar i samma fil. `src/main.js` har trunkerats
+  två gånger av parallella AI-redigeringar. Ange radantal före och efter.
+- **Lägg till nya `onclick`-funktioner i `Object.assign(window, …)`** — annars går de sönder tyst.
+- **Skriv aldrig om en hel fil.** Kirurgiska ändringar.
+- **Läs filen efter varje mönsterbaserad ändring** (`sed`, `perl`, `awk`, sök-och-ersätt). Ett
+  mönster som matchar fel ändrar inte en rad utan alla, och det syns inte i utdata. En
+  `perl`-ersättning avsedd för en rad i `CLAUDE.md` sprutade in sig före alla 256 raderna och
+  tredubblade filen — `npm run verify` var grönt hela tiden, för ett testsvit verifierar inte en
+  Markdown-fil. Föredra exakta redigeringar framför regex när träffarna är få.
+- **Verifiera det du faktiskt ändrade**, inte bara att något annat fortfarande fungerar. Gröna
+  tester är inget bevis för att den redigerade filen är hel.
+- Skilj alltid **befintliga problem** från problem din ändring orsakade.
+
+## Säkerhet
+
+**Committa aldrig `.env`** — ligger i `.gitignore`. Just nu finns ingen `.env`: Mapbox-token,
+Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt och
+säkert **förutsatt** att RLS är korrekt satt i databasen — vilket inte kunnat verifieras. Se
+[docs/DATA_MODEL.md](docs/DATA_MODEL.md) avsnitt 8.
+
+All text från databasen **måste** gå genom `escapeHtml()` innan den hamnar i en HTML-sträng.
+`venue_id` skrivs oescapat i `onclick` och är säkert **bara** tack vare filtret i `loadReports`
+som släpper igenom enbart kända venue_id — ta inte bort det filtret.
+
+## Commit-konvention
+
+```
+Kort imperativ titel
+
+Brödtext som förklarar vad och varför (inte hur).
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01MPy84B9aXUBmuBJs5cHVmD
 ```
 
-## AI checklist (run before every commit)
+Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 
-```bash
-node scripts/check.js
-```
+## Mönster från tidigare sessioner
 
-All checks must pass. If a check fails, fix it before committing.
+- `animation-fill-mode: forwards` krävs för keyframes som sätter ett sluttillstånd
+- `@keyframes rowInEmpty` kodar `opacity: 0.55` i `to` — sätt aldrig opacity direkt på `.erow--empty`
+- Tomma kort **måste** sorteras sist — använd alltid `localeCompare(b.name, 'sv')`
+- `STATUS_RANK`: `{free: 0, none: 0, short: 1, medium: 2, long: 3}` — för trendberäkning
+- Färskhetsraden ersatte den gamla "Stockholm just nu"-widgeten med räknare per status. Antalen
+  finns redan i filterchipsen, så raden visar bara det chipsen inte säger — hur färsk datan är.
+  Lägg inte tillbaka räknarna; det är redundans (princip 5)
+- `venueFreshStatus()` använder 45 min som färskhetsgräns, samma som `estimateWait`
+- `computeExploreSummary()` returnerar `{fresh, venueTotal, lastTs, total}`; `exsumText()` formaterar
+- `renderExploreSummary()` sätter om sitt 30-sekundersintervall vid varje rendering, så raden
+  åldras även utan ny data
+- Pulsanimation: ta bort klassen → tvinga reflow (`void el.offsetWidth`) → lägg tillbaka
+- Väntetid är aldrig en fast sträng per status — alltid `venueWaitText()`
+- Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
+- "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
+- Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)
+- "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
+- "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
+- `forecastWait()` visas bara med ≥3 initial-rapporter på 30 min över ≥10 min
+- Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.
+  Priorn väger som 2 sessioner, så den är **trög** — med 3 mätningar väger den fortfarande 40 %
+- `qbCalibration()` i konsolen: medianfel, bias (+ = appen lovade för kort väntan), andel i intervall
 
-## Patterns learned from past sessions
+## Känd skuld
 
-- `animation-fill-mode: forwards` is required for keyframe animations that set final state
-- `@keyframes rowInEmpty` encodes `opacity: 0.55` in the `to` state — never set opacity directly on `.erow--empty`
-- Empty cards MUST sort last — always use `localeCompare(b.name, 'sv')` for Swedish alphabetical
-- `STATUS_RANK` map: `{free: 0, none: 0, short: 1, medium: 2, long: 3}` — use for trend calculation
-- `computeExploreSummary()` uses 30-min staleness cutoff and 2-hour lookback window
-- `_exsumFirstRender` flag controls countUp animation — only animates on first render, not re-renders
-- Pulse animation: remove class → force reflow (`void el.offsetWidth`) → re-add class
-- Wait time is never a fixed string per status — always `venueWaitText()`; `getStatusLabel()` is only the fallback for reports without `people_ahead`
-- Only `report_type: 'initial'` reports measure queue length (`isQueueReport`); followups are positions in the queue, used only for rate
-- "Fullt" requires ≥2 measured sessions — never infer it from the pace prior
-- Queue session lives in localStorage `qb_queue_session`; `#omw-banner` shows it before "På väg". Followups need ≥4 min gap (server: 3) — never count them as reports or points
-- `.toast` text must use `var(--bg-primary)` — background is `--text-primary` (white)
-- "På väg" persists in localStorage `qb_on_my_way`; after arrival `#omw-banner` asks for a report for 30 min, then clears. A started queue session always replaces it
-- "På väg" counts come from Supabase RPC `on_my_way_counts()` (≥3 only, server-side); the client also hides <3. Table `on_my_way` has RLS with no policies — only the security-definer RPCs touch it
-- `forecastWait()` only shows with ≥3 initial reports in 30 min spanning ≥10 min — otherwise the banner falls back to "kön nu"
-- Rate layers in `estimateWait`: tonight's sessions → `_historicalRates` (same weekday ±1h, ≥3 sessions, tonight excluded) → `venue.pace`. All non-live sources show "uppskattning"
-- `qbCalibration()` in the console: median error, bias (+ = app promised too short) and % inside the shown range, replayed from "Jag är inne" sessions
+Dokumenterad i [docs/](docs/). De allvarligaste:
+
+1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
+2. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
+3. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
+4. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
+   Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
+5. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
+6. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
+7. **Ingen linter.** Medvetet uppskjutet — se motiveringen under Kommandon
+8. `limit(100)` i `loadReports` kan tysta hastighetsmätningen en full fredag (B-05 i
+   [docs/QUEUE_LOGIC.md](docs/QUEUE_LOGIC.md))
+9. Realtime och 30-sekunderspollningen körs samtidigt; varje `insert` får alla klienter att läsa om
+
+**Åtgärdat:**
+
+- `sessionRates` mätte takten 0 från en session som rapporterat "Ingen kö"
+  (`aheadBucket(0).width` är 0). Två sådana sessioner fick appen att visa "Fullt" när kön började
+  byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
+  `tests/sessions.test.js`
+- Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
+- Modellen hade inga tester. 120 enhetstester + 10 E2E-tester finns nu
+- Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
+  `.github/workflows/verify.yml`
+
+## Vidare läsning
+
+| Dokument | Innehåll |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Systemstruktur, dataflöde, beroenden, flaskhalsar |
+| [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | Tabeller, fält, localStorage, säkerhet och behörigheter |
+| [docs/QUEUE_LOGIC.md](docs/QUEUE_LOGIC.md) | Köberäkningen i detalj, med verifierade räkneexempel |
+| [docs/TESTING.md](docs/TESTING.md) | Testerna, vad `check.js` bevisar och inte, buggen testerna hittade |
+| `tests/harness.js` | Hur testerna läser modellen ur `src/main.js` utan att flytta kod |
