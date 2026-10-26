@@ -55,6 +55,7 @@ import './style.css';
         rsStep(1);
         filterReportList();
       }
+      if (name === 'explore' && _listIntro) renderExploreVenues();
       console.log('[QueueBar] Byter till skärm:', name);
     }
 
@@ -402,6 +403,41 @@ import './style.css';
       return m[1] + '<span class="wait-unit"> min</span>';
     }
 
+    // Väntetiden rullar när den ändras — som ett saldo som uppdateras. Minnet är per yta och ställe, utanför DOM,
+    // eftersom listorna ritas om med innerHTML. Första gången ett värde visas rullar det inte (inget att jämföra med),
+    // och oförändrat värde rullar aldrig. Riktningen (upp/ned) visar åt vilket håll kön gick.
+    // Rullen spelas bara när ytan syns: en ändring som sker bakom en annan skärm visas statiskt när man kommer dit,
+    // annars skulle rörelsen vara slut innan någon ser den (samma fälla som listans intro).
+    var _waitMemory = {};
+    var WAIT_SURFACE_SCREEN = { list: 'explore', best: 'home' };
+
+    // Ungefärligt tal ur texten, bara för att avgöra riktning: "20–30 min" → 25, "55+ min" → 55, "<5 min" → 3.
+    function waitNumber(text) {
+      if (!text) return null;
+      if (text === 'Fullt') return 999;
+      if (text === 'Ingen kö' || text === 'Fri') return 0;
+      var nums = (text.match(/\d+/g) || []).map(Number);
+      if (!nums.length) return null;
+      if (text.charAt(0) === '<') return nums[0] * 0.6;
+      return nums.length > 1 ? (nums[0] + nums[1]) / 2 : nums[0];
+    }
+
+    // surface: 'list' | 'best'. Returnerar markup; vid synlig ändring läggs föregående värde bredvid så CSS kan rulla
+    // och färgen glida från förra statusfärgen till den nya.
+    function waitRollHtml(surface, venueId, text, color) {
+      var key = surface + ':' + venueId;
+      var prev = _waitMemory[key];
+      _waitMemory[key] = { text: text, color: color };
+      var html = waitHtml(text);
+      if (!prev || prev.text === text || !text || !prev.text) return html;
+      if (currentScreen !== WAIT_SURFACE_SCREEN[surface]) return html;
+      var a = waitNumber(prev.text), b = waitNumber(text);
+      var dir = (a === null || b === null || a === b) ? 'up' : (b > a ? 'up' : 'down');
+      return '<span class="wait-roll wait-roll--' + dir + '" style="--roll-from:' + (prev.color || 'currentColor') + '">' +
+        '<span class="wait-roll-old" aria-hidden="true">' + waitHtml(prev.text) + '</span>' +
+        '<span class="wait-roll-new">' + html + '</span></span>';
+    }
+
     function computeStatus(venueId, reports) {
       var est = estimateWait(venueId, reports);
       if (est) return waitToStatus(est);
@@ -606,6 +642,9 @@ import './style.css';
       var favBtn = document.getElementById('vc-fav');
       if (favBtn) favBtn.classList.toggle('fav', isFavorite(venue.id));
       document.getElementById('vc-overlay').style.display = 'block';
+      card.style.removeProperty('--vc-drag');
+      document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
+      card.classList.remove('vc-dragging', 'vc-settling');
       card.style.display = 'block';
       card.style.animation = 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)';
     }
@@ -623,14 +662,76 @@ import './style.css';
 
     function closeVenueCard() {
       var card = document.getElementById('venue-card');
+      // Stänger från där fingret släppte (--vc-drag), så kortet inte hoppar upp innan det glider ut
+      card.classList.remove('vc-dragging', 'vc-settling');
       card.style.animation = 'slideDown 0.2s cubic-bezier(0.36,0,0.66,0) forwards';
       document.getElementById('vc-overlay').style.display = 'none';
       setTimeout(function() {
         card.style.display = 'none';
         card.style.animation = '';
+        card.style.removeProperty('--vc-drag');
+        document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
         activeVenue = null;
       }, 200);
     }
+
+    // Dra kortet nedåt för att stänga. Följer fingret 1:1, stänger vid >120 px eller en snabb sänkning (>0.5 px/ms),
+    // annars fjädrar det tillbaka. Uppåt går det inte att dra (gummiband: 15 % av rörelsen), så kortet aldrig lämnar kanten.
+    (function setupVenueCardDrag() {
+      var card = document.getElementById('venue-card');
+      var grab = document.getElementById('vc-grab');
+      var overlay = document.getElementById('vc-overlay');
+      if (!card || !grab) return;
+      var startY = 0, lastY = 0, lastT = 0, velocity = 0, dragging = false, pointerId = null;
+
+      function offset(dy) { return dy > 0 ? dy : dy * 0.15; }
+      function apply(dy) {
+        var o = offset(dy);
+        card.style.setProperty('--vc-drag', o + 'px');
+        // Bakgrunden ljusnar i takt med att kortet sjunker, så det syns att det håller på att försvinna
+        var fade = Math.max(0, 1 - Math.max(0, o) / 320);
+        overlay.style.setProperty('--vc-overlay', String(fade));
+      }
+
+      grab.addEventListener('pointerdown', function(e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        dragging = true; pointerId = e.pointerId;
+        startY = lastY = e.clientY; lastT = performance.now(); velocity = 0;
+        card.classList.remove('vc-settling');
+        card.classList.add('vc-dragging');
+        card.style.animation = 'none';
+        if (grab.setPointerCapture) { try { grab.setPointerCapture(pointerId); } catch (err) {} }
+      });
+
+      grab.addEventListener('pointermove', function(e) {
+        if (!dragging || e.pointerId !== pointerId) return;
+        var now = performance.now();
+        var dt = now - lastT;
+        if (dt > 0) velocity = (e.clientY - lastY) / dt;
+        lastY = e.clientY; lastT = now;
+        apply(e.clientY - startY);
+      });
+
+      function release(e) {
+        if (!dragging || (e && e.pointerId !== pointerId)) return;
+        dragging = false;
+        card.classList.remove('vc-dragging');
+        var dy = lastY - startY;
+        if (dy > 120 || velocity > 0.5) {
+          closeVenueCard();
+        } else {
+          // Fjädra tillbaka: övergången tar kortet till 0 px och bakgrunden till full styrka
+          card.classList.add('vc-settling');
+          card.style.animation = '';
+          card.style.setProperty('--vc-drag', '0px');
+          overlay.style.setProperty('--vc-overlay', '1');
+          setTimeout(function() { card.classList.remove('vc-settling'); }, 340);
+        }
+        if (grab.releasePointerCapture) { try { grab.releasePointerCapture(pointerId); } catch (err) {} }
+      }
+      grab.addEventListener('pointerup', release);
+      grab.addEventListener('pointercancel', release);
+    })();
 
     function goToReport() {
       closeVenueCard();
@@ -717,10 +818,10 @@ import './style.css';
       if (best.dist != null) meta.push(best.dist < 1 ? Math.round(best.dist * 10) * 100 + ' m' : best.dist.toFixed(1) + ' km');
       if (latest) meta.push(timeAgo(latest.created_at));
       card.innerHTML = '<button class="bn-card" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
-        '<span class="bn-eyebrow"><span class="bn-dot"></span>Bäst nu</span>' +
+        '<span class="bn-eyebrow">Bäst nu</span>' +
         '<span class="bn-row">' +
           '<span class="bn-name">' + v.name + '</span>' +
-          '<span class="bn-wait">' + waitHtml(wait) + '</span>' +
+          '<span class="bn-wait">' + waitRollHtml('best', v.id, wait, getStatusColor(best.status)) + '</span>' +
         '</span>' +
         '<span class="bn-meta">' + meta.filter(Boolean).join(' · ') + '</span>' +
         '</button>';
@@ -1266,6 +1367,7 @@ import './style.css';
     async function loadReports() {
       if (!supabase) {
         console.warn('[QueueBar] loadReports: supabase är null');
+        _loadState = 'error';
         if (testDataEnabled()) injectTestData();
         updateMapStatuses();
         renderHomeVenues();
@@ -2262,7 +2364,7 @@ import './style.css';
         metaText = venue.area + (typeLabel ? ' · ' + typeLabel : '') + ' · ' + (dist >= 1000 ? (dist / 1000).toFixed(1) + ' km' : dist + 'm');
       }
 
-      var delay = (index * 75 + 340) + 'ms';
+      var delay = _listIntro ? (index * 75 + 340) + 'ms' : '0ms';
       var levelClass = level === 'long' ? ' erow--long' : level === 'medium' ? ' erow--medium' : level === 'free' ? ' erow--free' : '';
 
       // Planning mode
@@ -2274,7 +2376,7 @@ import './style.css';
         ? 'togglePlanVenue(\'' + venue.id + '\')'
         : 'openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')';
 
-      return '<div class="erow' + stateClass + levelClass + (isBest ? ' erow--best' : '') + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
+      return '<div class="erow' + stateClass + levelClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
           planBadge +
@@ -2325,7 +2427,7 @@ import './style.css';
             })() +
           '</div>' +
           '<div class="erow-right">' +
-            '<span class="erow-hero erow-hero--animate" style="color:' + heroColor + '">' + waitHtml(heroText) + '</span>' +
+            '<span class="erow-hero' + (_listIntro ? ' erow-hero--animate' : '') + '" style="color:' + heroColor + '">' + waitRollHtml('list', venue.id, heroText, heroColor) + '</span>' +
             (isStale ? '' : trendHtml) +
           '</div>' +
         '</div>' +
@@ -2509,6 +2611,10 @@ import './style.css';
       return candidates[0] || null;
     }
 
+    // Raderna glider in en gång — första gången listan visas med riktig data. All omritning efter det
+    // (filter, sökning, ny rapport var 30:e sekund) byter innehåll utan att animera om, enligt /anti-ai-design.
+    var _listIntro = true;
+
         function renderExploreVenues() {
       renderExploreSummary();
       var q = (document.getElementById('explore-search') || {}).value || '';
@@ -2624,9 +2730,29 @@ import './style.css';
         }
       }
 
-      el.innerHTML = '<div class="venue-group">' + list.map(function(v, i) {
-        return renderExploreVenueRow(v, i, v.id === bestVenueId ? best : null);
-      }).join('') + '</div>';
+      // Sektionsrubriker: de med färsk rapport först, resten (inga eller inaktuella rapporter) samlade sist.
+      // Färskheten kommer från venueFreshStatus, så rubrikerna aldrig motsäger färskhetsraden.
+      function hasFreshReport(v) { return venueFreshStatus(v.id) !== 'unknown'; }
+      var freshList = [], staleList = [];
+      list.forEach(function(v) { (hasFreshReport(v) ? freshList : staleList).push(v); });
+      function rowsHtml(items) {
+        return items.map(function(v) {
+          return renderExploreVenueRow(v, list.indexOf(v), v.id === bestVenueId ? best : null);
+        }).join('');
+      }
+      function sectionHtml(title, items) {
+        return '<div class="list-section">' + title + '<span class="list-section-n">' + items.length + '</span></div>' +
+          '<div class="venue-group">' + rowsHtml(items) + '</div>';
+      }
+      // Rubriker behövs bara när båda grupperna finns och listan inte är filtrerad eller sökt — annars är en rubrik brus.
+      var showSections = freshList.length && staleList.length && _exploreFilter === 'all' && !activeQuery.trim();
+      el.innerHTML = showSections
+        ? sectionHtml('Färska rapporter', freshList) + sectionHtml('Utan färsk rapport', staleList)
+        : '<div class="venue-group">' + rowsHtml(list) + '</div>';
+
+      // Intro förbrukas när listan har ritats färdigt, alltså så fort laddningen inte längre pågår. Det gäller även en
+      // lista utan data: raderna har då redan visat sig, och den första rapporten fyller en rad som redan står still.
+      if (_listIntro && _loadState !== 'loading' && currentScreen === 'explore') _listIntro = false;
 
       updateFilterCounts();
     }
@@ -2654,6 +2780,12 @@ import './style.css';
 
     // ── Live-feed ─────────────────────────────────────────────────────────────
     var _liveExpanded = new Set();
+
+    // Vilka rapporter som redan har visats i Live. Bara en rapport som inte finns här är "ny" och får glida in.
+    // Första ritningen med data fyller bara minnet (annars skulle hela listan animeras vid sidladdning).
+    var _liveSeen = new Set();
+    var _liveSeenReady = false;
+    function liveReportKey(r) { return r.id != null ? String(r.id) : r.venue_id + '|' + r.created_at; }
 
     function _liveRowHtml(r, isSub, olderCount) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
@@ -2712,7 +2844,7 @@ import './style.css';
       var mins = Math.round((new Date(entered.created_at).getTime() - start) / 60000);
       if (!isFinite(mins) || mins < 1) return '';
       return '<div class="lv-entered"><span class="lv-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>' +
-        '<span>Någon kom in efter <b>' + mins + ' min</b></span><small>uppmätt · ' + timeAgo(entered.created_at) + '</small></div>';
+        '<span>Inne efter <b>' + mins + ' min</b></span><small>uppmätt · ' + timeAgo(entered.created_at) + '</small></div>';
     }
 
     function toggleLiveVenue(venueId) {
@@ -2723,6 +2855,13 @@ import './style.css';
     function renderLiveFeed() {
       var el = document.getElementById('live-feed');
       if (!el) return;
+      // Pricken på Live-fliken säger något bara om det finns en färsk rapport (< 10 min) — annars visas den inte.
+      var navDot = document.querySelector('.live-dot');
+      if (navDot) {
+        var freshCut = Date.now() - 10 * 60 * 1000;
+        var hasFresh = allReports.some(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > freshCut; });
+        navDot.classList.toggle('on', hasFresh);
+      }
       var subText = document.getElementById('live-sub-text');
       if (!supabase) {
         if (subText) subText.textContent = 'Offline';
@@ -2771,8 +2910,15 @@ import './style.css';
         if (older.length && _liveExpanded.has(vid)) {
           html += '<div class="lv-older">' + older.map(function(r) { return _liveRowHtml(r, true); }).filter(Boolean).join('') + '</div>';
         }
-        return '<div class="lv-item">' + html + '</div>';
+        // Ny = den senaste rapporten har inte visats förut. Rörelse bara när Live syns och minnet är fyllt,
+        // annars (sidladdning, annan skärm) visas den utan animation och räknas som sedd.
+        var isNew = _liveSeenReady && currentScreen === 'live' && !_liveSeen.has(liveReportKey(reports[0]));
+        return '<div class="lv-item' + (isNew ? ' lv-item--new' : '') + '">' + html + '</div>';
       }).filter(Boolean);
+      // Minnet fylls på med allt som nu visas, även när vi inte animerade. Då animeras en rapport aldrig två gånger.
+      // Det börjar först när Live har ritats med data, så första ritningen aldrig räknas som "ny".
+      venueIds.forEach(function(vid) { _liveSeen.add(liveReportKey(groups[vid][0])); });
+      _liveSeenReady = true;
       if (subText) {
         subText.textContent = _loadState === 'error'
           ? 'Ingen kontakt · kan vara gammalt'
@@ -3009,6 +3155,12 @@ import './style.css';
       document.getElementById('rs3').style.display = n === 3 ? 'flex' : 'none';
       var c = document.getElementById('rp-step-counter');
       if (c) { c.textContent = n + ' / 3'; c.style.display = ''; }
+      // Bekräftelsen ritas om varje gång steg 3 visas: klassen tas bort, layouten tvingas, och sätts på igen
+      var icon = document.getElementById('rs-success-icon');
+      if (icon) {
+        icon.classList.remove('rs-success-on');
+        if (n === 3) { void icon.offsetWidth; icon.classList.add('rs-success-on'); }
+      }
     }
 
     function pickRV(id) {
@@ -3021,6 +3173,21 @@ import './style.css';
       rsStep(1);
     }
 
+    // Raden för ett ställe lyser till en kort stund efter att användaren rapporterat: "din rapport landade här".
+    // Anropas efter submitReport, som redan har laddat om rapporterna, så raden visar det nya värdet.
+    function flashVenueRow(venueId) {
+      if (currentScreen !== 'explore') return;
+      var rows = document.querySelectorAll('#explore-list .erow');
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-venue') === venueId) {
+          rows[i].classList.remove('erow--landed');
+          void rows[i].offsetWidth;
+          rows[i].classList.add('erow--landed');
+          return;
+        }
+      }
+    }
+
     async function pickAhead(peopleAhead) {
       if (!selectedRV) return;
       var commentEl = document.getElementById('rs-comment');
@@ -3031,12 +3198,15 @@ import './style.css';
         maybeShowInstallPrompt();
         rsStep(3);
         var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
+        var reportedId = selectedRV.id;
         selectedRV = null;
         setTimeout(function() {
           rsStep(1);
           document.getElementById('rs-search').value = '';
           filterReportList();
           if (dest) showScreen(dest);
+          // Markeringen sker först när raden syns, annars har den spelats färdigt bakom tacksidan
+          if (dest === 'explore') flashVenueRow(reportedId);
         }, 2800);
       } catch(err) { showToast(reportErrorText(err)); }
     }
@@ -3078,6 +3248,7 @@ import './style.css';
       try {
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
+        flashVenueRow(v.id);
         showToast('Rapport skickad — tack!');
         loadReports();
       } catch(e) {
