@@ -1,6 +1,6 @@
 # /performance-audit
 
-Audit for performance problems. QueueBar runs in a browser at a noisy bar — users are on 4G, impatient.
+Audit for performance problems. QBar runs in a browser at a noisy bar — users are on 4G, impatient.
 
 ## Trigger
 

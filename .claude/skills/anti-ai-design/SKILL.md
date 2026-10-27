@@ -1,6 +1,6 @@
 # /anti-ai-design
 
-Detect and remove generic AI-generated design patterns. QueueBar must feel like a deliberate product, not an AI component demo.
+Detect and remove generic AI-generated design patterns. QBar must feel like a deliberate product, not an AI component demo.
 
 This skill is a detection and removal tool. For the full quality standard (what "good" looks like), load `/premium-design`.
 
@@ -76,7 +76,7 @@ grep -n "font-weight: 900\|font-weight:900" index.html | grep -v "erow-hero\|liv
 
 ### Status colors used decoratively
 
-Green, amber, and red carry exact meaning in QueueBar: free, short/medium, long queue. Using them outside of status contexts dilutes the signal.
+Green, amber, and red carry exact meaning in QBar: free, short/medium, long queue. Using them outside of status contexts dilutes the signal.
 
 Check for green or red in non-status contexts:
 ```bash

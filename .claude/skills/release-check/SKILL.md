@@ -31,8 +31,8 @@ git status | grep "\.env"
 # Must be empty
 
 # No debug artifacts
-grep -n "console\.log\|debugger\|TODO\|FIXME\|HACK" index.html | grep -v "\[QueueBar\]"
-# [QueueBar] prefixed logs are intentional diagnostics — others are not
+grep -n "console\.log\|debugger\|TODO\|FIXME\|HACK" index.html | grep -v "\[QBar\]"
+# [QBar] prefixed logs are intentional diagnostics — others are not
 ```
 
 ### STEP 3 — Configuration check
@@ -108,7 +108,7 @@ Vercel auto-deploys from `main` push.
 After Vercel deploy completes (~1 min):
 - [ ] Production URL loads
 - [ ] Mapbox map renders (token URL allowlist must include Vercel domain)
-- [ ] Supabase connection works (reports load without `[QueueBar] loadReports Supabase-fel`)
+- [ ] Supabase connection works (reports load without `[QBar] loadReports Supabase-fel`)
 - [ ] No JS errors in console
 
 ### STEP 9 — Mapbox token domains (first deploy to new URL only)

@@ -7,7 +7,7 @@ import VENUES, { computeStatus, getStatusColor, getStatusLabel } from '../lib/ve
 const STOCKHOLM_CENTER = [18.0733, 59.3361];
 const DEFAULT_ZOOM = 13;
 
-export default function QueueBarMap({ reports = [], onVenuePress }) {
+export default function QBarMap({ reports = [], onVenuePress }) {
   const cameraRef = useRef(null);
   const sourceRef = useRef(null);
 

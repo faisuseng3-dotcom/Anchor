@@ -1,4 +1,4 @@
-# QueueBar — Claude Project Memory
+# QBar — Claude Project Memory
 
 ## What this project is
 
@@ -17,7 +17,7 @@ Deployed on Vercel. Branch: `claude/queuebar-expo-setup-do34fo` → merge to `ma
 
 ## Product thinking (applies to all tasks)
 
-QueueBar is a real-time decision tool used at 23:00, in low light, under social pressure. Apply the precision and honesty of fintech product discipline to the specific constraints of that context. Do not make it look like a banking app.
+QBar is a real-time decision tool used at 23:00, in low light, under social pressure. Apply the precision and honesty of fintech product discipline to the specific constraints of that context. Do not make it look like a banking app.
 
 Act as an independent product designer. Challenge weak suggestions, form your own opinion, fix the right thing. Load **`/fintech-product-thinking`** for the full operating framework.
 
@@ -77,7 +77,7 @@ Full status color system and dark-palette values: `/premium-design`.
 
 ## Engineering philosophy
 
-QueueBar is a real-time information system, not merely a map app. The hardest problem is turning unreliable human reports into trustworthy, honest information. Every architectural decision should support that.
+QBar is a real-time information system, not merely a map app. The hardest problem is turning unreliable human reports into trustworthy, honest information. Every architectural decision should support that.
 
 Core principles:
 - **Understand before changing** — trace data flows, read existing code, run check.js first

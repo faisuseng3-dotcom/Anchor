@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// QueueBar pre-commit checklist — run: node scripts/check.js
+// QBar pre-commit checklist — run: node scripts/check.js
 // Add new checks here as patterns emerge. All must pass before commit.
 
 const fs = require('fs');

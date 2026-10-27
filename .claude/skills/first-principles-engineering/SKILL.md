@@ -1,6 +1,6 @@
 # /first-principles-engineering
 
-QueueBar systems engineering methodology. Load for architecture changes, security work, queue-report logic, data integrity, complex debugging, and any task where the right solution is not immediately obvious.
+QBar systems engineering methodology. Load for architecture changes, security work, queue-report logic, data integrity, complex debugging, and any task where the right solution is not immediately obvious.
 
 ## Trigger
 
@@ -40,7 +40,7 @@ For any non-trivial change:
 4. Run `node scripts/check.js`. A failing baseline check means the system is already broken.
 5. Identify the most consequential verified weakness — not a hypothetical.
 
-**The data flow in QueueBar (as of this session):**
+**The data flow in QBar (as of this session):**
 
 ```
 User submits report
@@ -91,7 +91,7 @@ When improving aggregation, start simple. A recency-weighted median over the las
 
 ## 4. Freshness and uncertainty
 
-This is QueueBar's hardest product problem. Communicate it honestly in every layer.
+This is QBar's hardest product problem. Communicate it honestly in every layer.
 
 **Principles:**
 - A report from 5 minutes ago outweighs three reports from 75 minutes ago.
@@ -146,7 +146,7 @@ Do not show artificial confidence percentages. Use thresholds: low / medium / hi
 
 **Map the actual architecture first. Do not assume.**
 
-QueueBar's current security boundary (verified):
+QBar's current security boundary (verified):
 - Frontend: `index.html` — client-side JS, visible to all users
 - Backend: Supabase (PostgreSQL + REST API via `@supabase/supabase-js`)
 - Auth: anonymous (no login) — the Supabase anon key is embedded in client code
@@ -221,7 +221,7 @@ Before adding any new data collection, justify the necessity.
 
 ## 7. Search — architecture rules
 
-QueueBar has three search surfaces sharing one implementation (`venueSearch`):
+QBar has three search surfaces sharing one implementation (`venueSearch`):
 - Map inline dropdown
 - Explore list filter
 - Report venue picker
@@ -257,7 +257,7 @@ QueueBar has three search surfaces sharing one implementation (`venueSearch`):
 
 ## 8. Deterministic vs. AI
 
-Use deterministic algorithms by default for QueueBar. They are:
+Use deterministic algorithms by default for QBar. They are:
 - Explainable to users and developers
 - Testable with exact assertions
 - Reproducible across environments

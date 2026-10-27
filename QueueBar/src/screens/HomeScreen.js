@@ -26,7 +26,7 @@ export default function HomeScreen({ navigation, route }) {
     <LinearGradient colors={['#C4D8F8', '#4878C8', '#040C28']} style={styles.container}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
-          <Text style={styles.logo}>QueueBar</Text>
+          <Text style={styles.logo}>QBar</Text>
         </View>
 
         <View style={styles.mapContainer}>

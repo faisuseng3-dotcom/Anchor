@@ -1,6 +1,6 @@
 # /fintech-product-thinking
 
-QueueBar product philosophy. Load before any UI/UX task, feature design, or screen-level decision.
+QBar product philosophy. Load before any UI/UX task, feature design, or screen-level decision.
 
 ## Trigger
 
@@ -10,7 +10,7 @@ Auto-load for: product design, screen layout, UI component, information hierarch
 
 ## What this product actually is
 
-QueueBar is a **real-time decision tool used in a specific physical and social context**: you are at 23:00 on a Friday, standing outside a bar or deciding where to go in the next 20 minutes. Your phone is in one hand, your friends are asking, and you need an answer in five seconds.
+QBar is a **real-time decision tool used in a specific physical and social context**: you are at 23:00 on a Friday, standing outside a bar or deciding where to go in the next 20 minutes. Your phone is in one hand, your friends are asking, and you need an answer in five seconds.
 
 That context shapes every design decision. It is not a banking dashboard reviewed calmly at a desk. It is not a venue discovery app browsed on a Sunday afternoon. It is a tool used in low light, with noise, while moving, under mild social pressure, with real time constraints.
 
@@ -32,7 +32,7 @@ Not "what would look good here." Not "what do fintech apps usually do here." Tho
 
 Not the aesthetic. Fintech products are trustworthy because they are precise, predictable, and honest — not because they use a particular color palette or card layout.
 
-What transfers directly to QueueBar:
+What transfers directly to QBar:
 - **Clear hierarchy**: the most important information is immediately dominant. No hunting.
 - **Honest uncertainty**: "~15 min" is correct. "15 min" implies false precision. If you don't know, say so.
 - **Complete states**: every component has an empty state, a stale state, and an error state. An app that shows nothing when there is nothing is more trustworthy than one that shows fake activity.
@@ -97,7 +97,7 @@ These are product rules:
 4. Secondary information supports the primary — it does not compete
 5. Meta (timestamps, report counts, area names) belongs at the bottom or right
 
-**Status hierarchy for any QueueBar component (most → least important):**
+**Status hierarchy for any QBar component (most → least important):**
 1. Queue status (free / short / medium / long)
 2. Wait time estimate (~X min)
 3. Venue name
@@ -110,7 +110,7 @@ Any component that inverts this has a hierarchy problem.
 
 ## Communicating uncertainty and confidence
 
-This is the most important design problem in QueueBar and the least addressed. Community reports are uncertain by nature. Design must communicate that honestly.
+This is the most important design problem in QBar and the least addressed. Community reports are uncertain by nature. Design must communicate that honestly.
 
 **Freshness over quantity**: a single report from 8 minutes ago is more credible than three reports from 80 minutes ago. Freshness should be visually prominent — not hidden in a timestamp footnote.
 
@@ -166,7 +166,7 @@ The Explore list currently shows: status bar, venue name, area, wait time, trend
 
 ## Visual language
 
-QueueBar should feel like a product that belongs to the Stockholm nightlife context — not a banking app with venue names, not a generic discovery app, not an AI dashboard.
+QBar should feel like a product that belongs to the Stockholm nightlife context — not a banking app with venue names, not a generic discovery app, not an AI dashboard.
 
 What that means in practice:
 - **Typography**: Zilla Slab gives character without being decorative. Use it as the system font, not as an accent. Weight does the work — not size inflation.
@@ -190,7 +190,7 @@ The patterns below are defaults — what emerges when there is no design thinkin
 - Excessive rounded containers and nested cards
 - Decorative icons that add visual noise without communicating action or status
 
-**QueueBar-specific anti-patterns:** see `/anti-ai-design` for grep-based detection.
+**QBar-specific anti-patterns:** see `/anti-ai-design` for grep-based detection.
 
 ---
 

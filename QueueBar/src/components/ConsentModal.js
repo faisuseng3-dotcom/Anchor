@@ -27,7 +27,7 @@ export default function ConsentModal({ onDone }) {
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>Din data på QueueBar</Text>
+          <Text style={styles.title}>Din data på QBar</Text>
           <Text style={styles.intro}>Vi sparar så lite som möjligt, och inget som kan knytas till dig personligen:</Text>
           <Text style={styles.item}>🔑  Ett anonymt ID som skapas på din enhet</Text>
           <Text style={styles.item}>📢  Dina körapporter (försvinner efter 45 min)</Text>

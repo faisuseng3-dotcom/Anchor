@@ -1,6 +1,6 @@
 # /premium-design
 
-Define and evaluate production-quality design for QueueBar. Load before implementing any UI component, running a visual audit, or deciding whether a design decision is correct.
+Define and evaluate production-quality design for QBar. Load before implementing any UI component, running a visual audit, or deciding whether a design decision is correct.
 
 ## Trigger
 
@@ -8,9 +8,9 @@ Define and evaluate production-quality design for QueueBar. Load before implemen
 
 ---
 
-## What quality means for QueueBar
+## What quality means for QBar
 
-QueueBar is used at 23:00 on a Friday, in low light, while moving, under mild social pressure, with 20 minutes to decide where to go. Quality means the interface serves that person — not that it looks good in a screenshot.
+QBar is used at 23:00 on a Friday, in low light, while moving, under mild social pressure, with 20 minutes to decide where to go. Quality means the interface serves that person — not that it looks good in a screenshot.
 
 Premium is not a visual style. It is the result of every element earning its place through precision, honesty, and usefulness. The UI should feel alive when activity is high and calm when nothing requires attention.
 
@@ -20,7 +20,7 @@ Premium is not a visual style. It is the result of every element earning its pla
 
 ---
 
-## QueueBar design system (verified values)
+## QBar design system (verified values)
 
 **Font**: `'Plus Jakarta Sans'` — CSS var `--font-base`. Do not reference Zilla Slab; the codebase migrated away from it.
 
@@ -95,7 +95,7 @@ Use this when implementing a component, auditing a screen, or deciding between t
 - Every color on screen: does it come from the design system above, or is it ad-hoc?
 - Status colors (green/amber/red) must not appear for non-status purposes — they carry meaning and diluting that meaning erodes trust
 - Accent blue (`--accent`) is for interactive states and progress, not decoration
-- Does the design work in the dark environment QueueBar is used in? Contrast must hold at arm's length in low ambient light
+- Does the design work in the dark environment QBar is used in? Contrast must hold at arm's length in low ambient light
 - Stale or uncertain data must look visually degraded — dimmed, not hidden
 
 ### 5. Spacing and information density
@@ -132,7 +132,7 @@ If the answer is "it looks good" or "it fills the space" or "other apps do this"
 
 ---
 
-## QueueBar-specific standards
+## QBar-specific standards
 
 These apply in addition to the 9-dimension framework and take precedence when they conflict.
 

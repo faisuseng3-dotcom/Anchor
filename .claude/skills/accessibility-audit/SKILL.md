@@ -1,6 +1,6 @@
 # /accessibility-audit
 
-Audit for accessibility. QueueBar is a PWA used in noisy, dark environments — a11y is practical, not just compliance.
+Audit for accessibility. QBar is a PWA used in noisy, dark environments — a11y is practical, not just compliance.
 
 ## Trigger
 

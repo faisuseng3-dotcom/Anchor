@@ -1,6 +1,6 @@
 # /responsive-audit
 
-Audit for mobile-first layout correctness. QueueBar is a PWA — mobile is the primary surface.
+Audit for mobile-first layout correctness. QBar is a PWA — mobile is the primary surface.
 
 ## Trigger
 
