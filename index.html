@@ -209,28 +209,41 @@
   <div id="venue-card">
     <div class="vc-grab" id="vc-grab"><div class="vc-handle"></div></div>
     <div class="vc-header">
-      <span id="vc-name"></span>
-      <button id="vc-fav" class="vc-icon-btn" onclick="vcToggleFavorite(event)" aria-label="Favorit">
-        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-      </button>
-      <button id="vc-close" class="vc-icon-btn" onclick="closeVenueCard()" aria-label="Stäng">×</button>
+      <div class="vc-title">
+        <span id="vc-name"></span>
+        <span id="vc-area" class="vc-area"></span>
+      </div>
+      <div class="vc-tools">
+        <!-- Egna kantiga ikoner: 2 px linje, fyrkantiga ändar och skarpa hörn, utan hjärta, pil eller kryss från ikonbibliotek -->
+        <button id="vc-fav" class="vc-tool" onclick="vcToggleFavorite(event)" aria-label="Favorit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z"/></svg>
+        </button>
+        <button id="vc-share" class="vc-tool" onclick="vcShare()" aria-label="Dela">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9h5M20 4h-8m8 0v8m0-8L10 14"/></svg>
+        </button>
+        <button id="vc-close" class="vc-tool" onclick="closeVenueCard()" aria-label="Stäng">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+        </button>
+      </div>
     </div>
-    <div class="vc-row">
-      <span id="vc-area"></span>
-      <span id="vc-closing"></span>
+
+    <!-- Hjälten till vänster, stämplade uppgifter till höger: asymmetri som följer innehållet, inte en centrerad mall -->
+    <div class="vc-main">
+      <div class="vc-hero">
+        <div id="vc-status"></div>
+        <div id="vc-sub"></div>
+      </div>
+      <dl id="vc-facts"></dl>
     </div>
-    <div id="vc-status"></div>
-    <div id="vc-sub"></div>
-    <div class="vc-sep"></div>
-    <div id="vc-info"></div>
+
+    <div id="vc-timeline"></div>
+
     <div class="vc-actions-main">
-      <button class="vc-btn vc-omw" onclick="vcOnMyWay()">På väg dit</button>
       <button class="vc-btn vc-primary" onclick="goToReport()">Rapportera kön</button>
-    </div>
-    <div class="vc-actions">
-      <button class="vc-link" onclick="openDirections()">Vägbeskrivning</button>
-      <span class="vc-link-sep">·</span>
-      <button class="vc-link" onclick="vcShare()">Dela</button>
+      <button class="vc-btn vc-omw" onclick="vcOnMyWay()">På väg</button>
+      <button class="vc-btn vc-dir" onclick="openDirections()" aria-label="Vägbeskrivning">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+      </button>
     </div>
   </div>
 
