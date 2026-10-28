@@ -652,7 +652,7 @@ import './style.css';
       var ch = queueChange(reports);
       if (!ch) return '';
       var cls = ch.dir === 'up' ? 'vc-chg--up' : 'vc-chg--down';
-      return '<div class="vc-chg ' + cls + '"><span class="vc-chg-dir">' + (ch.dir === 'up' ? '▲' : '▼') + '</span>' +
+      return '<div class="vc-chg ' + cls + '"><span class="vc-chg-dir">' + (ch.dir === 'up' ? '▲ Växer' : '▼ Krymper') + '</span>' +
         '<span class="vc-chg-time">' + clockOfIso(ch.t0) + ' → ' + clockOfIso(ch.t1) + '</span>' +
         '<span class="vc-chg-val">' + ch.from + ' → ' + ch.to + '</span></div>';
     }
@@ -672,7 +672,7 @@ import './style.css';
         return '<li class="vc-rep"><span class="vc-rep-dot" style="background:' + getStatusColor(r.queue_status) + '"></span>' +
           '<span class="vc-rep-time">' + clockOfIso(r.created_at) + '</span>' +
           '<span class="vc-rep-what">' + what + '</span>' +
-          '<span class="vc-rep-ago">' + (ago < 1 ? 'NU' : ago + 'M') + '</span></li>';
+          '<span class="vc-rep-ago">' + (ago < 1 ? 'NU' : ago + ' MIN') + '</span></li>';
       }).join('');
       return '<button class="vc-reps-toggle" aria-expanded="' + _vcListOpen + '" onclick="toggleVcReports()">' +
         '<span>' + rows.length + ' rapporter senaste 45 min</span>' +
@@ -692,9 +692,6 @@ import './style.css';
 
     function openVenueCard(venue, source) {
       console.log('[QueueBar] openVenueCard:', venue.id, '| källa:', source || 'lista');
-      if (map && venue.lat && venue.lng) {
-        map.flyTo({ center: [venue.lng, venue.lat], zoom: 14, duration: 800 });
-      }
       activeVenue = venue;
       applyMapFocus();
       var status = computeStatus(venue.id, allReports);
@@ -713,10 +710,27 @@ import './style.css';
       vcStatus.style.color = waitText ? getStatusColor(status) : '';
       // Rad under siffran: vad siffran bygger på (antal i kö, uppmätt eller uppskattad, ålder)
       var subParts = [];
-      if (est) subParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : ''));
+      if (est) {
+        // estimateWait tar medianen av rapporterna senaste 20 min (annars den senaste). Säg det, annars ser "10–25 i kö"
+        // ut att motsäga trendraden, som visar den senaste rapporten.
+        var nMedian = reports.filter(function(r) {
+          return r.people_ahead != null && Date.now() - new Date(r.created_at).getTime() < 20 * 60 * 1000;
+        }).length;
+        subParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : '') + (nMedian >= 2 ? ' · median av ' + nMedian : ''));
+      }
       if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('≈ uppskattning');
       if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
       document.getElementById('vc-sub').textContent = waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
+
+      // Om du går nu: när du är framme och kön då. Samma prognos och ordval som "På väg"-bannern. Bara med prognos —
+      // gångtiden ensam står redan på vägbeskrivningsknappen.
+      var walk = walkMinutesTo(venue);
+      var fc = walk !== null && walk <= 40 ? forecastWait(venue.id, walk, onMyWayCount(venue.id)) : null;
+      var fcText = fc ? formatWait(fc) : '';
+      document.getElementById('vc-go').textContent = fc ? 'Går du nu: framme ' + clockOfIso(new Date(Date.now() + walk * 60000).toISOString()) +
+        (fcText === 'Ingen kö' ? ' · troligen ingen kö då' : ' · troligen ' + fcText + ' kö då') : '';
+      document.getElementById('vc-dir-min').textContent = walk !== null ? walk + ' min' : '';
+      document.querySelector('.vc-dir').setAttribute('aria-label', walk !== null ? 'Vägbeskrivning, ' + walk + ' min promenad' : 'Vägbeskrivning');
 
       // Stämplade uppgifter: korta etiketter, exakt tid och räknebara värden. Raden finns bara om vi har något ärligt att säga.
       // Klockslaget (22:43) står tillsammans med åldern, eftersom "8 min sedan" blir fel om man tittar en minut senare.
@@ -725,7 +739,7 @@ import './style.css';
       if (trend) facts.push({ k: 'Trend', v: trend === 'up' ? '▲ ÖKAR' : '▼ MINSKAR', cls: trend === 'up' ? 'vc-fact--up' : 'vc-fact--down' });
       if (reports.length) {
         var ageMin = Math.max(0, Math.floor((Date.now() - new Date(reports[0].created_at)) / 60000));
-        facts.push({ k: 'Rapport', v: clockOfIso(reports[0].created_at) + ' · ' + (ageMin < 1 ? 'NU' : ageMin < 60 ? ageMin + 'M' : Math.floor(ageMin / 60) + 'H'), cls: minsOld >= 45 ? 'vc-fact--stale' : '' });
+        facts.push({ k: 'Rapport', v: clockOfIso(reports[0].created_at) + ' · ' + (ageMin < 1 ? 'NU' : ageMin < 60 ? ageMin + ' MIN' : Math.floor(ageMin / 60) + ' H'), cls: minsOld >= 45 ? 'vc-fact--stale' : '' });
       }
       if (reports.length > 1) facts.push({ k: 'Antal', v: reports.length + ' ST' });
       var omwN = onMyWayCount(venue.id);
@@ -733,7 +747,7 @@ import './style.css';
       var toClose = minutesToClose(venue);
       if (toClose !== null) {
         var soon = toClose > 0 && toClose <= 90;
-        facts.push({ k: 'Stänger', v: venue.closing + (soon ? ' · ' + toClose + 'M' : ''), cls: soon ? 'vc-fact--soon' : '' });
+        facts.push({ k: 'Stänger', v: venue.closing + (soon ? ' · ' + toClose + ' MIN' : ''), cls: soon ? 'vc-fact--soon' : '' });
       }
       document.getElementById('vc-facts').innerHTML = facts.map(function(f) {
         return '<div class="vc-fact ' + (f.cls || '') + '"><dt>' + f.k + '</dt><dd>' + f.v + '</dd></div>';
@@ -749,6 +763,10 @@ import './style.css';
       card.classList.remove('vc-dragging', 'vc-settling');
       card.style.display = 'block';
       card.style.animation = 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)';
+      // Stället centreras i den del av kartan som syns ovanför kortet, inte mitt på skärmen bakom det.
+      if (map && venue.lat && venue.lng) {
+        map.flyTo({ center: [venue.lng, venue.lat], zoom: 14, duration: 800, offset: [0, -card.offsetHeight / 2] });
+      }
     }
 
     // Kortets knappar — activeVenue är modul-lokal, så inline-onclick går via dessa
@@ -846,9 +864,13 @@ import './style.css';
       }
     }
 
+    // Gående vägbeskrivning. Apple Kartor på iPhone/iPad (öppnas direkt i appen), annars Google Maps.
     function openDirections() {
       if (!activeVenue) return;
-      window.open('https://www.google.com/maps/dir/?api=1&destination=' + activeVenue.lat + ',' + activeVenue.lng, '_blank');
+      var to = activeVenue.lat + ',' + activeVenue.lng;
+      window.open(/iPhone|iPad|iPod/.test(navigator.userAgent)
+        ? 'https://maps.apple.com/?daddr=' + to + '&dirflg=w'
+        : 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + to, '_blank');
     }
 
     function renderVenueCard(venue) {
@@ -918,7 +940,7 @@ import './style.css';
       var latest = allReports.filter(function(r) { return r.venue_id === v.id && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
       var meta = [v.area, venueTypeLabel(v.type)];
-      if (best.dist != null) meta.push(best.dist < 1 ? Math.round(best.dist * 10) * 100 + ' m' : best.dist.toFixed(1) + ' km');
+      if (best.dist != null) meta.push(best.dist < 0.95 ? Math.round(best.dist * 10) * 100 + ' m' : best.dist.toFixed(1) + ' km');
       if (latest) meta.push(timeAgo(latest.created_at));
       card.innerHTML = '<button class="bn-card" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
         '<span class="bn-eyebrow">Bäst nu</span>' +
@@ -1148,7 +1170,7 @@ import './style.css';
         return {
           type: 'Feature', id: v.id,
           geometry: { type: 'Point', coordinates: [v.lng, v.lat] },
-          properties: { id: v.id, name: v.name, type: v.type, status: 'unknown', wait_label: '', pill_image: '', urgent: 0, ring_image: '' }
+          properties: { id: v.id, name: v.name, type: v.type, status: 'unknown', wait_label: '', pill_image: '', urgent: 0, ring_image: '', best: 0 }
         };
       })
     };
@@ -1474,7 +1496,8 @@ import './style.css';
             // (status "unknown") räknas inte som bra eller dåliga, så de påverkar inte färgen.
             clusterProperties: {
               worst: ['max', ['match', ['get', 'status'], 'long', 3, 'medium', 2, 'short', 1, 'none', 0, -1]],
-              n_known: ['+', ['case', ['==', ['get', 'status'], 'unknown'], 0, 1]]
+              n_known: ['+', ['case', ['==', ['get', 'status'], 'unknown'], 0, 1]],
+              has_best: ['max', ['get', 'best']] // 1 om "Bäst nu" ligger i klustret (applyMapFocus)
             }
           });
 
@@ -1503,6 +1526,18 @@ import './style.css';
             paint: { 'circle-color': '#5B9BFF', 'circle-radius': 16, 'circle-opacity': 0.18, 'circle-pitch-alignment': 'map' } });
           map.addLayer({ id: 'me-dot', type: 'circle', source: 'me',
             paint: { 'circle-color': '#5B9BFF', 'circle-radius': 6, 'circle-stroke-width': 2.5, 'circle-stroke-color': '#F5F5F4' } });
+
+          // Blå ram runt klustret som innehåller "Bäst nu" (filtret sätts av applyMapFocus), så kortet och kartan hör ihop
+          // även utzoomat. Ligger under klustret, 6 px utanför dess ring.
+          map.addLayer({
+            id: 'clusters-focus', type: 'circle', source: 'venues', filter: ['has', '__ingen__'],
+            paint: {
+              'circle-color': 'rgba(0,0,0,0)',
+              'circle-radius': ['step', ['get', 'point_count'], 24, 6, 27, 16, 30],
+              'circle-stroke-width': 2.5,
+              'circle-stroke-color': '#5B9BFF'
+            }
+          });
 
           map.addLayer({
             id: 'clusters', type: 'circle', source: 'venues',
@@ -1544,32 +1579,32 @@ import './style.css';
               'icon-anchor': 'center',
               'icon-allow-overlap': true,
               // false: nålarna går in i kollisionsindexet, så ortnamn som skulle hamna under en pill döljs i stället
-              'icon-ignore-placement': false,
-              // Längre köer ritas överst när nålar överlappar
-              'symbol-sort-key': ['match', ['get', 'status'], 'long', 4, 'medium', 3, 'short', 2, 'none', 1, 0]
+              'icon-ignore-placement': false
+              // symbol-sort-key sätts av applyMapFocus: valt ställe överst, sedan längre köer
             },
             // icon-opacity sätts av applyMapFocus: ingen data, gammal data och valt ställe
             paint: {}
           });
 
           // Namn under pillen när man zoomat in. Ligger under nålarna, så krockar ett namn döljs namnet, aldrig pillen.
+          var nameLayout = {
+            'text-field': ['get', 'name'],
+            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+            'text-size': ['interpolate', ['linear'], ['zoom'], 14, 11, 16, 13],
+            'text-anchor': 'top',
+            // Pillen är ~34 px hög vid zoom 15 och har 2 px kollisionsmarginal; närmare än så döljer den sitt eget namn.
+            'text-offset': [0, 1.9],
+            'text-max-width': 9
+          };
+          var namePaint = {
+            'text-color': ['match', ['get', 'status'], 'unknown', '#85858A', '#F5F5F4'],
+            'text-halo-color': '#0B0B0D',
+            'text-halo-width': 1.4
+          };
           map.addLayer({
             id: 'venues-names', type: 'symbol', source: 'venues', minzoom: 13.8,
             filter: ['!', ['has', 'point_count']],
-            layout: {
-              'text-field': ['get', 'name'],
-              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
-              'text-size': ['interpolate', ['linear'], ['zoom'], 14, 11, 16, 13],
-              'text-anchor': 'top',
-              // Pillen är ~34 px hög vid zoom 15 och har 2 px kollisionsmarginal; närmare än så döljer den sitt eget namn.
-              'text-offset': [0, 1.9],
-              'text-max-width': 9
-            },
-            paint: {
-              'text-color': ['match', ['get', 'status'], 'unknown', '#85858A', '#F5F5F4'],
-              'text-halo-color': '#0B0B0D',
-              'text-halo-width': 1.4
-            }
+            layout: nameLayout, paint: namePaint
           }, 'venues-pins');
 
           // Blå ram runt stället i "Bäst nu", eller runt det valda stället när ett venue-kort är öppet (applyMapFocus).
@@ -1584,6 +1619,13 @@ import './style.css';
               'icon-ignore-placement': true
             }
           }, 'venues-pins');
+
+          // Det valda ställets namn: ritas alltid, ovanpå grannarnas pillar. Filtret sätts av applyMapFocus.
+          map.addLayer({
+            id: 'venues-name-focus', type: 'symbol', source: 'venues', filter: ['has', '__ingen__'],
+            layout: Object.assign({}, nameLayout, { 'text-allow-overlap': true, 'text-ignore-placement': true }),
+            paint: namePaint
+          });
 
           // Liv på kartan kommer från data. En ring runt pillen andas bara när kön är lång OCH färsk (< 20 min) — samma regel
           // som den pulserande pricken i listan. Ställen med fri ingång pulserar inte längre: de är inte brådskande, och
@@ -1865,17 +1907,25 @@ import './style.css';
       return latest ? (Date.now() - latest) / 60000 : Infinity;
     }
 
-    // Kartans fokus. Utan öppet kort: blå ram runt "Bäst nu". Med öppet kort: ramen flyttar till det valda stället och
-    // övriga tonas ned. Data som är 15–45 min gammal är blekare, som i listan — gammal data ska se gammal ut.
+    // Kartans fokus. Utan öppet kort: blå ram runt "Bäst nu" (eller klustret det ligger i). Med öppet kort: ramen och
+    // namnet flyttar till det valda stället, som ritas överst, och övriga tonas ned. Data som är 15–45 min gammal är
+    // blekare, som i listan — gammal data ska se gammal ut.
+    var PIN_SORT_KEY = ['match', ['get', 'status'], 'long', 4, 'medium', 3, 'short', 2, 'none', 1, 0]; // längre köer överst
     function applyMapFocus() {
       if (!map || !map.getLayer('venues-focus')) return;
       var sel = activeVenue ? activeVenue.id : null;
+      var isSel = sel ? ['==', ['get', 'id'], sel] : false;
       var dim = sel ? ['!=', ['get', 'id'], sel] : false;
+      var none = ['has', '__ingen__']; // alltid falskt; ['==', 1, 0] tolkas som gammalt filter och kraschar kartan
       map.setFilter('venues-focus', ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'focus_image'], ''],
-        sel ? ['==', ['get', 'id'], sel] : ['==', ['get', 'best'], 1]]);
+        sel ? isSel : ['==', ['get', 'best'], 1]]);
+      map.setFilter('clusters-focus', sel ? none : ['all', ['has', 'point_count'], ['==', ['get', 'has_best'], 1]]);
+      map.setFilter('venues-name-focus', sel ? ['all', ['!', ['has', 'point_count']], isSel] : none);
+      map.setLayoutProperty('venues-pins', 'symbol-sort-key', ['case', isSel, 10, PIN_SORT_KEY]);
       map.setPaintProperty('venues-pins', 'icon-opacity',
         ['case', dim, 0.3, ['==', ['get', 'status'], 'unknown'], 0.7, ['==', ['get', 'aging'], 1], 0.6, 1]);
-      map.setPaintProperty('venues-names', 'text-opacity', ['case', dim, 0.3, ['==', ['get', 'aging'], 1], 0.6, 1]);
+      // Med öppet kort visas bara det valda namnet (eget lager); grannarnas namn skulle krocka med det.
+      map.setPaintProperty('venues-names', 'text-opacity', sel ? 0 : ['case', ['==', ['get', 'aging'], 1], 0.6, 1]);
       map.setPaintProperty('venues-glow', 'circle-opacity', ['case', dim, 0.12, ['==', ['get', 'aging'], 1], 0.22, 0.45]);
     }
 
@@ -2123,6 +2173,14 @@ import './style.css';
     }
     function updateMeOnMap() {
       if (map && map.getSource('me')) map.getSource('me').setData(meGeoJSON());
+    }
+
+    // Gångtid i minuter (5 km/h fågelvägen), eller null utan position. Samma siffra i venue-kortet och i "På väg".
+    function walkMinutesTo(venue) {
+      var p = window._userPos;
+      if (!p || !venue) return null;
+      var dy = (venue.lat - p.lat) * 111, dx = (venue.lng - p.lng) * 111 * Math.cos(venue.lat * Math.PI / 180);
+      return Math.max(2, Math.round(Math.sqrt(dx * dx + dy * dy) / (5 / 60)));
     }
 
     // ── Historiska mönster ───────────────────────────────────────────────────
@@ -3435,13 +3493,7 @@ import './style.css';
       // Den som går till ett annat ställe står inte längre i sin gamla kö.
       if (getQueueSession()) endQueueSession();
 
-      var walkMins = 15;
-      if (window._userPos) {
-        var dlat = venue.lat - window._userPos.lat;
-        var dlng = venue.lng - window._userPos.lng;
-        var distKm = Math.sqrt(dlat * dlat + dlng * dlng) * 111;
-        walkMins = Math.max(2, Math.round(distKm / (5 / 60)));
-      }
+      var walkMins = walkMinutesTo(venue) || 15; // utan position: en rimlig promenad i innerstan
 
       _onMyWay = { venueId: venueId, arrivalTime: Date.now() + walkMins * 60 * 1000, walkMins: walkMins, timerId: null };
       scheduleArrival();

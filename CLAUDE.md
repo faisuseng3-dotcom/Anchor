@@ -328,9 +328,16 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Kartans lager uppifrån: nålar → namn (`venues-names`, från zoom 13,8, döljs vid krock — aldrig pillen) → kluster →
   du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`, under baskartans etiketter, bara färsk data).
   Startvyn ramar in alla 28 ställen mellan sökfältet och "Bäst nu"-kortet (`startCamera`)
-- Kartans fokus (`applyMapFocus`) är enda stället som sätter pillarnas opacitet: blå ram (`venues-focus`) runt "Bäst nu",
-  eller runt valt ställe när venue-kortet är öppet (då tonas övriga till 0,3). Data 15–45 min gammal (`aging`) är
-  blekare (0,6), samma gräns som `.erow--stale` i listan
+- Kartans fokus (`applyMapFocus`) är enda stället som sätter pillarnas opacitet och sorteringsordning: blå ram
+  (`venues-focus`) runt "Bäst nu" — eller runt klustret det ligger i (`clusters-focus`, `has_best`) — och runt valt
+  ställe när venue-kortet är öppet. Då ritas det valda överst med sitt namn (`venues-name-focus`) och övriga tonas till
+  0,3. Data 15–45 min gammal (`aging`) är blekare (0,6), samma gräns som `.erow--stale` i listan
+- Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat, ger
+  ett Mapbox-fel — och `map.on('error')` nollar då hela kartan (känd skuld nr 6)
+- Gångtid: `walkMinutesTo(venue)` (5 km/h fågelvägen) — samma siffra i venue-kortet, på vägbeskrivningsknappen och i
+  "På väg". Kortets prognosrad (`#vc-go`) visas bara när `forecastWait` ger en prognos
+- Venue-kortets "10–25 i kö" är medianen av rapporterna senaste 20 min (`estimateWait`); kortet skriver "median av N"
+  när N ≥ 2, eftersom trendraden under visar den senaste rapporten
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
 - Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)

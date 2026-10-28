@@ -542,8 +542,10 @@
 
     /* Hjälten till vänster, stämplade uppgifter till höger. Spalterna är olika breda med flit: siffran får utrymme,
        uppgifterna är små och täta. Ovanför en linje, så det läses som en etikett på en maskin. */
-    .vc-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 14px; align-items: end; padding: 12px 0 14px; border-top: 1px solid var(--border); }
-    .vc-hero { min-width: 0; }
+    /* Flex med radbrytning: får siffran (nowrap) och faktakolumnen inte plats bredvid varandra hamnar fakta under, i
+       stället för att siffran ritas in i dem. flex-basis 0 gör att bara siffrans bredd avgör, inte raden under den. */
+    .vc-main { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 14px; padding: 12px 0 14px; border-top: 1px solid var(--border); }
+    .vc-hero { flex: 1 1 0; }
     #vc-status {
       font-family: var(--font-mono); font-size: clamp(34px, 11vw, 46px); font-weight: 700; letter-spacing: -0.05em;
       line-height: 0.95; font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap;
@@ -551,6 +553,9 @@
     #vc-sub { font-family: var(--stamp); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-top: 8px; }
     .vc--aging #vc-status { opacity: 0.55; }
     .vc--nodata #vc-sub { color: var(--text-muted); }
+    /* Om du går nu: bara när det finns en prognos. Hel bredd, vanlig text — det är ett svar, inte en stämpel. */
+    #vc-go:empty { display: none; }
+    #vc-go { padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--text-primary); }
 
     /* Stämplade uppgifter: litet, tätt, monospace, versaler, 1 px linje mellan. Ingen rad är högre än texten kräver. */
     #vc-facts { width: max-content; min-width: 128px; }
@@ -593,14 +598,15 @@
     @media (prefers-reduced-motion: reduce) { .vc-reps-toggle svg { transition: none; } }
 
     /* Knappar: en tydlig huvudhandling, två sekundära. Skarpa hörn (4 px), ingen tonad bakgrund, ingen blå fyllning. */
-    .vc-actions-main { display: grid; grid-template-columns: 1fr auto 52px; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .vc-actions-main { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
     .vc-btn {
       border: 1px solid var(--border-hover); border-radius: 4px; height: 48px; padding: 0 16px;
       font-family: var(--font-base); font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
       cursor: pointer; background: transparent; color: var(--text-primary); white-space: nowrap;
     }
     .vc-primary { background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-primary); }
-    .vc-dir { padding: 0; display: flex; align-items: center; justify-content: center; }
+    .vc-dir { min-width: 52px; padding: 0 14px; display: flex; align-items: center; justify-content: center; gap: 6px; font-variant-numeric: tabular-nums; }
+    .vc-dir span:empty { display: none; }
     .vc-dir svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: miter; stroke-linecap: square; }
 
     /* ── Consent Modal ─────────────────────────────────────────────────── */
