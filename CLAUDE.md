@@ -12,9 +12,13 @@ siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
 **Namnet är Qbar.** Allt användaren ser säger Qbar. Kvar som QueueBar: domänen `queuebar.se` (e-post),
 Vercel-URL:en, `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo-projektet).
 
-**Introt** (`#splash` i `index.html`, blocket "Intro" i `src/style.css`) är ren CSS: köstaplarna blir ringen
-i Q:et och sedan dyker man genom hålet in i kartan, ~2 s. Det spelas en gång per session (`sessionStorage`
-`qb_splash`), hoppas över vid tryck och visar en stilla logga vid `prefers-reduced-motion`.
+**Introt** (`#splash` + inline-skript i `index.html`, blocket "Intro" i `src/style.css`): ringen i Q:et ritas,
+man zoomar in genom hålet till en 3D-stad där gubben leds in i en gata, och ut igen till "Qbar", ~4 s. Stan är
+klippet `public/splash-city.mp4` (490 kB), renderat ur reklamprojektet med
+`node scripts/render-splash.mjs` i `~/Desktop/qbar-ad` (kamera och gång i `renderSplashAt`). Spelar klippet inte
+inom 1,5 s (långsamt nät, iOS strömsparläge, webbläsare utan H.264) visas bara ordmärket. En gång per session
+(`sessionStorage` `qb_splash`), hoppas över vid tryck, stilla logga vid `prefers-reduced-motion`. E2E-testerna
+hoppar över det i `skipOnboarding`.
 
 Produktion: `anchor-queuebar.vercel.app` (använd **aldrig** en Vercel-URL med slumpkod i mitten —
 de är frysta ögonblicksbilder).

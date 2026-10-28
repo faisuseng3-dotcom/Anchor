@@ -3647,14 +3647,6 @@ import './style.css';
     console.log('[QueueBar] Initiering klar');
     checkConsent();
 
-    // Introt spelas helt i CSS; här tas lagret bort när det tonat ut, vid tryck, eller direkt om det redan visats.
-    var splash = document.getElementById('splash');
-    if (splash) {
-      if (document.documentElement.classList.contains('no-splash')) splash.remove();
-      splash.addEventListener('animationend', function(e) { if (e.animationName === 'splashDone') splash.remove(); });
-      splash.addEventListener('click', function() { splash.remove(); });
-    }
-
 // Expose functions referenced in inline event handlers (onclick, oninput, etc.)
 // Required because Vite modules are not globally scoped.
 Object.assign(window, {

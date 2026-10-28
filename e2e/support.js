@@ -76,6 +76,7 @@ export async function skipOnboarding(page) {
   await page.addInitScript(() => {
     localStorage.setItem('qb_onboarding_done', 'true');
     localStorage.setItem('qb_consent', 'true');
+    sessionStorage.setItem('qb_splash', '1'); // introt täcker appen i ~4 s; det testas inte här
     localStorage.removeItem('qb_testdata');
     localStorage.removeItem('qb_queue_session');
     localStorage.removeItem('qb_on_my_way');
