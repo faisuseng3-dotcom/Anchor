@@ -338,6 +338,13 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   "På väg". Kortets prognosrad (`#vc-go`) visas bara när `forecastWait` ger en prognos
 - Venue-kortets "10–25 i kö" är medianen av rapporterna senaste 20 min (`estimateWait`); kortet skriver "median av N"
   när N ≥ 2, eftersom trendraden under visar den senaste rapporten
+- Kluster bara för tätt liggande ställen (`clusterRadius` 20, t.o.m. zoom 13,99). Startvyn (`startCamera`) ramar in
+  ställena med färsk data och håller zoomen ≥12,4, så den visar väntetider och inte en karta full av kluster
+- Kartans rörelse (`trackMapChanges` + `stepMapMotion`, driven av kartans rAF-slinga): pillarna tonar fram längst kö
+  först när introt är borta (`afterSplash`, eventet `qb:splashdone` från `index.html`); en pill som byter värde tonar in
+  på nytt; en ny kö-rapport skickar ut en våg (`venues-ripple`). Opacitet via feature-state `appear` (källan har
+  `promoteId: 'id'`), multiplicerad in i `applyMapFocus`. Kartans inzoomning väntar också på introt. Inget av det vid
+  `prefers-reduced-motion`
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
 - Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)

@@ -1492,7 +1492,10 @@ import './style.css';
 
           map.addSource('venues', {
             type: 'geojson', data: venueGeoJSON,
-            cluster: true, clusterMaxZoom: 13, clusterRadius: 40,
+            // Kluster bara för ställen som ligger tätt (radie 20 px, var 40) och bara t.o.m. zoom 13,99. Vid startvyn
+            // (~12,6, ~13 m/px) slås bara de som annars skulle bli en hög ihop (Stureplan); övriga visar sin väntetid.
+            cluster: true, clusterMaxZoom: 13, clusterRadius: 20,
+            promoteId: 'id', // feature-state per ställe (pillarnas intro och intoning, se stepMapMotion)
             // Värsta kön i gruppen (0 = ingen kö … 3 = lång) och hur många som har färsk data. Klustret får färg efter
             // värsta status, för det är det man frågar sig på kartan: "går det att ta sig in där?". Ställen utan data
             // (status "unknown") räknas inte som bra eller dåliga, så de påverkar inte färgen.
@@ -1528,6 +1531,17 @@ import './style.css';
             paint: { 'circle-color': '#5B9BFF', 'circle-radius': 16, 'circle-opacity': 0.18, 'circle-pitch-alignment': 'map' } });
           map.addLayer({ id: 'me-dot', type: 'circle', source: 'me',
             paint: { 'circle-color': '#5B9BFF', 'circle-radius': 6, 'circle-stroke-width': 2.5, 'circle-stroke-color': '#F5F5F4' } });
+
+          // Våg vid ny rapport: en ring i statusfärgen som växer ut från stället och tonar bort (stepMapMotion).
+          map.addSource('ripples', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+          map.addLayer({ id: 'venues-ripple', type: 'circle', source: 'ripples',
+            paint: {
+              'circle-color': 'rgba(0,0,0,0)', 'circle-pitch-alignment': 'map',
+              'circle-radius': ['+', 12, ['*', 60, ['get', 'k']]],
+              'circle-stroke-width': 3,
+              'circle-stroke-color': ['get', 'color'],
+              'circle-stroke-opacity': ['*', 0.9, ['-', 1, ['get', 'k']]]
+            } });
 
           // Blå ram runt klustret som innehåller "Bäst nu" (filtret sätts av applyMapFocus), så kortet och kartan hör ihop
           // även utzoomat. Ligger under klustret, 6 px utanför dess ring.
@@ -1654,13 +1668,15 @@ import './style.css';
               var now = performance.now() - _breathStart;
               if (_hasUrgent && map.getLayer('venues-urgent')) {
                 var t = (now % 2200) / 2200;
-                map.setPaintProperty('venues-urgent', 'icon-opacity', 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2)));
+                map.setPaintProperty('venues-urgent', 'icon-opacity',
+                  ['*', APPEAR, 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2))]);
               }
               if (window._userPos && map.getLayer('me-halo')) {
                 var k = (now % 2400) / 2400;
                 map.setPaintProperty('me-halo', 'circle-radius', 8 + 18 * k);
                 map.setPaintProperty('me-halo', 'circle-opacity', 0.35 * (1 - k));
               }
+              stepMapMotion(performance.now());
             }
             requestAnimationFrame(animateMapPulse);
           }
@@ -1705,22 +1721,29 @@ import './style.css';
             map.jumpTo({ center: start.center, zoom: start.zoom, pitch: 28 });
           } else {
             map.jumpTo({ center: start.center, zoom: start.zoom - 1, pitch: 0 });
-            setTimeout(function() {
-              if (map && !_userMovedMap) map.easeTo({ zoom: start.zoom, pitch: 28, duration: 2200, easing: function(t) { return 1 - Math.pow(1 - t, 3); } });
-            }, 350);
+            // Inzoomningen väntar tills introt är borta; annars är den slut innan någon ser den.
+            afterSplash(function() {
+              setTimeout(function() {
+                if (map && !_userMovedMap) map.easeTo({ zoom: start.zoom, pitch: 28, duration: 2200, easing: function(t) { return 1 - Math.pow(1 - t, 3); } });
+              }, 150);
+            });
           }
           console.log('[QueueBar] Kartlager klara');
         });
 
+        // Startvyn ramar in ställena med färsk data (annars alla 28) mellan sökfältet och "Bäst nu"-kortet. Zoomen hålls
+        // nere vid 12,4, så startvyn visar väntetider och inte en utzoomad karta full av kluster; ett ställe långt ut
+        // kan då hamna utanför bild, men det som händer syns.
         function startCamera() {
           var bounds = new mapboxgl.LngLatBounds();
-          VENUES.forEach(function(v) { bounds.extend([v.lng, v.lat]); });
+          var live = VENUES.filter(function(v) { return computeStatus(v.id, allReports) !== 'unknown'; });
+          (live.length >= 2 ? live : VENUES).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
           var m = document.getElementById('map').getBoundingClientRect();
           var bar = document.querySelector('.map-topbar'), card = document.getElementById('best-now-card');
           var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
           var bottom = card && card.offsetHeight ? m.bottom - card.getBoundingClientRect().top : 0;
           var cam = map.cameraForBounds(bounds, { pitch: 28, padding: { top: top + 24, bottom: bottom + 24, left: 28, right: 28 } });
-          return cam ? { center: cam.center, zoom: cam.zoom } : { center: map.getCenter(), zoom: 12.6 };
+          return cam ? { center: cam.center, zoom: Math.min(14, Math.max(12.4, cam.zoom)) } : { center: map.getCenter(), zoom: 12.6 };
         }
         var _userMovedMap = false;
         ['dragstart', 'zoomstart', 'pitchstart'].forEach(function(ev) {
@@ -1902,6 +1925,7 @@ import './style.css';
         });
       });
       map.getSource('venues').setData({ type: 'FeatureCollection', features: updated });
+      trackMapChanges(updated);
       applyMapFocus();
     }
 
@@ -1929,10 +1953,78 @@ import './style.css';
       map.setFilter('venues-name-focus', sel ? ['all', ['!', ['has', 'point_count']], isSel] : none);
       map.setLayoutProperty('venues-pins', 'symbol-sort-key', ['case', isSel, 10, PIN_SORT_KEY]);
       map.setPaintProperty('venues-pins', 'icon-opacity',
-        ['case', dim, 0.3, ['==', ['get', 'status'], 'unknown'], 0.7, ['==', ['get', 'aging'], 1], 0.6, 1]);
+        ['*', APPEAR, ['case', dim, 0.3, ['==', ['get', 'status'], 'unknown'], 0.7, ['==', ['get', 'aging'], 1], 0.6, 1]]);
+      map.setPaintProperty('venues-focus', 'icon-opacity', APPEAR);
       // Med öppet kort visas bara det valda namnet (eget lager); grannarnas namn skulle krocka med det.
-      map.setPaintProperty('venues-names', 'text-opacity', sel ? 0 : ['case', ['==', ['get', 'aging'], 1], 0.6, 1]);
-      map.setPaintProperty('venues-glow', 'circle-opacity', ['case', dim, 0.12, ['==', ['get', 'aging'], 1], 0.22, 0.45]);
+      map.setPaintProperty('venues-names', 'text-opacity', sel ? 0 : ['*', APPEAR, ['case', ['==', ['get', 'aging'], 1], 0.6, 1]]);
+      map.setPaintProperty('venues-glow', 'circle-opacity',
+        ['*', APPEAR, ['case', dim, 0.12, ['==', ['get', 'aging'], 1], 0.22, 0.45]]);
+    }
+
+    // ── Kartans rörelse ──────────────────────────────────────────────────
+    // Allt som rör sig betyder något: pillarna kommer fram i ordning (längst kö först) när kartan visas, en pill som byter
+    // värde tonar in på nytt, och en ny rapport skickar ut en våg från stället. Inget av det vid reducerad rörelse.
+    var APPEAR = ['coalesce', ['feature-state', 'appear'], 1]; // 0 → 1 medan en pill tonar in, annars saknas (= 1)
+    var _reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var _appear = {};         // venueId → { start, dur, from } medan pillen tonar in; start Infinity = väntar dold
+    var _ripples = [];        // { lng, lat, color, start }
+    var _ripplesShown = false;
+    var _prevPill = null;     // venueId → pill_image vid förra uppdateringen; null = kartan har inte visat data än
+    var _seenReports = null;  // kö-rapporternas id:n vid förra uppdateringen
+    var INTRO_RANK = { long: 3, medium: 2, short: 1 }; // längst kö först
+
+    // Kör fn när introt är borta (index.html skickar qb:splashdone), eller direkt om det inte spelas.
+    function afterSplash(fn) {
+      if (document.getElementById('splash')) document.addEventListener('qb:splashdone', fn, { once: true });
+      else fn();
+    }
+
+    function trackMapChanges(features) {
+      var pills = {}, seen = {};
+      features.forEach(function(f) { pills[f.properties.id] = f.properties.pill_image; });
+      allReports.forEach(function(r) { if (isQueueReport(r)) seen[r.id] = r; });
+      if (!_reduceMotion && _prevPill === null) {
+        // Första gången: dölj alla pillar och släpp fram dem längst kö först, 70 ms isär, när introt är borta.
+        var order = features.filter(function(f) { return f.properties.pill_image; }).sort(function(a, b) {
+          return (INTRO_RANK[b.properties.status] || 0) - (INTRO_RANK[a.properties.status] || 0);
+        });
+        order.forEach(function(f) {
+          _appear[f.properties.id] = { start: Infinity, dur: 420 };
+          map.setFeatureState({ source: 'venues', id: f.properties.id }, { appear: 0 }); // nu, inte först nästa bildruta
+        });
+        afterSplash(function() {
+          var t0 = performance.now() + 250;
+          order.forEach(function(f, i) { if (_appear[f.properties.id]) _appear[f.properties.id].start = t0 + i * 70; });
+        });
+      } else if (!_reduceMotion) {
+        var now = performance.now();
+        features.forEach(function(f) {
+          var id = f.properties.id;
+          if (pills[id] && pills[id] !== _prevPill[id]) _appear[id] = { start: now, dur: 420, from: 0.25 };
+        });
+        Object.keys(seen).forEach(function(rid) {
+          var v = !_seenReports[rid] && getVenueById(seen[rid].venue_id);
+          if (v && _ripples.length < 6) _ripples.push({ lng: v.lng, lat: v.lat, color: getStatusColor(computeStatus(v.id, allReports)), start: now });
+        });
+      }
+      _prevPill = pills;
+      _seenReports = seen;
+    }
+
+    // En bildruta: pillar som tonar in (feature-state "appear") och vågor som växer. Anropas från kartans rAF-slinga.
+    function stepMapMotion(now) {
+      Object.keys(_appear).forEach(function(id) {
+        var a = _appear[id], k = Math.min(1, Math.max(0, (now - a.start) / a.dur)), from = a.from || 0;
+        map.setFeatureState({ source: 'venues', id: id }, { appear: from + (1 - from) * (1 - Math.pow(1 - k, 3)) });
+        if (k >= 1) delete _appear[id];
+      });
+      if (!_ripples.length && !_ripplesShown) return;
+      _ripples = _ripples.filter(function(r) { return now - r.start < 1400; });
+      map.getSource('ripples').setData({ type: 'FeatureCollection', features: _ripples.map(function(r) {
+        var k = (now - r.start) / 1400;
+        return { type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: { k: 1 - Math.pow(1 - k, 2), color: r.color } };
+      }) });
+      _ripplesShown = _ripples.length > 0;
     }
 
     function subscribeToReports() {

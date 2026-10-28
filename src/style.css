@@ -550,7 +550,7 @@
       font-family: var(--font-mono); font-size: clamp(34px, 11vw, 46px); font-weight: 700; letter-spacing: -0.05em;
       line-height: 0.95; font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap;
     }
-    #vc-sub { font-family: var(--stamp); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-top: 8px; }
+    #vc-sub { font-family: var(--stamp); font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-top: 8px; }
     .vc--aging #vc-status { opacity: 0.55; }
     .vc--nodata #vc-sub { color: var(--text-muted); }
     /* Om du går nu: bara när det finns en prognos. Hel bredd, vanlig text — det är ett svar, inte en stämpel. */

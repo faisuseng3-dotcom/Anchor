@@ -42,8 +42,10 @@
       if (document.documentElement.classList.contains('no-splash')) { s.remove(); return; }
       var v = s.querySelector('video'), mode = '';
       function go(m) { if (mode) return; mode = m; s.classList.replace('splash--wait', m); if (m === 'splash--plain') v.pause(); }
-      s.addEventListener('click', function () { s.remove(); });
-      s.addEventListener('animationend', function (e) { if (e.animationName === 'splashDone') s.remove(); });
+      // qb:splashdone: kartan väntar med sin inzoomning och pillarnas intro tills introt är borta (main.js afterSplash).
+      function end() { if (!s.parentNode) return; s.remove(); document.dispatchEvent(new Event('qb:splashdone')); }
+      s.addEventListener('click', end);
+      s.addEventListener('animationend', function (e) { if (e.animationName === 'splashDone') end(); });
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return go('splash--plain');
       // Stan visas bara om klippet faktiskt spelar inom 0,9 s (långsamt nät eller iOS strömsparläge: bara ordmärket).
       v.preload = 'auto';
