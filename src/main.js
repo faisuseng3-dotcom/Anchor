@@ -672,7 +672,7 @@ import './style.css';
         return '<li class="vc-rep"><span class="vc-rep-dot" style="background:' + getStatusColor(r.queue_status) + '"></span>' +
           '<span class="vc-rep-time">' + clockOfIso(r.created_at) + '</span>' +
           '<span class="vc-rep-what">' + what + '</span>' +
-          '<span class="vc-rep-ago">' + (ago < 1 ? 'NU' : ago + ' MIN') + '</span></li>';
+          '<span class="vc-rep-ago">' + (ago < 1 ? 'nu' : ago + ' min') + '</span></li>';
       }).join('');
       return '<button class="vc-reps-toggle" aria-expanded="' + _vcListOpen + '" onclick="toggleVcReports()">' +
         '<span>' + rows.length + ' rapporter senaste 45 min</span>' +
@@ -708,53 +708,57 @@ import './style.css';
       var vcStatus = document.getElementById('vc-status');
       vcStatus.innerHTML = waitText ? waitHtml(waitText) : '–';
       vcStatus.style.color = waitText ? getStatusColor(status) : '';
-      // Rad under siffran: vad siffran bygger på (antal i kö, uppmätt eller uppskattad, ålder)
+      // Under siffran: vad den bygger på, i vardagsspråk. estimateWait tar medianen av rapporterna senaste 20 min
+      // (annars den senaste) — därför står antalet här, annars ser siffran ut att motsäga trendraden under.
       var subParts = [];
       if (est) {
-        // estimateWait tar medianen av rapporterna senaste 20 min (annars den senaste). Säg det, annars ser "10–25 i kö"
-        // ut att motsäga trendraden, som visar den senaste rapporten.
         var nMedian = reports.filter(function(r) {
           return r.people_ahead != null && Date.now() - new Date(r.created_at).getTime() < 20 * 60 * 1000;
         }).length;
-        subParts.push(aheadBucket(est.ahead).label + (est.ahead ? ' i kö' : '') + (nMedian >= 2 ? ' · median av ' + nMedian : ''));
+        subParts.push(est.ahead ? aheadBucket(est.ahead).label + ' personer i kö' : 'Ingen kö');
+        subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
       }
-      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('≈ uppskattning');
+      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('uppskattad tid');
       if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
       document.getElementById('vc-sub').textContent = waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
 
-      // Om du går nu: när du är framme och kön då. Samma prognos och ordval som "På väg"-bannern. Bara med prognos —
-      // gångtiden ensam står redan på vägbeskrivningsknappen.
-      var walk = walkMinutesTo(venue);
+      // Resten på en lugn rad: senaste rapport, stängning, hur många som är på väg. Trenden bara när trendraden saknas.
+      var meta = [];
+      if (reports.length) meta.push('Senaste rapport ' + clockOfIso(reports[0].created_at));
+      var toClose = minutesToClose(venue);
+      if (toClose !== null) meta.push('Stänger ' + venue.closing + (toClose > 0 && toClose <= 90 ? ' (om ' + toClose + ' min)' : ''));
+      var omwN = onMyWayCount(venue.id);
+      if (omwN) meta.push(omwN + ' på väg');
+      var trend = queueChange(reports) ? null : queueTrend(reports);
+      if (trend) meta.push(trend === 'up' ? '▲ kön växer' : '▼ kön krymper');
+      document.getElementById('vc-meta').textContent = meta.join(' · ');
+
+      // Om du går nu: när du är framme och kön då. Samma prognos och ordval som "På väg"-bannern; bara med prognos.
+      var km = distanceKmTo(venue), walk = walkMinutesTo(venue);
       var fc = walk !== null && walk <= 40 ? forecastWait(venue.id, walk, onMyWayCount(venue.id)) : null;
       var fcText = fc ? formatWait(fc) : '';
       document.getElementById('vc-go').textContent = fc ? 'Går du nu: framme ' + clockOfIso(new Date(Date.now() + walk * 60000).toISOString()) +
         (fcText === 'Ingen kö' ? ' · troligen ingen kö då' : ' · troligen ' + fcText + ' kö då') : '';
-      document.getElementById('vc-dir-min').textContent = walk !== null ? walk + ' min' : '';
-      document.querySelector('.vc-dir').setAttribute('aria-label', walk !== null ? 'Vägbeskrivning, ' + walk + ' min promenad' : 'Vägbeskrivning');
 
-      // Stämplade uppgifter: korta etiketter, exakt tid och räknebara värden. Raden finns bara om vi har något ärligt att säga.
-      // Klockslaget (22:43) står tillsammans med åldern, eftersom "8 min sedan" blir fel om man tittar en minut senare.
-      var facts = [];
-      var trend = queueTrend(reports);
-      if (trend) facts.push({ k: 'Trend', v: trend === 'up' ? '▲ ÖKAR' : '▼ MINSKAR', cls: trend === 'up' ? 'vc-fact--up' : 'vc-fact--down' });
-      if (reports.length) {
-        var ageMin = Math.max(0, Math.floor((Date.now() - new Date(reports[0].created_at)) / 60000));
-        facts.push({ k: 'Rapport', v: clockOfIso(reports[0].created_at) + ' · ' + (ageMin < 1 ? 'NU' : ageMin < 60 ? ageMin + ' MIN' : Math.floor(ageMin / 60) + ' H'), cls: minsOld >= 45 ? 'vc-fact--stale' : '' });
+      // Huvudknappen följer läget. Vid stället (≤150 m): rapportera kön. Annars: gå dit — öppnar vägbeskrivningen och
+      // markerar "på väg" (anonymt, on_my_way_counts). Över 40 min promenad bara vägbeskrivning med avstånd: då går man
+      // inte, och ankomsttiden i "På väg" vore fel.
+      var primary = document.getElementById('vc-act-primary'), secondary = document.getElementById('vc-act-secondary');
+      if (km !== null && km <= 0.15) {
+        primary.textContent = 'Rapportera kön';
+        primary.onclick = goToReport;
+        secondary.hidden = true;
+      } else {
+        primary.textContent = walk === null ? 'Gå hit' : walk <= 40 ? 'Gå hit · ' + walk + ' min' : 'Vägbeskrivning · ' + formatDistance(km);
+        primary.onclick = walk !== null && walk > 40 ? openDirections : vcGoThere;
+        secondary.textContent = 'Rapportera';
+        secondary.onclick = goToReport;
+        secondary.hidden = false;
       }
-      if (reports.length > 1) facts.push({ k: 'Antal', v: reports.length + ' ST' });
-      var omwN = onMyWayCount(venue.id);
-      if (omwN) facts.push({ k: 'På väg', v: '~' + omwN });
-      var toClose = minutesToClose(venue);
-      if (toClose !== null) {
-        var soon = toClose > 0 && toClose <= 90;
-        facts.push({ k: 'Stänger', v: venue.closing + (soon ? ' · ' + toClose + ' MIN' : ''), cls: soon ? 'vc-fact--soon' : '' });
-      }
-      document.getElementById('vc-facts').innerHTML = facts.map(function(f) {
-        return '<div class="vc-fact ' + (f.cls || '') + '"><dt>' + f.k + '</dt><dd>' + f.v + '</dd></div>';
-      }).join('') || '<div class="vc-fact"><dt>Rapporter</dt><dd>INGA</dd></div>';
+
       _vcListOpen = false; // varje kort börjar hopfällt
       document.getElementById('vc-timeline').innerHTML = queueChangeHtml(reports) + queueListHtml(reports);
-      document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type);
+      document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type) + (km !== null ? ' · ' + formatDistance(km) : '');
       var favBtn = document.getElementById('vc-fav');
       if (favBtn) favBtn.classList.toggle('fav', isFavorite(venue.id));
       document.getElementById('vc-overlay').style.display = 'block';
@@ -770,7 +774,7 @@ import './style.css';
     }
 
     // Kortets knappar — activeVenue är modul-lokal, så inline-onclick går via dessa
-    function vcOnMyWay() { if (activeVenue) goOnMyWay(activeVenue.id); }
+    function vcGoThere() { if (!activeVenue) return; openDirections(); goOnMyWay(activeVenue.id); } // goOnMyWay stänger kortet
     function vcShare() { if (activeVenue) shareVenue(activeVenue.id); }
     function vcToggleFavorite(event) {
       if (!activeVenue) return;
@@ -940,7 +944,7 @@ import './style.css';
       var latest = allReports.filter(function(r) { return r.venue_id === v.id && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
       var meta = [v.area, venueTypeLabel(v.type)];
-      if (best.dist != null) meta.push(best.dist < 0.95 ? Math.round(best.dist * 10) * 100 + ' m' : best.dist.toFixed(1) + ' km');
+      if (best.dist != null) meta.push(formatDistance(best.dist));
       if (latest) meta.push(timeAgo(latest.created_at));
       card.innerHTML = '<button class="bn-card" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
         '<span class="bn-eyebrow">Bäst nu</span>' +
@@ -2273,12 +2277,21 @@ import './style.css';
       if (map && map.getSource('me')) map.getSource('me').setData(meGeoJSON());
     }
 
-    // Gångtid i minuter (5 km/h fågelvägen), eller null utan position. Samma siffra i venue-kortet och i "På väg".
-    function walkMinutesTo(venue) {
+    // Avstånd fågelvägen i km, eller null utan position.
+    function distanceKmTo(venue) {
       var p = window._userPos;
       if (!p || !venue) return null;
       var dy = (venue.lat - p.lat) * 111, dx = (venue.lng - p.lng) * 111 * Math.cos(venue.lat * Math.PI / 180);
-      return Math.max(2, Math.round(Math.sqrt(dx * dx + dy * dy) / (5 / 60)));
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    // Gångtid i minuter (5 km/h fågelvägen), eller null utan position. Samma siffra i venue-kortet och i "På väg".
+    function walkMinutesTo(venue) {
+      var km = distanceKmTo(venue);
+      return km === null ? null : Math.max(2, Math.round(km / (5 / 60)));
+    }
+    // "650 m" under 950 m, annars "1,4 km". Samma format i "Bäst nu" och venue-kortet.
+    function formatDistance(km) {
+      return km < 0.95 ? Math.round(km * 10) * 100 + ' m' : km.toFixed(1).replace('.', ',') + ' km';
     }
 
     // ── Historiska mönster ───────────────────────────────────────────────────
@@ -3968,7 +3981,6 @@ Object.assign(window, {
   toggleVcReports,
   togglePlanningMode,
   togglePlanVenue,
-  vcOnMyWay,
   vcShare,
   vcToggleFavorite,
 });

@@ -257,34 +257,28 @@
         <button id="vc-fav" class="vc-tool" onclick="vcToggleFavorite(event)" aria-label="Favorit">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z"/></svg>
         </button>
-        <button id="vc-share" class="vc-tool" onclick="vcShare()" aria-label="Dela">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9h5M20 4h-8m8 0v8m0-8L10 14"/></svg>
-        </button>
         <button id="vc-close" class="vc-tool" onclick="closeVenueCard()" aria-label="Stäng">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- Hjälten till vänster, stämplade uppgifter till höger: asymmetri som följer innehållet, inte en centrerad mall -->
-    <div class="vc-main">
-      <div class="vc-hero">
-        <div id="vc-status"></div>
-        <div id="vc-sub"></div>
-      </div>
-      <dl id="vc-facts"></dl>
+    <!-- En kolumn i viktighetsordning: väntetiden, vad den bygger på, resten på en lugn rad (openVenueCard) -->
+    <div class="vc-hero">
+      <div id="vc-status"></div>
+      <div id="vc-sub"></div>
+      <div id="vc-meta"></div>
     </div>
     <div id="vc-go"></div>
 
     <div id="vc-timeline"></div>
 
+    <!-- Text och handling sätts i openVenueCard: vid stället är huvudknappen att rapportera, annars att gå dit -->
     <div class="vc-actions-main">
-      <button class="vc-btn vc-primary" onclick="goToReport()">Rapportera kön</button>
-      <button class="vc-btn vc-omw" onclick="vcOnMyWay()">På väg</button>
-      <button class="vc-btn vc-dir" onclick="openDirections()" aria-label="Vägbeskrivning">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg><span id="vc-dir-min"></span>
-      </button>
+      <button id="vc-act-primary" class="vc-btn vc-primary"></button>
+      <button id="vc-act-secondary" class="vc-btn"></button>
     </div>
+    <button class="vc-share" onclick="vcShare()">Dela ställe</button>
   </div>
 
   <div id="consent-modal">

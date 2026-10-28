@@ -525,11 +525,11 @@
 
     .vc-handle { width: 28px; height: 3px; border-radius: 1px; background: var(--border-hover); }
 
-    /* Rubrik: namn och område till vänster, tre verktyg till höger. Verktygen är kantiga rutor, inte cirklar. */
-    .vc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 12px; }
+    /* Rubrik: namn och område · typ · avstånd till vänster, favorit och stäng till höger. Vanlig text, inte stämplar. */
+    .vc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 4px; }
     .vc-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     #vc-name { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-primary); line-height: 1.15; overflow-wrap: anywhere; }
-    .vc-area { font-family: var(--stamp); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+    .vc-area { font-size: 13px; font-weight: 500; color: var(--text-muted); }
     .vc-tools { display: flex; flex-shrink: 0; margin-top: -4px; }
     .vc-tool {
       width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
@@ -540,51 +540,38 @@
     #vc-fav.fav { color: var(--status-short); }
     #vc-fav.fav svg { fill: currentColor; }
 
-    /* Hjälten till vänster, stämplade uppgifter till höger. Spalterna är olika breda med flit: siffran får utrymme,
-       uppgifterna är små och täta. Ovanför en linje, så det läses som en etikett på en maskin. */
-    /* Flex med radbrytning: får siffran (nowrap) och faktakolumnen inte plats bredvid varandra hamnar fakta under, i
-       stället för att siffran ritas in i dem. flex-basis 0 gör att bara siffrans bredd avgör, inte raden under den. */
-    .vc-main { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 14px; padding: 12px 0 14px; border-top: 1px solid var(--border); }
-    .vc-hero { flex: 1 1 0; }
+    /* En kolumn i viktighetsordning, ingen faktakolumn bredvid: väntetiden ensam och störst, sedan vad den bygger på i
+       vardagsspråk, sedan allt annat på en lugn rad. Avstånd skiljer delarna åt, inte linjer. */
+    .vc-hero { padding: 10px 0 16px; }
     #vc-status {
-      font-family: var(--font-mono); font-size: clamp(34px, 11vw, 46px); font-weight: 700; letter-spacing: -0.05em;
+      font-family: var(--font-mono); font-size: clamp(42px, 13vw, 54px); font-weight: 700; letter-spacing: -0.05em;
       line-height: 0.95; font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap;
     }
-    #vc-sub { font-family: var(--stamp); font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-top: 8px; }
+    #vc-sub { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 10px; }
+    #vc-meta { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    #vc-meta:empty { display: none; }
     .vc--aging #vc-status { opacity: 0.55; }
     .vc--nodata #vc-sub { color: var(--text-muted); }
-    /* Om du går nu: bara när det finns en prognos. Hel bredd, vanlig text — det är ett svar, inte en stämpel. */
+    /* Om du går nu: det enda med ram, för det är svaret på "är det värt att gå?". Bara när det finns en prognos. */
     #vc-go:empty { display: none; }
-    #vc-go { padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    #vc-go { margin-bottom: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
 
-    /* Stämplade uppgifter: litet, tätt, monospace, versaler, 1 px linje mellan. Ingen rad är högre än texten kräver. */
-    #vc-facts { width: max-content; min-width: 128px; }
-    .vc-fact { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); font-family: var(--stamp); font-variant-numeric: tabular-nums; }
-    .vc-fact:first-child { border-top: 0; padding-top: 0; }
-    .vc-fact dt { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
-    .vc-fact dd { font-size: 13px; font-weight: 600; color: var(--text-primary); text-align: right; white-space: nowrap; }
-    .vc-fact--up dd, .vc-fact--soon dd { color: var(--status-medium); }
-    .vc-fact--down dd { color: var(--status-free); }
-    .vc-fact--stale dd { color: var(--text-muted); }
-
-    /* Vad som hänt (A) och rapporterna själva (B). Båda i den stämplade stilen, utan diagram: en rad som säger det man
-       undrar över, och en lista man kan fälla ut. Syns bara när det finns något ärligt att visa. */
+    /* Vad som hänt (trendraden) och rapporterna själva, hopfällda. Syns bara när det finns något ärligt att visa. */
     #vc-timeline:empty { display: none; }
-    #vc-timeline { padding: 0; border-top: 1px solid var(--border); font-family: var(--stamp); font-variant-numeric: tabular-nums; }
+    #vc-timeline { margin-bottom: 8px; font-variant-numeric: tabular-nums; }
 
-    .vc-chg { display: flex; align-items: baseline; gap: 10px; padding: 10px 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
-    .vc-chg-dir { font-size: 12px; }
+    .vc-chg { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .vc-chg-dir { font-size: 13px; }
     .vc-chg-time { color: var(--text-muted); font-weight: 500; }
     .vc-chg-val { margin-left: auto; color: var(--text-primary); }
     .vc-chg--up .vc-chg-dir { color: var(--status-medium); }
     .vc-chg--down .vc-chg-dir { color: var(--status-free); }
 
     .vc-reps-toggle {
-      display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 0;
-      background: none; border: 0; border-top: 1px solid var(--border); cursor: pointer;
-      font-family: var(--stamp); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 0;
+      background: none; border: 0; cursor: pointer;
+      font-family: var(--font-base); font-size: 13px; font-weight: 500; color: var(--text-muted);
     }
-    #vc-timeline > .vc-reps-toggle:first-child { border-top: 0; }
     .vc-reps-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: square; stroke-linejoin: miter; transition: transform 150ms ease; }
     .vc-reps-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
     .vc-reps-toggle:active { color: var(--text-primary); }
@@ -594,20 +581,23 @@
     .vc-rep-dot { width: 8px; height: 8px; align-self: center; }
     .vc-rep-time { color: var(--text-muted); font-weight: 500; }
     .vc-rep-what { color: var(--text-primary); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .vc-rep-ago { color: var(--text-muted); font-size: 11px; letter-spacing: 0.06em; }
+    .vc-rep-ago { color: var(--text-muted); font-size: 12px; }
     @media (prefers-reduced-motion: reduce) { .vc-reps-toggle svg { transition: none; } }
 
-    /* Knappar: en tydlig huvudhandling, två sekundära. Skarpa hörn (4 px), ingen tonad bakgrund, ingen blå fyllning. */
-    .vc-actions-main { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+    /* Knappar: en huvudhandling som följer läget (Gå hit eller Rapportera kön, se openVenueCard) och en sekundär. */
+    .vc-actions-main { display: flex; gap: 8px; }
     .vc-btn {
-      border: 1px solid var(--border-hover); border-radius: 4px; height: 48px; padding: 0 16px;
+      flex: 1; border: 1px solid var(--border-hover); border-radius: 10px; height: 50px; padding: 0 16px;
       font-family: var(--font-base); font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
       cursor: pointer; background: transparent; color: var(--text-primary); white-space: nowrap;
     }
-    .vc-primary { background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-primary); }
-    .vc-dir { min-width: 52px; padding: 0 14px; display: flex; align-items: center; justify-content: center; gap: 6px; font-variant-numeric: tabular-nums; }
-    .vc-dir span:empty { display: none; }
-    .vc-dir svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: miter; stroke-linecap: square; }
+    .vc-btn[hidden] { display: none; }
+    .vc-primary { flex: 2; background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-primary); font-variant-numeric: tabular-nums; }
+    .vc-share {
+      display: block; width: 100%; min-height: 44px; margin-top: 4px; background: none; border: 0; cursor: pointer;
+      font-family: var(--font-base); font-size: 13px; font-weight: 500; color: var(--text-muted);
+    }
+    .vc-share:active { color: var(--text-primary); }
 
     /* ── Consent Modal ─────────────────────────────────────────────────── */
     #consent-modal {

@@ -334,10 +334,14 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   0,3. Data 15–45 min gammal (`aging`) är blekare (0,6), samma gräns som `.erow--stale` i listan
 - Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat och
   ger ett Mapbox-fel; under kartans start (innan `load`) stänger det av kartan
-- Gångtid: `walkMinutesTo(venue)` (5 km/h fågelvägen) — samma siffra i venue-kortet, på vägbeskrivningsknappen och i
-  "På väg". Kortets prognosrad (`#vc-go`) visas bara när `forecastWait` ger en prognos
-- Venue-kortets "10–25 i kö" är medianen av rapporterna senaste 20 min (`estimateWait`); kortet skriver "median av N"
-  när N ≥ 2, eftersom trendraden under visar den senaste rapporten
+- Venue-kortet är en kolumn i viktighetsordning: väntetiden, vad den bygger på i vardagsspråk (`#vc-sub`: "25–50
+  personer i kö · 2 rapporter senaste 20 min" — siffran är medianen, `estimateWait`), resten på en lugn rad
+  (`#vc-meta`), prognosrutan (`#vc-go`, bara när `forecastWait` ger en), rapporterna hopfällda. Satoshi, inga versaler
+  i monospace, inget visat två gånger
+- Huvudknappen följer läget (`openVenueCard`): ≤150 m från stället → "Rapportera kön"; annars "Gå hit · 12 min"
+  (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad → "Vägbeskrivning · 7,8 km" utan "på väg"
+- Avstånd och gångtid: `distanceKmTo` / `walkMinutesTo` (5 km/h fågelvägen) / `formatDistance` — samma siffror i
+  kortet, "Bäst nu" och "På väg"
 - Kluster bara för tätt liggande ställen (`clusterRadius` 20, t.o.m. zoom 13,99). Startvyn (`startCamera`) ramar in
   ställena med färsk data och håller zoomen ≥12,4, så den visar väntetider och inte en karta full av kluster
 - Kartans rörelse (`trackMapChanges` + `stepMapMotion`, driven av kartans rAF-slinga): pillarna tonar fram längst kö
