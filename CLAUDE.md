@@ -332,8 +332,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   (`venues-focus`) runt "Bäst nu" — eller runt klustret det ligger i (`clusters-focus`, `has_best`) — och runt valt
   ställe när venue-kortet är öppet. Då ritas det valda överst med sitt namn (`venues-name-focus`) och övriga tonas till
   0,3. Data 15–45 min gammal (`aging`) är blekare (0,6), samma gräns som `.erow--stale` i listan
-- Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat, ger
-  ett Mapbox-fel — och `map.on('error')` nollar då hela kartan (känd skuld nr 6)
+- Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat och
+  ger ett Mapbox-fel; under kartans start (innan `load`) stänger det av kartan
 - Gångtid: `walkMinutesTo(venue)` (5 km/h fågelvägen) — samma siffra i venue-kortet, på vägbeskrivningsknappen och i
   "På väg". Kortets prognosrad (`#vc-go`) visas bara när `forecastWait` ger en prognos
 - Venue-kortets "10–25 i kö" är medianen av rapporterna senaste 20 min (`estimateWait`); kortet skriver "median av N"
@@ -358,7 +358,7 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 4. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
    Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
 5. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
-6. `map.on('error')` nollar kartan permanent vid **vilket** fel som helst, även ett tappat tile-anrop
+6. *(åtgärdad, se nedan)*
 7. **Ingen linter.** Medvetet uppskjutet — se motiveringen under Kommandon
 8. `limit(100)` i `loadReports` kan tysta hastighetsmätningen en full fredag (B-05 i
    [docs/QUEUE_LOGIC.md](docs/QUEUE_LOGIC.md))
@@ -374,6 +374,12 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 - Modellen hade inga tester. 120 enhetstester + 10 E2E-tester finns nu
 - Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
   `.github/workflows/verify.yml`
+- `map.on('error')` nollade kartan vid **vilket** fel som helst, även ett tappat tile-anrop. Nu stänger bara fel före
+  `load` (stil, token) av kartan; efter start loggas felen och kartan fungerar vidare. Verifierat i webbläsare:
+  Mapbox blockeras efter start → kartan står kvar (förut: felruta)
+- Felläget i Utforska skrevs över av `renderExploreVenues` vid skärmbyte (introanimationen ritar om listan), så ett
+  serverfel såg ut som 28 tomma ställen. `renderExploreVenues` visar nu själv felläget vid fel utan data — e2e-testet
+  "Serverfel … utan data" går igenom igen
 
 ## Vidare läsning
 

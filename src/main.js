@@ -1467,7 +1467,9 @@ import './style.css';
           });
         }
 
+        var _mapStarted = false; // sätts först i load; därefter är inget Mapbox-fel skäl att stänga av kartan
         map.on('load', function() {
+          _mapStarted = true;
           console.log('[QueueBar] Mapbox karta laddad — lägger till lager');
 
           // Pill-bilder ritas på begäran. Satoshi måste vara laddat först, annars mäts texten med reservtypsnittet
@@ -1725,9 +1727,13 @@ import './style.css';
           map.on(ev, function(e) { if (e.originalEvent) _userMovedMap = true; });
         });
 
-        // Fix 4 — map.on('error'): logga, visa felläge, låt resten leva
+        // Bara fel som hindrar kartan från att starta (stil, token) stänger av den. Efter start loggas felen: ett tappat
+        // tile-anrop på dålig 4G eller ett fel i ett enskilt lager lämnar resten av kartan fungerande. Tidigare nollades
+        // kartan av vilket fel som helst, och var borta resten av kvällen.
         map.on('error', function(e) {
-          console.error('[QueueBar] Mapbox-fel:', e.error ? e.error.message : e);
+          var msg = e.error ? e.error.message : e;
+          if (_mapStarted || e.sourceId || e.tile) { console.warn('[QueueBar] Mapbox-fel, kartan fortsätter:', msg); return; }
+          console.error('[QueueBar] Mapbox-fel:', msg);
           map = null;
           showMapError('Kartan kunde inte laddas');
         });
@@ -3141,6 +3147,9 @@ import './style.css';
       q = q.toLowerCase();
       var el = document.getElementById('explore-list');
       if (!el) return;
+      // Serverfel utan data: felläget står kvar. Annars skrev varje omritning (skärmbyte, sökning, filter) över det med
+      // 28 tomma rader, och felet såg ut som en lugn kväll (e2e "Serverfel … utan data").
+      if (_loadState === 'error' && !allReports.length) { showExploreError(); return; }
 
       // Base list: fuzzy search, preserves relevance order when query present
       var list = q ? venueSearch(q, VENUES) : VENUES.slice();
