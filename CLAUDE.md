@@ -328,6 +328,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Kartans lager uppifrån: nålar → namn (`venues-names`, från zoom 13,8, döljs vid krock — aldrig pillen) → kluster →
   du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`, under baskartans etiketter, bara färsk data).
   Startvyn ramar in alla 28 ställen mellan sökfältet och "Bäst nu"-kortet (`startCamera`)
+- Kartans fokus (`applyMapFocus`) är enda stället som sätter pillarnas opacitet: blå ram (`venues-focus`) runt "Bäst nu",
+  eller runt valt ställe när venue-kortet är öppet (då tonas övriga till 0,3). Data 15–45 min gammal (`aging`) är
+  blekare (0,6), samma gräns som `.erow--stale` i listan
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
 - Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)

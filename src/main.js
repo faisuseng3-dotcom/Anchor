@@ -696,6 +696,7 @@ import './style.css';
         map.flyTo({ center: [venue.lng, venue.lat], zoom: 14, duration: 800 });
       }
       activeVenue = venue;
+      applyMapFocus();
       var status = computeStatus(venue.id, allReports);
       var reports = allReports.filter(function(r) { return r.venue_id === venue.id && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
@@ -773,6 +774,7 @@ import './style.css';
         card.style.removeProperty('--vc-drag');
         document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
         activeVenue = null;
+        applyMapFocus();
       }, 200);
     }
 
@@ -1324,7 +1326,9 @@ import './style.css';
         // Ringen som andas runt en brådskande pill: samma mått som pillen plus 5 px utanför, bara en tunn linje i statusfärgen.
         // Namn: ring|<pillens text>, eftersom bredden följer texten.
         function drawRing(map, name) {
-          var text = name.slice(5);
+          // ring|text = andningsringen kring lång kö (röd); focus|text = ditt val eller "Bäst nu" (accentblå).
+          var focus = name.indexOf('focus|') === 0;
+          var text = name.slice(name.indexOf('|') + 1);
           var PR = 2, H = 28, OUT = 2, PAD = 9, GLYPH = 13, GAP = 5, EXTRA = 6;
           var FONT = '700 13px Satoshi, system-ui, sans-serif', UNIT_FONT = '600 10px Satoshi, system-ui, sans-serif';
           var hasUnit = /\d/.test(text);
@@ -1338,7 +1342,7 @@ import './style.css';
           var ctx = canvas.getContext('2d');
           ctx.scale(PR, PR);
           roundedPath(ctx, 1.5, 1.5, W - 3, TH - 3, (TH - 3) / 2);
-          ctx.lineWidth = 2; ctx.strokeStyle = PIN_STATUS_COLORS.long; ctx.stroke();
+          ctx.lineWidth = focus ? 2.5 : 2; ctx.strokeStyle = focus ? '#5B9BFF' : PIN_STATUS_COLORS.long; ctx.stroke();
           var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           if (map.hasImage(name)) map.removeImage(name);
           map.addImage(name, { width: canvas.width, height: canvas.height, data: imageData.data }, { pixelRatio: PR });
@@ -1448,7 +1452,7 @@ import './style.css';
           // och pillen blir fel bred. Om typsnittet inte hinner laddas ritas pillen ändå (reservtypsnitt), men bara en gång.
           map.on('styleimagemissing', function(e) {
             if (!e.id) return;
-            var isPill = e.id.indexOf('pill|') === 0, isRing = e.id.indexOf('ring|') === 0;
+            var isPill = e.id.indexOf('pill|') === 0, isRing = e.id.indexOf('ring|') === 0 || e.id.indexOf('focus|') === 0;
             if (!isPill && !isRing) return;
             var draw = function() {
               if (map.hasImage(e.id)) return;
@@ -1544,10 +1548,8 @@ import './style.css';
               // Längre köer ritas överst när nålar överlappar
               'symbol-sort-key': ['match', ['get', 'status'], 'long', 4, 'medium', 3, 'short', 2, 'none', 1, 0]
             },
-            paint: {
-              // Ingen data = visuellt nedtonad
-              'icon-opacity': ['match', ['get', 'status'], 'unknown', 0.7, 1]
-            }
+            // icon-opacity sätts av applyMapFocus: ingen data, gammal data och valt ställe
+            paint: {}
           });
 
           // Namn under pillen när man zoomat in. Ligger under nålarna, så krockar ett namn döljs namnet, aldrig pillen.
@@ -1567,6 +1569,19 @@ import './style.css';
               'text-color': ['match', ['get', 'status'], 'unknown', '#85858A', '#F5F5F4'],
               'text-halo-color': '#0B0B0D',
               'text-halo-width': 1.4
+            }
+          }, 'venues-pins');
+
+          // Blå ram runt stället i "Bäst nu", eller runt det valda stället när ett venue-kort är öppet (applyMapFocus).
+          map.addLayer({
+            id: 'venues-focus', type: 'symbol', source: 'venues',
+            filter: ['==', ['get', 'best'], 1],
+            layout: {
+              'icon-image': ['get', 'focus_image'],
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.05],
+              'icon-anchor': 'center',
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true
             }
           }, 'venues-pins');
 
@@ -1632,6 +1647,7 @@ import './style.css';
           });
 
           // Uppdatera markörerna med ev. redan inladdad data
+          applyMapFocus();
           if (allReports.length > 0) updateMapStatuses();
 
           // Startkamera: en gång, när kartan öppnas. Ramar in alla ställen i den del av kartan som syns mellan sökfältet och
@@ -1815,6 +1831,7 @@ import './style.css';
       if (!map || !venueGeoJSON) return;
       if (!map.getSource('venues')) return;
       _hasUrgent = false;
+      var best = computeBestNow(), bestId = best ? best.venue.id : null;
       var updated = venueGeoJSON.features.map(function(f) {
         var id = f.properties.id;
         var status = computeStatus(id, allReports);
@@ -1829,11 +1846,37 @@ import './style.css';
             wait_label: venueWaitText(id),
             pill_image: pill,
             urgent: urgent ? 1 : 0,
-            ring_image: urgent ? 'ring|' + text : ''
+            ring_image: urgent ? 'ring|' + text : '',
+            focus_image: pill ? 'focus|' + text : '',
+            best: id === bestId ? 1 : 0,
+            aging: pill && latestQueueAgeMin(id) >= 15 ? 1 : 0
           })
         });
       });
       map.getSource('venues').setData({ type: 'FeatureCollection', features: updated });
+      applyMapFocus();
+    }
+
+    // Minuter sedan senaste kömätningen, som i listan (isAging: 15–45 min). Infinity om ingen finns.
+    function latestQueueAgeMin(venueId) {
+      var latest = allReports.reduce(function(m, r) {
+        return r.venue_id === venueId && isQueueReport(r) ? Math.max(m, new Date(r.created_at).getTime()) : m;
+      }, 0);
+      return latest ? (Date.now() - latest) / 60000 : Infinity;
+    }
+
+    // Kartans fokus. Utan öppet kort: blå ram runt "Bäst nu". Med öppet kort: ramen flyttar till det valda stället och
+    // övriga tonas ned. Data som är 15–45 min gammal är blekare, som i listan — gammal data ska se gammal ut.
+    function applyMapFocus() {
+      if (!map || !map.getLayer('venues-focus')) return;
+      var sel = activeVenue ? activeVenue.id : null;
+      var dim = sel ? ['!=', ['get', 'id'], sel] : false;
+      map.setFilter('venues-focus', ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'focus_image'], ''],
+        sel ? ['==', ['get', 'id'], sel] : ['==', ['get', 'best'], 1]]);
+      map.setPaintProperty('venues-pins', 'icon-opacity',
+        ['case', dim, 0.3, ['==', ['get', 'status'], 'unknown'], 0.7, ['==', ['get', 'aging'], 1], 0.6, 1]);
+      map.setPaintProperty('venues-names', 'text-opacity', ['case', dim, 0.3, ['==', ['get', 'aging'], 1], 0.6, 1]);
+      map.setPaintProperty('venues-glow', 'circle-opacity', ['case', dim, 0.12, ['==', ['get', 'aging'], 1], 0.22, 0.45]);
     }
 
     function subscribeToReports() {
