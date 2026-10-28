@@ -1352,22 +1352,22 @@ import './style.css';
         // och ett enskilt fel får aldrig stoppa resten av kartan.
         var MAP_THEME = {
           background: '#0E0F12',
-          // Vatten och parker är ljusare än dark-v11:s grå (1,56× och 1,62× bakgrunden mot 1,12×) så att de läses som färg
-          // och inte som svart. Gränsen sattes av statusfärgerna: röd "lång kö" ovanpå vatten ger 3,78:1 och på park 3,65:1
-          // (krav: minst 3,5). Väntetiden står aldrig direkt på kartan — den ligger i en pill med egen fyllning och mörk
-          // kant, och kluster har samma. Det som ligger direkt på kartan är etiketter, och de är mätta separat.
-          water: '#0A3566',
+          // Grundkartan är dämpad så att statusfärgerna är det enda som lyser. Vatten och park skiljs från marken med
+          // kulör, inte ljushet (1,25:1 och 1,21:1), och strandlinjen ritar upp Stockholm. Krav: röd "lång kö" minst
+          // 3,5:1 mot allt den kan ligga på — 4,28:1 mot vatten, 4,42:1 mot park. Väntetiden står aldrig direkt på
+          // kartan — den ligger i en pill med egen fyllning och mörk kant. Etiketter är mätta separat.
+          water: '#112D4F',
           waterDeep: '#082C57',
-          shore: '#3D88E0',       // strandlinje: 3,4:1 mot vattnet, så kustlinjen ritar upp Stockholm
-          park: '#153F2A',        // grönare än tidigare (mättnad 0,45 → 0,50) med samma ljushet; röd 3,65:1, etikett 4,43:1
+          shore: '#3470B0',       // strandlinje: 2,7:1 mot vattnet, så kustlinjen ritar upp Stockholm
+          park: '#1C2E24',        // dämpad grön, så att grön "ingen kö" inte drunknar i parkerna; etikett 5,4:1
           land: '#191A20',
           building: '#1E2026',
           buildingTop: '#262932', // taket på 3D-byggnader (ljusare än väggen så formen läses)
           roadMinor: '#2E3140',
-          roadMajor: '#6A5238',   // varm ton mot kall bakgrund: huvudleder blir artärer (2,4:1 mot marken)
-          roadHighway: '#A07A45', // motorvägar och trunk (4,4:1 mot marken)
+          roadMajor: '#3A3E4C',   // neutrala vägar: guldtonen konkurrerade med gula pillar (1,6:1 mot marken)
+          roadHighway: '#4E5365', // motorvägar och trunk (2,3:1 mot marken)
           label: '#9A9EAD',
-          labelWater: '#8FB6E0'   // 5,8:1 mot vattnet
+          labelWater: '#8FB6E0'   // 6,6:1 mot vattnet
         };
         function themeMap(map) {
           function paint(id, prop, value) {
@@ -1381,7 +1381,7 @@ import './style.css';
           paint('landuse', 'fill-color', MAP_THEME.park);
           paint('land-structure-polygon', 'fill-color', MAP_THEME.land);
           paint('building', 'fill-color', MAP_THEME.building);
-          // Vägar i tre nivåer efter klass: motorväg/trunk varmast, primär/sekundär varma, resten neutrala.
+          // Vägar i tre nivåer efter klass: motorväg/trunk ljusast, primär/sekundär mellan, resten mörkast. Alla gråa.
           // Det är ett uttryck på ett enda lager (road-simple täcker alla klasser), så det kostar inga extra lager.
           var roadColor = ['match', ['get', 'class'],
             ['motorway', 'trunk', 'motorway_link', 'trunk_link'], MAP_THEME.roadHighway,
@@ -1474,21 +1474,47 @@ import './style.css';
             }
           });
 
+          // Statusglöd: ett mjukt sken i statusfärgen under varje ställe och kluster med färsk data. Kartan lyser där
+          // kvällen händer och är mörk där den inte gör det — det som fångar blicken är data, inte dekoration. Ligger under
+          // baskartans etiketter så att gatunamn förblir skarpa, och plant mot marken när kartan lutar.
+          var firstLabel = (map.getStyle().layers.filter(function(l) { return l.type === 'symbol'; })[0] || {}).id;
+          map.addLayer({
+            id: 'venues-glow', type: 'circle', source: 'venues',
+            filter: ['case', ['has', 'point_count'], ['>', ['get', 'n_known'], 0], ['!=', ['get', 'status'], 'unknown']],
+            paint: {
+              'circle-color': ['match',
+                ['case', ['has', 'point_count'], ['get', 'worst'], ['match', ['get', 'status'], 'long', 3, 'medium', 2, 'short', 1, 0]],
+                3, getStatusColor('long'), 2, getStatusColor('medium'), 1, getStatusColor('short'), getStatusColor('free')],
+              // Mycket större än klustret/pillen (18–24 px), annars döljer de skenet; blur 1 = tonar ut ända från mitten.
+              'circle-radius': ['interpolate', ['exponential', 1.6], ['zoom'], 11, 42, 13, 62, 16, 120],
+              'circle-blur': 1,
+              'circle-opacity': 0.45,
+              'circle-pitch-alignment': 'map'
+            }
+          }, firstLabel);
+
+          // Du är här. Accentblått = ditt läge (designsystemet). Tom tills positionen finns, se updateMeOnMap.
+          map.addSource('me', { type: 'geojson', data: meGeoJSON() });
+          map.addLayer({ id: 'me-halo', type: 'circle', source: 'me',
+            paint: { 'circle-color': '#5B9BFF', 'circle-radius': 16, 'circle-opacity': 0.18, 'circle-pitch-alignment': 'map' } });
+          map.addLayer({ id: 'me-dot', type: 'circle', source: 'me',
+            paint: { 'circle-color': '#5B9BFF', 'circle-radius': 6, 'circle-stroke-width': 2.5, 'circle-stroke-color': '#F5F5F4' } });
+
           map.addLayer({
             id: 'clusters', type: 'circle', source: 'venues',
             filter: ['has', 'point_count'],
             paint: {
-              // Fyllning = värsta status i gruppen. Grått när ingen i gruppen har färsk data (vi vet inget).
-              'circle-color': ['case',
-                ['==', ['get', 'n_known'], 0], '#2A2B31',
+              // Mörk fyllning och färgad ring: siffran är antal ställen, och i en färgad boll lästes "15" som 15 min kö.
+              // Ringen = värsta status i gruppen; grå när ingen i gruppen har färsk data (vi vet inget).
+              'circle-color': '#151517',
+              'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
+              'circle-stroke-width': 3.5,
+              'circle-stroke-color': ['case',
+                ['==', ['get', 'n_known'], 0], getStatusColor('unknown'),
                 ['==', ['get', 'worst'], 3], getStatusColor('long'),
                 ['==', ['get', 'worst'], 2], getStatusColor('medium'),
                 ['==', ['get', 'worst'], 1], getStatusColor('short'),
-                getStatusColor('free')],
-              'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
-              // Mörk kant skiljer klustret från kartan och från grannklustren
-              'circle-stroke-width': 3,
-              'circle-stroke-color': '#0B0B0D'
+                getStatusColor('free')]
             }
           });
 
@@ -1496,8 +1522,7 @@ import './style.css';
             id: 'cluster-count', type: 'symbol', source: 'venues',
             filter: ['has', 'point_count'],
             layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 14, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'], 'text-allow-overlap': true },
-            // Mörk siffra på färgad fyllning (som i nålarna), ljus på grå
-            paint: { 'text-color': ['case', ['==', ['get', 'n_known'], 0], '#F5F5F4', '#0B0B0D'] }
+            paint: { 'text-color': '#F5F5F4' }
           });
 
           // Ställen med färsk data: pill med väntetid. Ställen utan data: den tomma ringen (pin-*-unknown), så att
@@ -1514,7 +1539,8 @@ import './style.css';
               'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.05],
               'icon-anchor': 'center',
               'icon-allow-overlap': true,
-              'icon-ignore-placement': true,
+              // false: nålarna går in i kollisionsindexet, så ortnamn som skulle hamna under en pill döljs i stället
+              'icon-ignore-placement': false,
               // Längre köer ritas överst när nålar överlappar
               'symbol-sort-key': ['match', ['get', 'status'], 'long', 4, 'medium', 3, 'short', 2, 'none', 1, 0]
             },
@@ -1524,7 +1550,25 @@ import './style.css';
             }
           });
 
-          // venue-label layer removed — markers are pure status circles
+          // Namn under pillen när man zoomat in. Ligger under nålarna, så krockar ett namn döljs namnet, aldrig pillen.
+          map.addLayer({
+            id: 'venues-names', type: 'symbol', source: 'venues', minzoom: 13.8,
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 14, 11, 16, 13],
+              'text-anchor': 'top',
+              // Pillen är ~34 px hög vid zoom 15 och har 2 px kollisionsmarginal; närmare än så döljer den sitt eget namn.
+              'text-offset': [0, 1.9],
+              'text-max-width': 9
+            },
+            paint: {
+              'text-color': ['match', ['get', 'status'], 'unknown', '#85858A', '#F5F5F4'],
+              'text-halo-color': '#0B0B0D',
+              'text-halo-width': 1.4
+            }
+          }, 'venues-pins');
 
           // Liv på kartan kommer från data. En ring runt pillen andas bara när kön är lång OCH färsk (< 20 min) — samma regel
           // som den pulserande pricken i listan. Ställen med fri ingång pulserar inte längre: de är inte brådskande, och
@@ -1543,18 +1587,26 @@ import './style.css';
             paint: { 'icon-opacity': 0 }
           }, 'venues-pins');
 
-          // Andning: opacity 0 → 0,7 → 0 på ~2,2 s. Bara ett paint-värde per bildruta, och bara när något är brådskande.
+          // Andning: opacity 0 → 0,7 → 0 på ~2,2 s, bara när något är brådskande. Samma bildruta driver ringen runt
+          // din position (växer och tonar ut på 2,4 s). Bara några paint-värden per bildruta.
           var _breathStart = performance.now();
-          function animateUrgent() {
-            if (map && map.getLayer('venues-urgent') && !document.hidden && _hasUrgent) {
-              var t = ((performance.now() - _breathStart) % 2200) / 2200;
-              var o = 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2));
-              map.setPaintProperty('venues-urgent', 'icon-opacity', o);
+          function animateMapPulse() {
+            if (map && !document.hidden) {
+              var now = performance.now() - _breathStart;
+              if (_hasUrgent && map.getLayer('venues-urgent')) {
+                var t = (now % 2200) / 2200;
+                map.setPaintProperty('venues-urgent', 'icon-opacity', 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2)));
+              }
+              if (window._userPos && map.getLayer('me-halo')) {
+                var k = (now % 2400) / 2400;
+                map.setPaintProperty('me-halo', 'circle-radius', 8 + 18 * k);
+                map.setPaintProperty('me-halo', 'circle-opacity', 0.35 * (1 - k));
+              }
             }
-            requestAnimationFrame(animateUrgent);
+            requestAnimationFrame(animateMapPulse);
           }
           if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            requestAnimationFrame(animateUrgent);
+            requestAnimationFrame(animateMapPulse);
           } else {
             // Stillbild i stället för rörelse: ringen syns, den andas inte
             map.setPaintProperty('venues-urgent', 'icon-opacity', 0.55);
@@ -1582,21 +1634,34 @@ import './style.css';
           // Uppdatera markörerna med ev. redan inladdad data
           if (allReports.length > 0) updateMapStatuses();
 
-          // Startkamera: en gång, när kartan öppnas. Zoomar in från lite längre ut och lutar kartan 28° så att staden får djup.
+          // Startkamera: en gång, när kartan öppnas. Ramar in alla ställen i den del av kartan som syns mellan sökfältet och
+          // "Bäst nu"-kortet, zoomar in från lite längre ut och lutar kartan 28° så att staden får djup.
           // Lutningen hålls lågt med flit: högre döljer ställen bakom hus och gör pillerna svåra att träffa. Användaren kan
           // själv luta med två fingrar (touchPitch); dragRotate är fortfarande avstängt. Bara om användaren inte redan rört kartan,
           // och hoppas över med rörelsebegränsning (då startar kartan direkt i sitt slutläge).
+          var start = startCamera();
           var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           if (reduceMotion) {
-            map.jumpTo({ pitch: 28 });
+            map.jumpTo({ center: start.center, zoom: start.zoom, pitch: 28 });
           } else {
-            map.jumpTo({ zoom: 11.6, pitch: 0 });
+            map.jumpTo({ center: start.center, zoom: start.zoom - 1, pitch: 0 });
             setTimeout(function() {
-              if (map && !_userMovedMap) map.easeTo({ zoom: 12.6, pitch: 28, duration: 2200, easing: function(t) { return 1 - Math.pow(1 - t, 3); } });
+              if (map && !_userMovedMap) map.easeTo({ zoom: start.zoom, pitch: 28, duration: 2200, easing: function(t) { return 1 - Math.pow(1 - t, 3); } });
             }, 350);
           }
           console.log('[QueueBar] Kartlager klara');
         });
+
+        function startCamera() {
+          var bounds = new mapboxgl.LngLatBounds();
+          VENUES.forEach(function(v) { bounds.extend([v.lng, v.lat]); });
+          var m = document.getElementById('map').getBoundingClientRect();
+          var bar = document.querySelector('.map-topbar'), card = document.getElementById('best-now-card');
+          var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
+          var bottom = card && card.offsetHeight ? m.bottom - card.getBoundingClientRect().top : 0;
+          var cam = map.cameraForBounds(bounds, { pitch: 28, padding: { top: top + 24, bottom: bottom + 24, left: 28, right: 28 } });
+          return cam ? { center: cam.center, zoom: cam.zoom } : { center: map.getCenter(), zoom: 12.6 };
+        }
         var _userMovedMap = false;
         ['dragstart', 'zoomstart', 'pitchstart'].forEach(function(ev) {
           map.on(ev, function(e) { if (e.originalEvent) _userMovedMap = true; });
@@ -1998,13 +2063,23 @@ import './style.css';
       endQueueSession();
     }
 
-    // Geolocation (passiv, en gång — för avstånd i explore-rader)
+    // Geolocation (passiv, en gång) — för avstånd i explore-rader och pricken på kartan.
+    // shortcut: positionen hämtas en gång (maximumAge 5 min); byt till watchPosition om pricken ska följa med när man går.
     window._userPos = null;
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(function(pos) {
         window._userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (typeof renderExploreVenues === 'function') renderExploreVenues();
+        updateMeOnMap();
       }, function() {}, { timeout: 8000, maximumAge: 300000 });
+    }
+
+    function meGeoJSON() {
+      var p = window._userPos;
+      return { type: 'FeatureCollection', features: p ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: {} }] : [] };
+    }
+    function updateMeOnMap() {
+      if (map && map.getSource('me')) map.getSource('me').setData(meGeoJSON());
     }
 
     // ── Historiska mönster ───────────────────────────────────────────────────

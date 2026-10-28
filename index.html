@@ -26,11 +26,8 @@
       <div class="splash-q">
         <div class="splash-hole"><video src="/splash-city.mp4" muted playsinline preload="none"></video></div>
         <svg viewBox="0 0 100 100" fill="none" stroke-width="13" stroke-linecap="round">
-          <g transform="rotate(-90 48 46)">
-            <circle class="sa sa-1" cx="48" cy="46" r="33" pathLength="100"/>
-            <circle class="sa sa-2" cx="48" cy="46" r="33" pathLength="100"/>
-            <circle class="sa sa-3" cx="48" cy="46" r="33" pathLength="100"/>
-          </g>
+          <circle class="sq-track" cx="48" cy="46" r="33"/>
+          <circle class="sq-arc" cx="48" cy="46" r="33" pathLength="100" transform="rotate(-90 48 46)"/>
           <line class="sq-tail" x1="63.6" y1="61.6" x2="83.4" y2="81.4" pathLength="100"/>
         </svg>
       </div>
@@ -48,13 +45,12 @@
       s.addEventListener('click', function () { s.remove(); });
       s.addEventListener('animationend', function (e) { if (e.animationName === 'splashDone') s.remove(); });
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return go('splash--plain');
-      // Stan visas bara om klippet faktiskt spelar inom 1,5 s (långsamt nät eller iOS strömsparläge: bara ordmärket).
+      // Stan visas bara om klippet faktiskt spelar inom 0,9 s (långsamt nät eller iOS strömsparläge: bara ordmärket).
       v.preload = 'auto';
-      setTimeout(function () {
-        var p = v.play();
-        if (p) p.then(function () { go('splash--city'); }, function () { go('splash--plain'); });
-      }, 550);
-      setTimeout(function () { go('splash--plain'); }, 1500);
+      v.playbackRate = 2; // klippet är 2,6 s; i hålet räcker det att se gubben svänga in i gatan
+      var p = v.play();
+      if (p) p.then(function () { go('splash--city'); }, function () { go('splash--plain'); });
+      setTimeout(function () { go('splash--plain'); }, 900);
     })();
   </script>
 

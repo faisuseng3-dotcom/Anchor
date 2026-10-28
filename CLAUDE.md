@@ -12,13 +12,15 @@ siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
 **Namnet är Qbar.** Allt användaren ser säger Qbar. Kvar som QueueBar: domänen `queuebar.se` (e-post),
 Vercel-URL:en, `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo-projektet).
 
-**Introt** (`#splash` + inline-skript i `index.html`, blocket "Intro" i `src/style.css`): ringen i Q:et ritas,
-man zoomar in genom hålet till en 3D-stad där gubben leds in i en gata, och ut igen till "Qbar", ~4 s. Stan är
-klippet `public/splash-city.mp4` (490 kB), renderat ur reklamprojektet med
+**Introt** (`#splash` + inline-skript i `index.html`, blocket "Intro" i `src/style.css`): Q:et visas stort medan
+ringen fylls som en timer (en färg i taget, röd → gul → grön, stannar på 72 % — aldrig flera färger samtidigt, då
+liknar den Googles logga), i hålet spelar en 3D-stad där gubben leds in i en gata, sedan krymper Q:et in i "Qbar",
+~2,4 s. Stan
+är klippet `public/splash-city.mp4` (490 kB, spelas i dubbel fart), renderat ur reklamprojektet med
 `node scripts/render-splash.mjs` i `~/Desktop/qbar-ad` (kamera och gång i `renderSplashAt`). Spelar klippet inte
-inom 1,5 s (långsamt nät, iOS strömsparläge, webbläsare utan H.264) visas bara ordmärket. En gång per session
-(`sessionStorage` `qb_splash`), hoppas över vid tryck, stilla logga vid `prefers-reduced-motion`. E2E-testerna
-hoppar över det i `skipOnboarding`.
+inom 0,9 s (långsamt nät, iOS strömsparläge, webbläsare utan H.264) krymper Q:et direkt, ~1,6 s. En gång per
+session (`sessionStorage` `qb_splash`), hoppas över vid tryck, stilla logga vid `prefers-reduced-motion`.
+E2E-testerna hoppar över det i `skipOnboarding`.
 
 Produktion: `anchor-queuebar.vercel.app` (använd **aldrig** en Vercel-URL med slumpkod i mitten —
 de är frysta ögonblicksbilder).
@@ -319,6 +321,13 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   åldras även utan ny data
 - Pulsanimation: ta bort klassen → tvinga reflow (`void el.offsetWidth`) → lägg tillbaka
 - Väntetid är aldrig en fast sträng per status — alltid `venueWaitText()`
+- Kartkluster är mörka med färgad ring (värsta status) och vit siffra. Siffran är antal ställen — i en färgad boll
+  lästes den som minuter. Visa aldrig en väntetid i klustret; den enda vägen till en väntetid är `venueWaitText()`
+- Grundkartan (`MAP_THEME`) är dämpad: grå vägar, dov park, mörkt vatten. Statusfärgerna ska vara det enda som lyser;
+  röd ska ha ≥3,5:1 mot allt den kan ligga på
+- Kartans lager uppifrån: nålar → namn (`venues-names`, från zoom 13,8, döljs vid krock — aldrig pillen) → kluster →
+  du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`, under baskartans etiketter, bara färsk data).
+  Startvyn ramar in alla 28 ställen mellan sökfältet och "Bäst nu"-kortet (`startCamera`)
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
 - Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)

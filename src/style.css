@@ -1482,11 +1482,11 @@
     }
 
     /* ── Intro ─────────────────────────────────────────────────────────── */
-    /* Ringen i Q:et ritas i statusfärgerna. Sedan zoomar vi in genom hålet: där spelas ett klipp ur reklamfilmens 3D-stad
-       (public/splash-city.mp4) där gubben leds av den blå rutten in i en gata mot en nål. Vi zoomar ut igen, stan blir
-       kvar i Q:et, och "bar" glider in. Skriptet efter #splash i index.html byter .splash--wait mot .splash--city om
-       klippet spelar, annars .splash--plain (bara ordmärket). Grundstilarna är SLUTLÄGET, så reduced motion visar loggan.
-       Tidslinje city (ms från lägesbytet): in 0–500 · stan 500–1700 · ut 1700–2300 · bar 2150–2700 · ut 3000–3300 */
+    /* Q:et visas ensamt och stort medan ringen ritas; i hålet spelar ett klipp ur reklamfilmens 3D-stad
+       (public/splash-city.mp4, dubbel fart) där gubben leds av den blå rutten in i en gata mot en nål. Sedan krymper Q:et
+       in i ordmärket och "bar" glider in. Skriptet efter #splash i index.html byter .splash--wait mot .splash--city om
+       klippet spelar, annars .splash--plain. Grundstilarna är SLUTLÄGET, så reduced motion visar den färdiga loggan.
+       Tidslinje city (ms från lägesbytet, ~direkt vid sidstart): stan 0–1000 · krymp 1000–1450 · bar 1150 · ut 1900–2200 */
     #splash {
       --ease-out: cubic-bezier(0.22,1,0.36,1);
       position: fixed; inset: 0; z-index: 1000;
@@ -1503,62 +1503,55 @@
       position: relative; display: flex; align-items: center; gap: 0.02em;
       font-size: 72px; font-weight: 700; letter-spacing: -0.035em; line-height: 1;
     }
-    .splash-q { position: relative; width: 0.92em; height: 0.92em; transform-origin: 48% 46%; }
+    .splash-q { position: relative; width: 0.92em; height: 0.92em; transform-origin: 48% 46%; --ease-move: cubic-bezier(0.65,0,0.35,1); }
     .splash-q svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible;
       animation: splashPop 450ms cubic-bezier(0.34,1.56,0.64,1) both; }
     /* Hålet. clip-path utöver border-radius: Safari släpper annars igenom videons hörn när lagret skalas. */
     .splash-hole { position: absolute; left: 20.5%; top: 18.5%; width: 55%; height: 55%;
       border-radius: 50%; overflow: hidden; clip-path: circle(50%); background: var(--bg-primary); }
-    .splash-hole video { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
-    /* Bågarna är lika långa som loggans staplar sinsemellan (140:240:320) minus runda ändar och en liten lucka. */
-    .sa { animation: saIn 380ms var(--d) var(--ease-out) both; }
-    .sa-1 { stroke: var(--status-free);  stroke-dasharray: 11.2 100; stroke-dashoffset: -4.4;  --d: 100ms; }
-    .sa-2 { stroke: var(--status-short); stroke-dasharray: 25.5 100; stroke-dashoffset: -24.4; --d: 160ms; }
-    .sa-3 { stroke: var(--status-long);  stroke-dasharray: 36.9 100; stroke-dashoffset: -58.7; --d: 220ms; }
+    .splash-hole video { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 200ms; }
+    /* Väntetids-ringen: en färg i taget, fylls som en timer från röd via gul till grön och stannar på 72 %. Bara en
+       färg åt gången så att ringen inte läses som en flerfärgad logga (Google). */
+    .sq-track { stroke: rgba(255,255,255,0.10); }
+    .sq-arc { stroke: var(--status-free); stroke-dasharray: 72 100;
+      animation: sqFill 900ms 100ms cubic-bezier(0.4,0,0.2,1) both; }
     .sq-tail { stroke: currentColor; stroke-dasharray: 100 100; animation: sqTail 220ms 420ms var(--ease-out) both; }
     .splash-word span { display: inline-block; }
     .splash-slogan { position: relative; margin-top: 14px; font-size: 15px; font-weight: 500; color: var(--text-secondary); }
 
-    /* Innan läget är valt: bara Q:et, mitt på skärmen. */
+    /* Innan läget är valt: bara Q:et, stort och mitt på skärmen. */
     .splash--wait .splash-row { transform: translateX(0.78em); }
+    .splash--wait .splash-q { transform: scale(2.3); }
     .splash--wait .splash-word span, .splash--wait .splash-slogan { opacity: 0; }
 
-    /* Utan klipp: ordmärket glider in direkt. */
-    .splash--plain { animation: splashDone 300ms 1100ms both; }
-    .splash--plain .splash-row { animation: splashRowIn 380ms var(--ease-out) both; }
+    /* Utan klipp: Q:et krymper in i ordmärket direkt. */
+    .splash--plain { animation: splashDone 300ms 1000ms both; }
+    .splash--plain .splash-q { animation: splashShrink 450ms var(--ease-move) both; }
+    .splash--plain .splash-row { animation: splashRowIn 450ms cubic-bezier(0.65,0,0.35,1) both; }
     .splash--plain .splash-word span { animation: splashUp 350ms var(--d) var(--ease-out) both; }
-    .splash--plain .splash-word span:nth-child(1) { --d: 50ms; }
-    .splash--plain .splash-word span:nth-child(2) { --d: 110ms; }
-    .splash--plain .splash-word span:nth-child(3) { --d: 170ms; }
-    .splash--plain .splash-slogan { animation: splashUp 400ms 200ms var(--ease-out) both; }
+    .splash--plain .splash-word span:nth-child(1) { --d: 150ms; }
+    .splash--plain .splash-word span:nth-child(2) { --d: 210ms; }
+    .splash--plain .splash-word span:nth-child(3) { --d: 270ms; }
+    .splash--plain .splash-slogan { animation: splashUp 400ms 300ms var(--ease-out) both; }
 
-    /* Med klipp: in genom hålet, stan, ut igen till ordmärket. sqTail står först i listan så att den inte startas om. */
-    .splash--city { animation: splashDone 300ms 3000ms both; }
-    .splash--city .splash-q { animation: splashCityQ 2300ms both; }
-    .splash--city .splash-hole video { opacity: 1; }
-    .splash--city .sq-tail { animation: sqTail 220ms 420ms var(--ease-out) both, splashCityTail 2300ms both; }
-    .splash--city .splash-row { animation: splashRowIn 380ms 2150ms var(--ease-out) both; }
+    /* Med klipp: samma sak, men först en sekund av stan i hålet. */
+    .splash--city { animation: splashDone 300ms 1900ms both; }
+    .splash--city .splash-q { animation: splashShrink 450ms 1000ms var(--ease-move) both; }
+    .splash--city .splash-hole video { opacity: 1; transition-delay: 200ms; } /* ringen hinner börja innan stan syns */
+    .splash--city .splash-row { animation: splashRowIn 450ms 1000ms cubic-bezier(0.65,0,0.35,1) both; }
     .splash--city .splash-word span { animation: splashUp 350ms var(--d) var(--ease-out) both; }
-    .splash--city .splash-word span:nth-child(1) { --d: 2200ms; }
-    .splash--city .splash-word span:nth-child(2) { --d: 2260ms; }
-    .splash--city .splash-word span:nth-child(3) { --d: 2320ms; }
-    .splash--city .splash-slogan { animation: splashUp 400ms 2350ms var(--ease-out) both; }
+    .splash--city .splash-word span:nth-child(1) { --d: 1150ms; }
+    .splash--city .splash-word span:nth-child(2) { --d: 1210ms; }
+    .splash--city .splash-word span:nth-child(3) { --d: 1270ms; }
+    .splash--city .splash-slogan { animation: splashUp 400ms 1300ms var(--ease-out) both; }
 
     @keyframes splashPop    { from { transform: scale(0.8); opacity: 0; } }
-    @keyframes saIn         { from { stroke-dasharray: 0 100; } }
+    @keyframes sqFill       { 0% { stroke-dasharray: 0 100; stroke: var(--status-long); } 45% { stroke: var(--status-short); } }
     @keyframes sqTail       { from { stroke-dasharray: 0 100; opacity: 0; } }
     @keyframes splashRowIn  { from { transform: translateX(0.78em); } }
     @keyframes splashUp     { from { opacity: 0; transform: translateY(0.35em); } }
     @keyframes splashDone   { to { opacity: 0; } }
-    /* Skala 32: hålet täcker hörnen även på en hög telefon (430 × 932). Skalning upplevs logaritmiskt; kubisk ease-in
-       in och ease-out ut ligger nära jämn upplevd fart. */
-    @keyframes splashCityQ {
-      0%   { transform: scale(1);  animation-timing-function: cubic-bezier(0.32,0,0.67,0); }
-      22%  { transform: scale(32); }
-      74%  { transform: scale(32); animation-timing-function: cubic-bezier(0.33,1,0.68,1); }
-      100% { transform: scale(1); }
-    }
-    @keyframes splashCityTail { 0% { opacity: 1; } 5% { opacity: 0; } 85% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes splashShrink { from { transform: scale(2.3); } }
     @media (prefers-reduced-motion: reduce) {
       #splash, #splash *, #splash::before { animation: none !important; }
       #splash { animation: splashDone 250ms 700ms both !important; }
