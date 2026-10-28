@@ -501,7 +501,7 @@ import './style.css';
 
       if (navigator.share) {
         navigator.share({
-          title: 'QueueBar',
+          title: 'Qbar',
           text: statusText,
           url: window.location.origin
         }).catch(function() {});
@@ -578,7 +578,7 @@ import './style.css';
           var name = venue ? venue.name : venueId;
           var msg = currRank === 0 ? 'Fri ingång nu!' : (currStatus === 'short' ? 'Ca 15 min kö nu' : 'Ca 25 min kö nu');
           try {
-            new Notification('QueueBar — ' + name, {
+            new Notification('Qbar — ' + name, {
               body: msg,
               icon: '/favicon.ico',
               tag: 'qb-' + venueId
@@ -3635,7 +3635,7 @@ import './style.css';
     }
 
     function showPrivacyPolicy() {
-      alert('Integritetspolicy\n\nQueueBar sparar ett anonymt ID, körapporter och favoriter.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
+      alert('Integritetspolicy\n\nQbar sparar ett anonymt ID, körapporter och favoriter.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
     }
 
     function confirmDelete() {
@@ -3646,6 +3646,14 @@ import './style.css';
 
     console.log('[QueueBar] Initiering klar');
     checkConsent();
+
+    // Introt spelas helt i CSS; här tas lagret bort när det tonat ut, vid tryck, eller direkt om det redan visats.
+    var splash = document.getElementById('splash');
+    if (splash) {
+      if (document.documentElement.classList.contains('no-splash')) splash.remove();
+      splash.addEventListener('animationend', function(e) { if (e.animationName === 'splashDone') splash.remove(); });
+      splash.addEventListener('click', function() { splash.remove(); });
+    }
 
 // Expose functions referenced in inline event handlers (onclick, oninput, etc.)
 // Required because Vite modules are not globally scoped.

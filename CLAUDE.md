@@ -1,4 +1,4 @@
-# QueueBar — Claude Project Memory
+# Qbar (tidigare QueueBar) — Claude Project Memory
 
 ## Vad projektet är
 
@@ -8,6 +8,13 @@ datakälla för kölängder.
 
 Den svåraste uppgiften i projektet är att omvandla enstaka opålitliga människorapporter till en
 siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
+
+**Namnet är Qbar.** Allt användaren ser säger Qbar. Kvar som QueueBar: domänen `queuebar.se` (e-post),
+Vercel-URL:en, `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo-projektet).
+
+**Introt** (`#splash` i `index.html`, blocket "Intro" i `src/style.css`) är ren CSS: köstaplarna blir ringen
+i Q:et och sedan dyker man genom hålet in i kartan, ~2 s. Det spelas en gång per session (`sessionStorage`
+`qb_splash`), hoppas över vid tryck och visar en stilla logga vid `prefers-reduced-motion`.
 
 Produktion: `anchor-queuebar.vercel.app` (använd **aldrig** en Vercel-URL med slumpkod i mitten —
 de är frysta ögonblicksbilder).

@@ -8,8 +8,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/favicon.svg">
-  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;QueueBar&quot;,&quot;short_name&quot;:&quot;QueueBar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230B0B0D&quot;,&quot;theme_color&quot;:&quot;%230B0B0D&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.svg&quot;,&quot;sizes&quot;:&quot;any&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;purpose&quot;:&quot;any&quot;}]}">
-  <title>QueueBar</title>
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Qbar&quot;,&quot;short_name&quot;:&quot;Qbar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230B0B0D&quot;,&quot;theme_color&quot;:&quot;%230B0B0D&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.svg&quot;,&quot;sizes&quot;:&quot;any&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;purpose&quot;:&quot;any&quot;}]}">
+  <title>Qbar</title>
+  <!-- Introt spelas en gång per session; körs före första målningen så att det aldrig blinkar till. -->
+  <script>try { sessionStorage.getItem('qb_splash') ? document.documentElement.classList.add('no-splash') : sessionStorage.setItem('qb_splash', '1'); } catch (e) {}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.fontshare.com">
@@ -17,6 +19,28 @@
   <script type="module" src="/src/main.js"></script>
 </head>
 <body>
+  <!-- Intro: köstaplarna böjs till ringen i Q:et, sedan dyker vi genom hålet in i kartan. Allt i CSS (style.css, "Intro"). -->
+  <div id="splash" aria-hidden="true">
+    <div class="splash-row">
+      <div class="splash-q">
+        <div class="splash-hole"></div>
+        <svg viewBox="0 0 100 100" fill="none" stroke-width="13" stroke-linecap="round">
+          <line class="sb sb-1" x1="24.5" y1="28" x2="38.5" y2="28" pathLength="100"/>
+          <line class="sb sb-2" x1="24.5" y1="47" x2="58.5" y2="47" pathLength="100"/>
+          <line class="sb sb-3" x1="24.5" y1="66" x2="74" y2="66" pathLength="100"/>
+          <g transform="rotate(-90 48 46)">
+            <circle class="sa sa-1" cx="48" cy="46" r="33" pathLength="100"/>
+            <circle class="sa sa-2" cx="48" cy="46" r="33" pathLength="100"/>
+            <circle class="sa sa-3" cx="48" cy="46" r="33" pathLength="100"/>
+          </g>
+          <line class="sq-tail" x1="63.6" y1="61.6" x2="83.4" y2="81.4" pathLength="100"/>
+        </svg>
+      </div>
+      <span class="splash-word"><span>b</span><span>a</span><span>r</span></span>
+    </div>
+    <div class="splash-slogan">Se kön innan du går.</div>
+  </div>
+
   <div id="omw-banner" role="status" aria-live="polite" style="display:none"></div>
 
   <div id="app">
@@ -251,7 +275,7 @@
     <div class="consent-card">
       <div class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 48 48"><rect x="6" y="11" width="13" height="7" rx="3.5" fill="#34E07F"/><rect x="6" y="21" width="22" height="7" rx="3.5" fill="#FFD23F"/><rect x="6" y="31" width="30" height="7" rx="3.5" fill="#FF4D5E"/></svg>
-        <span>QueueBar</span>
+        <span>Qbar</span>
       </div>
       <div class="consent-title">Innan du börjar</div>
       <div class="consent-text">Vi sparar ett anonymt ID på din enhet. Inget namn eller email.</div>
@@ -283,7 +307,7 @@
   <div id="install-prompt" class="install-prompt" style="display:none">
     <div class="ip-text">
       <div class="ip-title">Lägg till på hemskärmen</div>
-      <div class="ip-sub">Öppna QueueBar direkt — utan webbläsaren</div>
+      <div class="ip-sub">Öppna Qbar direkt — utan webbläsaren</div>
     </div>
     <button class="ip-accept" onclick="acceptInstall()">Lägg till</button>
     <button class="ip-close" onclick="dismissInstall()" aria-label="Stäng">×</button>
