@@ -134,8 +134,8 @@ härifrån och bör kontrolleras.
 
 ## 4. `user_profiles`
 
-Appen **rör den bara på ett enda ställe**: `delete().eq('user_id', userId)` i `deleteAllUserData()`
-(`src/main.js`). Den läses aldrig och skrivs aldrig i övrigt.
+Appen **rör den bara i `deleteAllUserData()`** (`src/main.js`): `delete().eq('user_id', userId)` och
+en räkning av det som finns kvar efteråt. Den läses och skrivs aldrig i övrigt.
 
 Poäng, nivå, streak och märken beräknas helt i klienten i `updateProfileStats()`
 (`src/main.js`) ur antalet egna rapporter:
@@ -222,11 +222,11 @@ per rapport och ett vilseledande spår i koden.
    tillsammans med `venue_id` och `created_at` — alltså rekonstruera var en enskild person varit
    under en kväll, i vilken ordning. Fältet renderas aldrig i gränssnittet, men det ligger i svaret.
 
-6. **Radering kan misslyckas tyst.** `deleteAllUserData()` kör tre `delete` i en
-   `Promise.all` och **kontrollerar inget returvärde**, varpå den kör `localStorage.clear()` och
-   laddar om. Nekar RLS raderingen ser användaren ändå ett lyckat resultat — och eftersom
-   `qb_user_id` just raderats kan hen aldrig försöka igen. Texten i gränssnittet säger
-   "All din data raderas permanent", vilket då inte är sant.
+6. ~~**Radering kan misslyckas tyst.**~~ Åtgärdat. `deleteAllUserData()` raderar i alla tre tabeller
+   och räknar sedan raderna kvar (`count: 'exact', head: true`) — en delete som RLS nekar ger
+   inget fel, bara noll rader. Bara om alla tre visar `count === 0` rensas `localStorage`
+   (och `qb_user_id`); annars en toast och id:t finns kvar så att användaren kan försöka igen.
+   Låst fast av "5. Radera min data" i `e2e/app.spec.js`.
 
 7. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
    Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och

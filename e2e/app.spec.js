@@ -194,6 +194,33 @@ test.describe('4. Rapportera en kö', () => {
   });
 });
 
+test.describe('5. Radera min data', () => {
+  // Mocken svarar på varje läsning med `rows` — även räkningen efter raderingen. KVALL = rader finns kvar.
+  async function raderaViaProfilen(page, rows) {
+    await skipOnboarding(page);
+    await mockSupabase(page, rows);
+    await openApp(page);
+    const id = 'user-e2e-radera';
+    await page.evaluate((v) => window.localStorage.setItem('qb_user_id', v), id);
+    page.once('dialog', (d) => d.accept());
+    await goToScreen(page, 'profile');
+    await page.getByRole('button', { name: /Radera min data/ }).click();
+    return id;
+  }
+
+  test('rader som servern behöll ger fel, och id:t sparas så att det går att försöka igen', async ({ page }) => {
+    const id = await raderaViaProfilen(page, KVALL);
+    await expect(page.locator('.toast')).toContainText('Kunde inte radera');
+    expect(await page.evaluate(() => window.localStorage.getItem('qb_user_id'))).toBe(id);
+  });
+
+  test('tom server efter radering rensar den lokala datan', async ({ page }) => {
+    const id = await raderaViaProfilen(page, []);
+    await page.waitForLoadState('domcontentloaded');
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem('qb_user_id'))).not.toBe(id);
+  });
+});
+
 test.describe('Kartan', () => {
   test('visar ett felläge när Mapbox inte går att nå, och resten lever vidare', async ({ page }) => {
     await skipOnboarding(page);

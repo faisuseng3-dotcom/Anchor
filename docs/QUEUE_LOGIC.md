@@ -236,8 +236,7 @@ Modellen hanterar oenighet på tre sätt, utan att någonsin låta en enskild ra
 | **Negativ rörelse förkastas** | `sessionRates` | Orimliga sessioner räknas inte alls |
 
 Det finns **ingen röstning, ingen användarviktning och inget ryktessystem.** Alla rapportörer väger
-lika. `computeConfidence` beräknar ett tillförlitlighetsmått på 1–3 staplar ur
-samstämmighet, volym och färskhet — men **funktionen anropas aldrig**. Den är död kod.
+lika. (Ett oanvänt tillförlitlighetsmått, `computeConfidence`, är borttaget.)
 
 ---
 
@@ -306,13 +305,12 @@ syns bara som text ("44 min sedan"). Projektets egen princip säger att gammal d
 "≈ uppskattning" i vissa vyer. En användare kan inte se skillnad på en siffra som vilar på kvällens
 mätningar och en som vilar på en handsatt gissning.
 
-### B-05 — `limit(100)` kan tysta hastighetsmätningen
+### ~~B-05 — `limit(100)` kan tysta hastighetsmätningen~~ — åtgärdat
 
-`loadReports` hämtar de 100 senaste icke-utgångna rapporterna. En kö-session behöver minst två av
-sina egna rader för att ge en takt. Faller sessionens `initial` utanför de 100 men dess `followup`
-finns kvar, går sessionen förlorad för `sessionRates` **utan något felmeddelande** — appen faller
-tillbaka på priorn och ser ut att fungera. Risken växer med antalet samtidiga användare, alltså
-precis när mätningarna behövs mest.
+`loadReports` hämtade de 100 senaste icke-utgångna rapporterna, så en kö-sessions `initial` kunde
+falla utanför en full kväll och sessionen försvinna ur `sessionRates` utan felmeddelande. Nu läses
+upp till 1000 (PostgREST:s standardtak), vilket täcker alla icke-utgångna rapporter (≤45 min) med
+marginal. Skulle `count` ändå överstiga det lästa skrivs en varning i konsolen.
 
 ### B-06 — Historiken använder ett osorterat urval
 

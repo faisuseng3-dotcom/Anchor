@@ -60,7 +60,8 @@ export async function mockSupabase(page, rows = [], opts = {}) {
     }
     return route.fulfill({
       status: 200, contentType: 'application/json',
-      headers: { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}` },
+      // Supabase exponerar Content-Range via CORS; utan det ser klienten count = null.
+      headers: { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}`, 'access-control-expose-headers': 'content-range' },
       body: JSON.stringify(rows)
     });
   });

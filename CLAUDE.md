@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 139 rader), `src/style.css` (1 370 rader), `index.html` (273 rader) |
+| Kod | `src/main.js` (3 890 rader), `src/style.css` (1 496 rader), `index.html` (326 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -94,7 +94,7 @@ reserv för gamla rapporter utan `people_ahead`.
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
 npm test                   # 120 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
-npm run e2e                # 10 webbläsartester (Playwright) — kräver en webbläsare, se nedan
+npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 ```
@@ -223,21 +223,11 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 | `short` | `#FFD23F` | under 18 min |
 | `medium` | `#FF8A3D` | 18–30 min |
 | `long` | `#FF4D5E` | över 30 min, eller "Fullt" |
-| `unknown` | två värden — se nedan | ingen data |
+| `unknown` | `#55555B` | ingen data |
 
-⚠️ **Känt problem:** status­färgerna är definierade på **fyra** ställen — CSS `--status-*`,
-`getStatusColor()`, `STATUS_COLORS` och `heroColors`.
-
-Den neutrala paletten synkroniserade `free`, `short`, `medium` och `long` över alla fyra. **`unknown`
-är fortfarande osynkroniserad**, verifierat på HEAD `28040f2`:
-
-| Källa | `unknown` |
-|---|---|
-| `getStatusColor('unknown')` och `heroColors`-fallback | `#85858A` |
-| `STATUS_COLORS.unknown` och CSS `--status-unknown` | `#55555B` |
-
-`renderExploreVenueRow` använder `STATUS_COLORS[cls] || getStatusColor('unknown')`, så raden kan få
-antingen värdet beroende på väg. Lägg inte till en femte källa. Använd `getStatusColor()`.
+**`getStatusColor()` är enda källan i JS** och har samma värden som CSS `--status-*`. `STATUS_COLORS` är borta;
+`PIN_STATUS_COLORS` (kartnålarna) läser från `getStatusColor()`. `#85858A` är `--text-muted` — en **textfärg**
+(streck "–", namn utan data), inte en status. Lägg inte till en andra källa.
 
 ## Viktiga CSS-klasser
 
@@ -364,16 +354,15 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 Dokumenterad i [docs/](docs/). De allvarligaste:
 
 1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
-2. `deleteAllUserData()` kontrollerar inget returvärde — radering kan misslyckas tyst
+2. *(åtgärdad, se nedan)*
 3. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
 4. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
    Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
-5. Död kod: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`
+5. *(åtgärdad, se nedan)*
 6. *(åtgärdad, se nedan)*
 7. **Ingen linter.** Medvetet uppskjutet — se motiveringen under Kommandon
-8. `limit(100)` i `loadReports` kan tysta hastighetsmätningen en full fredag (B-05 i
-   [docs/QUEUE_LOGIC.md](docs/QUEUE_LOGIC.md))
-9. Realtime och 30-sekunderspollningen körs samtidigt; varje `insert` får alla klienter att läsa om
+8. *(åtgärdad, se nedan)*
+9. *(åtgärdad, se nedan)*
 
 **Åtgärdat:**
 
@@ -382,7 +371,7 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
   `tests/sessions.test.js`
 - Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
-- Modellen hade inga tester. 120 enhetstester + 10 E2E-tester finns nu
+- Modellen hade inga tester. 120 enhetstester + 12 E2E-tester finns nu
 - Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
   `.github/workflows/verify.yml`
 - `map.on('error')` nollade kartan vid **vilket** fel som helst, även ett tappat tile-anrop. Nu stänger bara fel före
@@ -391,6 +380,17 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 - Felläget i Utforska skrevs över av `renderExploreVenues` vid skärmbyte (introanimationen ritar om listan), så ett
   serverfel såg ut som 28 tomma ställen. `renderExploreVenues` visar nu själv felläget vid fel utan data — e2e-testet
   "Serverfel … utan data" går igenom igen
+- `deleteAllUserData()` kontrollerade inget returvärde. Nu räknas raderna kvar efter raderingen (en delete som RLS
+  nekar ger inget fel, bara noll rader); `localStorage` och `qb_user_id` rensas bara när alla tre tabeller visar
+  `count === 0`, annars toast och möjlighet att försöka igen. Två e2e-tester i `e2e/app.spec.js` ("5. Radera min data")
+- Död kod borttagen: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`, plus
+  `BAR_SVG`/`CLUB_SVG`, `STATUS_Y` och CSS för `.vcard`/`.heart-btn`
+- `unknown` hade två färger; `STATUS_COLORS` ersatt av `getStatusColor()`. Kartsökningens prick var grå för fria ställen
+  (`STATUS_COLORS` saknade `none`)
+- `limit(100)` → `limit(1000)` (PostgREST:s tak), med varning i konsolen om `count` överstiger det lästa (B-05)
+- Realtime + pollning: en realtime-händelse ger en samlad läsning 1–4 s senare (en skur = en läsning per klient).
+  Pollningen är reserv — var 30 s utan realtime, varannan minut med. Historiken läses om var 30:e minut, inte vid
+  varje insert
 
 ## Vidare läsning
 

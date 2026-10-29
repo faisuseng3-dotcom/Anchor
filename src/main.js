@@ -178,40 +178,6 @@ import './style.css';
       { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: '05:00', pace: 'normal' }
     ];
 
-    function computeConfidence(venueReports) {
-      if (!venueReports.length) return 0;
-
-      var freshCutoff = Date.now() - 25 * 60 * 1000; // 25 min window
-      var freshReports = venueReports.filter(function(r) {
-        return new Date(r.created_at).getTime() > freshCutoff;
-      });
-
-      if (!freshReports.length) return 0;
-
-      // Agreement: what fraction of fresh reports match the most common status?
-      var counts = {};
-      freshReports.forEach(function(r) {
-        counts[r.queue_status] = (counts[r.queue_status] || 0) + 1;
-      });
-      var maxAgree = Math.max.apply(null, Object.keys(counts).map(function(k) { return counts[k]; }));
-      var agreementRatio = maxAgree / freshReports.length;
-
-      // Volume: 1 report = low, 2-3 = medium, 4+ = high
-      var volumeScore = Math.min(freshReports.length / 4, 1);
-
-      // Freshness of newest report (0-20 min = full, older = less)
-      var newestAge = (Date.now() - new Date(venueReports[0].created_at).getTime()) / 60000;
-      var freshnessScore = Math.max(0, 1 - newestAge / 20);
-
-      // Weighted score 0-1
-      var score = agreementRatio * 0.5 + volumeScore * 0.3 + freshnessScore * 0.2;
-
-      // Map to 1-3 bars
-      if (score >= 0.65) return 3;
-      if (score >= 0.35) return 2;
-      return 1;
-    }
-
     // ── Väntetid = kölängd ÷ köns hastighet ──────────────────────────────────
     // Personer per minut som släpps in, startgissning per venue.pace tills kvällens mätningar finns.
     var PACE_RATE = { slow: 1.0, normal: 2.0, fast: 3.0 };
@@ -456,8 +422,9 @@ import './style.css';
       return { none: 'Ingen kö', short: '~15 min', medium: '~25 min', long: '30+ min', unknown: '' }[status] || '';
     }
 
+    // Enda källan till statusfärger i JS. Samma värden som --status-* i style.css.
     function getStatusColor(status) {
-      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#85858A' }[status] || '#85858A';
+      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E' }[status] || '#55555B';
     }
 
     function getStatusClass(status) {
@@ -530,39 +497,6 @@ import './style.css';
       return !!getWatched()[venueId];
     }
 
-    function toggleWatch(venueId) {
-      var watched = getWatched();
-      if (watched[venueId] !== undefined) {
-        delete watched[venueId];
-        saveWatched(watched);
-        renderExploreVenues();
-        showToast('Bevakning avstängd');
-        return;
-      }
-      // Request notification permission first
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then(function(perm) {
-          if (perm === 'granted') {
-            var status = computeStatus(venueId, allReports);
-            watched[venueId] = status;
-            saveWatched(watched);
-            renderExploreVenues();
-            showToast('Bevakar kön — du får en notis om kön minskar');
-          }
-        });
-      } else {
-        var status = computeStatus(venueId, allReports);
-        watched[venueId] = status;
-        saveWatched(watched);
-        renderExploreVenues();
-        if (Notification.permission === 'granted') {
-          showToast('Bevakar kön — du får en notis om kön minskar');
-        } else {
-          showToast('Bevakar kön (aktivera notiser för pushnotiser)');
-        }
-      }
-    }
-
     function checkWatchedVenueAlerts() {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       var watched = getWatched();
@@ -602,9 +536,6 @@ import './style.css';
     var allReports = [];
     var _planningMode = false;
     var _planVenues = [];
-
-    var BAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary)"><path d="M4 5h16l-8 9z"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="8" y1="20" x2="16" y2="20"/></svg>';
-    var CLUB_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary)"><circle cx="12" cy="12" r="9"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><ellipse cx="12" cy="12" rx="4" ry="9"/></svg>';
 
     // Minuter kvar till stängning, eller null om tiden saknas. En enda beräkning som både listan och kortet använder,
     // så att "Stänger snart" aldrig kan visa olika saker. Stängning före 06:00 räknas som nästa dygn (02:00 = 26:00).
@@ -704,7 +635,7 @@ import './style.css';
       var card = document.getElementById('venue-card');
       card.classList.toggle('vc--aging', minsOld >= 15 && minsOld < 45);
       card.classList.toggle('vc--nodata', !waitText);
-      card.style.setProperty('--st', waitText ? getStatusColor(status) : '#55555B');
+      card.style.setProperty('--st', getStatusColor(waitText ? status : 'unknown'));
       var vcStatus = document.getElementById('vc-status');
       vcStatus.innerHTML = waitText ? waitHtml(waitText) : '–';
       vcStatus.style.color = waitText ? getStatusColor(status) : '';
@@ -877,36 +808,11 @@ import './style.css';
         : 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + to, '_blank');
     }
 
-    function renderVenueCard(venue) {
-      var status = computeStatus(venue.id, allReports);
-      var label = venueWaitText(venue.id);
-      var cls = getStatusClass(status);
-      var reports = allReports.filter(function(r) { return r.venue_id === venue.id && isQueueReport(r); });
-      var badgeHtml = label
-        ? '<span class="vcard-status-badge ' + cls + '">' +
-            '<span class="vcard-status-dot"></span>' + label +
-          '</span>'
-        : '<div class="vcard-none">' + (allReports.length === 0 ? 'Inga rapporter ännu – bli först' : 'Ingen rapport') + '</div>';
-      return '<div class="vcard" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'))">' +
-        '<div class="vcard-top">' +
-          '<span class="vcard-name">' + venue.name + '</span>' +
-          '<span class="vcard-badge">' + (venue.type === 'bar' ? BAR_SVG : CLUB_SVG) + '</span>' +
-        '</div>' +
-        '<button class="heart-btn' + (isFavorite(venue.id) ? ' fav' : '') + '" onclick="toggleFavorite(event, \'' + venue.id + '\')" aria-label="Favorit">' +
-          '<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
-        '</button>' +
-        badgeHtml +
-        (reports.length > 0 ? '<div class="vcard-count">' + reports.length + ' rapport' + (reports.length > 1 ? 'er' : '') + '</div>' : '') +
-        '<div class="vcard-sep"></div>' +
-        '<div class="vcard-row"><span>Stänger ' + venue.closing + '</span><span>' + venue.area + '</span></div>' +
-        '</div>';
-    }
-
     function renderCompactVenueRow(venue) {
       var status = computeStatus(venue.id, allReports);
       var label = venueWaitText(venue.id);
       var cls = getStatusClass(status);
-      var dotColor = cls === 'unknown' ? '#55555B' : getStatusColor(cls);
+      var dotColor = getStatusColor(cls);
       return '<div class="vcrow" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'), \'sheet\')">' +
         '<span class="vcrow-dot" style="background:' + dotColor + '"></span>' +
         '<div class="vcrow-info">' +
@@ -1135,7 +1041,7 @@ import './style.css';
 
       resultsEl.innerHTML = hits.map(function(v) {
         var status = computeStatus(v.id, allReports);
-        var dotColor = STATUS_COLORS[status] || '#6B7280';
+        var dotColor = getStatusColor(status);
         var typeLabel = venueTypeLabel(v.type);
         return '<div class="msearch-row" onmousedown="selectMapSearchVenue(\'' + v.id + '\')">' +
           '<div class="msearch-dot" style="background:' + dotColor + '"></div>' +
@@ -1221,7 +1127,7 @@ import './style.css';
 
         // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
         var PIN_STATUS_COLORS = {
-          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: '#55555B'
+          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: getStatusColor('unknown')
         };
 
         // Ikoner i 24×24-viewBox. Bar = cocktailglas, klubb = musiknot.
@@ -1262,7 +1168,7 @@ import './style.css';
             ctx.fillStyle = '#151517';
             ctx.fill();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = '#55555B';
+            ctx.strokeStyle = getStatusColor('unknown');
             ctx.stroke();
           } else {
             ctx.fillStyle = color;
@@ -1788,7 +1694,7 @@ import './style.css';
       var lists = ['sheet-list'];
       lists.forEach(function(id) {
         var el = document.getElementById(id);
-        if (el && !el.querySelector('.vcard') && !el.querySelector('.vcrow')) {
+        if (el && !el.querySelector('.vcrow')) {
           el.innerHTML = [1,2,3,4].map(function() {
             return '<div class="skeleton skeleton-card"></div>';
           }).join('');
@@ -1813,14 +1719,11 @@ import './style.css';
         '</div>';
     }
 
-    var STATUS_COLORS = {
-      free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', unknown: '#55555B'
-    };
-
     // Hur det gick med den senaste inläsningen: 'loading' | 'ok' | 'error'.
     // Utan den här kan en tom vy inte skilja "inga rapporter i Stockholm" från "vi nådde
     // inte servern", och ett serverfel visades som en lugn kväll.
     var _loadState = 'loading';
+    var _lastLoadAt = 0; // senaste lyckade läsningen, för pollningen
 
     // Vid fel: behåll rapporterna vi redan har, men märk dem som osäkra. Finns inga alls är
     // felläget allt vi kan visa. Rör inte explore-listan när den har data — att tömma en
@@ -1849,7 +1752,12 @@ import './style.css';
       console.log('[QueueBar] loadReports startar');
       var now = new Date().toISOString();
       try {
-        var result = await supabase.from('reports').select('*', { count: 'exact' }).gte('expires_at', now).order('created_at', { ascending: false }).limit(100);
+        // Alla icke-utgångna rapporter (≤45 min). Ett lägre tak tappade kö-sessionernas första mätpunkt en full kväll
+        // och tystade takten (B-05). 1000 är PostgREST:s standardtak för max-rows.
+        var result = await supabase.from('reports').select('*', { count: 'exact' }).gte('expires_at', now).order('created_at', { ascending: false }).limit(1000);
+        if (result.data && result.count > result.data.length) {
+          console.warn('[QueueBar] loadReports: ' + result.count + ' aktiva rapporter men bara ' + result.data.length + ' lästa — äldsta saknas');
+        }
         console.log('[QueueBar] loadReports råsvar — status:', result.status, result.statusText,
           '| count:', result.count, '| rader:', result.data ? result.data.length : 'null',
           '| error:', result.error || 'ingen');
@@ -1860,6 +1768,7 @@ import './style.css';
         }
         if (result.data) {
           _loadState = 'ok';
+          _lastLoadAt = Date.now();
           // Bara kända ställen: venue_id hamnar i onclick-attribut och okända id:n kan inte visas meningsfullt ändå.
           allReports = result.data.filter(function(r) { return getVenueById(r.venue_id); });
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
@@ -2031,13 +1940,19 @@ import './style.css';
       _ripplesShown = _ripples.length > 0;
     }
 
+    // Realtime ersätter pollningen när den är uppkopplad. En skur ändringar blir en enda läsning per klient, utspridd
+    // över 1–4 s så att inte alla klienter frågar samtidigt. Payloaden används inte: realtime skickar timestamptz
+    // orörd i Postgres-format ("2026-10-29 21:00:00+00"), som Date inte tolkar likadant i alla webbläsare.
+    var _realtimeLive = false, _reloadTimer = null;
     function subscribeToReports() {
       if (!supabase) return;
       supabase.channel('reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, function() {
-        console.log('[QueueBar] Realtime: ny händelse i reports');
-        loadReports().then(loadHistoricalPatterns);
-      }).subscribe();
-      console.log('[QueueBar] Prenumererar på realtidsuppdateringar');
+        if (_reloadTimer) return;
+        _reloadTimer = setTimeout(function() { _reloadTimer = null; loadReports(); }, 1000 + Math.random() * 3000);
+      }).subscribe(function(status) {
+        _realtimeLive = status === 'SUBSCRIBED';
+        console.log('[QueueBar] Realtime: ' + status);
+      });
     }
 
     // Testdata visas bara med ?testdata=true eller efter den hemliga växlingen Alt + 2.
@@ -2411,10 +2326,15 @@ import './style.css';
     // Fix 4 — loadReports alltid, oavsett karta
     console.log('[QueueBar] Startar initial datainläsning');
     loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates);
-    setInterval(loadHistoricalRates, 30 * 60 * 1000);
+    // Historiken gäller samma veckodag ±1 h, så den följer klockan — inte varje ny rapport.
+    setInterval(function() { loadHistoricalPatterns(); loadHistoricalRates(); }, 30 * 60 * 1000);
     subscribeToReports();
     if (supabase) {
-      setInterval(loadReports, 30000);
+      // Reserv: var 30 s utan realtime, annars varannan minut så att utgångna rapporter försvinner och missade händelser
+      // fångas upp.
+      setInterval(function() {
+        if (!_realtimeLive || Date.now() - _lastLoadAt >= 2 * 60 * 1000) loadReports();
+      }, 30000);
     } else {
       showConnectionBanner();
     }
@@ -2696,14 +2616,24 @@ import './style.css';
     }
 
     // ── Dataradering ─────────────────────────────────────────────────────────
+    // Rensar localStorage (och därmed qb_user_id) bara när servern bevisligen är tom — annars kan användaren aldrig
+    // försöka igen. En delete som RLS nekar ger inget fel, bara noll rader, så det som finns kvar räknas efteråt.
     async function deleteAllUserData() {
       if (!supabase) { localStorage.clear(); location.reload(); return; }
       var userId = getUserId();
-      await Promise.all([
-        supabase.from('reports').delete().eq('user_id', userId),
-        supabase.from('favorites').delete().eq('user_id', userId),
-        supabase.from('user_profiles').delete().eq('user_id', userId)
-      ]);
+      var tables = ['reports', 'favorites', 'user_profiles'];
+      try {
+        var deleted = await Promise.all(tables.map(function(t) { return supabase.from(t).delete().eq('user_id', userId); }));
+        var left = await Promise.all(tables.map(function(t) {
+          return supabase.from(t).select('user_id', { count: 'exact', head: true }).eq('user_id', userId);
+        }));
+        var failed = tables.filter(function(t, i) { return deleted[i].error || left[i].error || left[i].count !== 0; });
+        if (failed.length) throw new Error('kvar i ' + failed.join(', '));
+      } catch (err) {
+        console.error('[QueueBar] deleteAllUserData misslyckades:', err);
+        showToast('Kunde inte radera all data — försök igen');
+        return;
+      }
       localStorage.clear();
       location.reload();
     }
@@ -2821,32 +2751,6 @@ import './style.css';
       exploreDebounceTimer = setTimeout(renderExploreVenues, 60);
     }
 
-    var STATUS_Y = { none: 0, free: 0, short: 1, medium: 2, long: 2 };
-
-    function renderSparkline(venueReports, statusColor) {
-      if (!venueReports || venueReports.length < 2) {
-        return '<svg width="40" height="14" viewBox="0 0 40 14" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-          '<polyline points="0,7 40,7" stroke="#E5E7EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-          '</svg>';
-      }
-      var pts = venueReports.slice(-5).sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-      var yVals = pts.map(function(r) { return STATUS_Y[r.queue_status] !== undefined ? STATUS_Y[r.queue_status] : 1; });
-      var n = yVals.length;
-      var coords = yVals.map(function(y, i) {
-        var x = n === 1 ? 20 : (i / (n - 1)) * 40;
-        var svgY = 2 + (y / 2) * 10;
-        return x.toFixed(1) + ',' + svgY.toFixed(1);
-      }).join(' ');
-      return '<svg width="40" height="14" viewBox="0 0 40 14" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-        '<polyline points="' + coords + '" stroke="' + statusColor + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '</svg>';
-    }
-
-    function formatAbsTime(dateStr) {
-      var d = new Date(dateStr);
-      return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
-    }
-
     var _exsumInterval = null;
 
     // Status bara om ett ställe har en kö-rapport från de senaste 45 min (samma gräns som "inaktuell" i listan).
@@ -2927,7 +2831,7 @@ import './style.css';
       var status = computeStatus(venue.id, allReports);
       var est = estimateWait(venue.id, allReports);
       var cls = getStatusClass(status);
-      var color = STATUS_COLORS[cls] || getStatusColor('unknown');
+      var color = getStatusColor(cls);
       var hasData = venueReports.length > 0;
       var minsOld = hasData && latestReport ? (now - new Date(latestReport.created_at)) / 60000 : Infinity;
       var isAging = hasData && minsOld >= 15 && minsOld < 45;

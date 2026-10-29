@@ -53,9 +53,9 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  273 rader   Allt DOM-skelett: 5 skärmar, modaler, bottom sheets
-src/main.js                3187 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1377 rader   Design tokens + alla komponentklasser
+index.html                  326 rader   Allt DOM-skelett: 5 skärmar, modaler, bottom sheets
+src/main.js                3890 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1496 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
 tests/*.test.js             120 tester   Vitest: modell, sessioner, historik, sök, venues, lägen
@@ -85,8 +85,9 @@ toppnivåskript — det finns ingen `init()`-funktion och ingen `DOMContentLoade
 4. `VENUES`-arrayen definieras (`src/main.js`)
 5. Alla funktioner deklareras (hissas, så ordningen spelar ingen roll)
 6. **`loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates)`** (`src/main.js`)
-7. Tre `setInterval`: `loadReports` var 30 s, `loadHistoricalRates` var 30 min
-8. `subscribeToReports()` — Realtime-prenumeration
+7. `setInterval`: pollning av `loadReports` (var 30 s utan Realtime, varannan minut med),
+   `loadHistoricalPatterns` + `loadHistoricalRates` var 30 min
+8. `subscribeToReports()` — Realtime-prenumeration; en händelse ger en samlad `loadReports()` 1–4 s senare
 9. `updateProfileStats()`, `filterReportList()`, `checkConsent()`
 10. `Object.assign(window, {...})` exponerar 49 funktioner (`src/main.js`)
 
@@ -184,11 +185,11 @@ radnummer** — en enda commit kan flytta allt nedanför sig. Kör
 | `Mapbox token` | Token sätts | — |
 | `Supabase` | Klienten skapas | nej |
 | `Feltoast` | Felvisning, återanslutning | nej |
-| `Data och hjälpfunktioner` | `VENUES` (28 ställen) + `computeConfidence` — **död kod, anropas aldrig** | data / ja |
+| `Data och hjälpfunktioner` | `VENUES` (28 ställen) | data / ja |
 | **`Väntetid = kölängd ÷ köns hastighet`** | **Väntetidsmodellen** — `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait` | **ja** |
 | *(efter modellen)* | `escapeHtml`, `timeAgo`, toast | delvis |
 | `Dela (Share)` | `shareVenue` | nej |
-| `Bevaka (Watch)` | `getWatched`, `checkWatchedVenueAlerts`. `toggleWatch` är **död kod** | delvis |
+| `Bevaka (Watch)` | `getWatched`, `checkWatchedVenueAlerts` | delvis |
 | *(venue-kort, hemskärm)* | Kort och listor | nej (DOM) |
 | `Bottom sheet drag` | Dragning, snappning | nej (DOM) |
 | `Kartans inline-sökning` | Sökfält över kartan | nej (DOM) |
@@ -221,7 +222,7 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 | Beroende | Används för | Vad händer om det fallerar |
 |---|---|---|
 | Supabase REST | Läsa och skriva rapporter | `_loadState` sätts till `'error'` och `renderLoadFailure()` kör. Finns rapporter kvar behålls de med varningen "siffrorna kan vara gamla"; finns inga visas felläge. Se [TESTING.md](TESTING.md) avsnitt 4 |
-| Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen var 30 s täcker upp |
+| Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen går då var 30 s i stället för varannan minut |
 | Supabase RPC `on_my_way_counts` | "På väg"-räknare | Varning i konsolen, räknaren visas inte |
 | Supabase RPC `increment_points` | Inget — **funktionen finns inte** | Tyst fel. Poäng räknas ändå klientsidan |
 | Mapbox Styles/Tiles | Kartan | `showMapError()` visar ett felläge. **Verifierat fungerande.** |
@@ -230,16 +231,13 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 
 ### Verkliga flaskhalsar
 
-1. **`limit(100)` i `loadReports`** (`src/main.js`) — hela appens tillstånd bygger på de 100
-   senaste icke-utgångna rapporterna. En fredag med 28 ställen kan det räcka till under en
-   halvtimme, och en kö-sessions första mätpunkt kan hamna utanför fönstret. Då tappas
-   hastighetsmätningen tyst.
-2. **Realtime + pollning samtidigt** (`src/main.js` och `1663`) — varje INSERT från vilken
-   användare som helst får *alla* anslutna klienter att köra `loadReports()` + `loadHistoricalPatterns()`
-   på nytt, utöver pollningen var 30 s. Lasten växer kvadratiskt med antalet samtidiga användare.
-3. **2,2 MB JS / 628 kB gzip i produktionsbygget** — nästan allt är `mapbox-gl`. Målgruppen står
+1. **Varje rapport läses om av alla klienter** (`subscribeToReports`) — en realtime-händelse ger en
+   `loadReports()` per ansluten klient. En skur samlas till en läsning och sprids över 1–4 s, men
+   lasten växer fortfarande med antalet samtidiga användare. `loadReports` läser upp till 1000
+   icke-utgångna rapporter (≤45 min) och varnar i konsolen om `count` är större.
+2. **2,2 MB JS / 628 kB gzip i produktionsbygget** — nästan allt är `mapbox-gl`. Målgruppen står
    utomhus på mobilnät klockan 23.
-4. **Ingen kodavdelning** — `src/main.js` måste läsas i sin helhet för varje ändring, av människa
+3. **Ingen kodavdelning** — `src/main.js` måste läsas i sin helhet för varje ändring, av människa
    som av AI-verktyg.
 
 ---

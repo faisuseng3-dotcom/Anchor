@@ -9,7 +9,7 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 | Verktyg | Finns | Kommando |
 |---|---|---|
 | **Vitest — 120 enhetstester** | ✅ | `npm test` |
-| **Playwright — 10 E2E-tester** | ✅ | `npm run e2e` |
+| **Playwright — 12 E2E-tester** | ✅ | `npm run e2e` |
 | `scripts/check.js` — 56 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | **Spärr före commit** | ✅ | automatiskt, `.husky/pre-commit` |
@@ -284,8 +284,9 @@ regression.
 
 ### Medel: realtid och pollning
 
-Inget test täcker att en `insert` från en annan användare når skärmen, eller vad som händer när
-Realtime och den 30-sekundersintervallen överlappar. Kräver en mockad WebSocket.
+Inget test täcker att en `insert` från en annan användare når skärmen, att en skur realtime-händelser
+samlas till en läsning, eller att pollningen glesas ut när Realtime är uppkopplad. Kräver en mockad
+WebSocket (`page.routeWebSocket`).
 
 ### Medel: skärmarna som renderar
 
