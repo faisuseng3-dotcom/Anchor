@@ -8,9 +8,9 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 | Verktyg | Finns | Kommando |
 |---|---|---|
-| **Vitest — 120 enhetstester** | ✅ | `npm test` |
+| **Vitest — 124 enhetstester** | ✅ | `npm test` |
 | **Playwright — 12 E2E-tester** | ✅ | `npm run e2e` |
-| `scripts/check.js` — 56 strängkontroller | ✅ | `node scripts/check.js` |
+| `scripts/check.js` — 55 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | **Spärr före commit** | ✅ | automatiskt, `.husky/pre-commit` |
 | **CI vid varje push** | ✅ | `.github/workflows/verify.yml` |
@@ -44,11 +44,12 @@ CI kör båda vid varje push. Det är den enda kontrollen som inte går att hopp
 | `tests/wait.test.js` | 37 | `estimateWait`, `setWaitRange`, `formatWait`, `waitToStatus`, `aheadBucket`, `median` |
 | `tests/sessions.test.js` | 24 | `sessionRates`, `measureQueueRates` — alla ogiltighetsregler |
 | `tests/history.test.js` | 14 | `historicalRateFor`, `nightKey` |
-| `tests/search.test.js` | 22 | `venueScore`, `venueSearch`, `_searchNorm` |
-| `tests/venues.test.js` | 14 | `VENUES`-integritet, koordinater, överlappande kartnålar |
+| `tests/search.test.js` | 20 | `venueScore`, `venueSearch`, `_searchNorm` |
+| `tests/venues.test.js` | 16 | `VENUES`-integritet, koordinater, överlappande kartnålar |
 | `tests/loadstate.test.js` | 9 | `exsumText` — serverfel får aldrig se ut som en tyst kväll |
+| `tests/bestnow.test.js` | 4 | `computeBestNow` — "Ingen kö" kan bli "Bäst nu", bara färska kömätningar räknas |
 | `e2e/support.js` | — | Supabase-mock, rapportbyggare, uppstart |
-| `e2e/app.spec.js` | 10 | Start, feltillstånd, sök, rapportflödet, kartans felläge |
+| `e2e/app.spec.js` | 12 | Start, feltillstånd, sök, rapportflödet, kartans felläge |
 
 Testerna kör i tidszonen **Europe/Stockholm** (`vitest.config.js`). Det är inte kosmetika:
 `nightKey()` drar bort sex timmar för att en fredag 00:30 ska höra till fredagskvällen, och
@@ -203,7 +204,7 @@ ingen Supabase och ingen Mapbox.
 ### Hur hjälparen fungerar — och varför den är tillfällig
 
 Funktionerna saknar `export` och ligger inne i `src/main.js` tillsammans med all DOM- och
-Mapbox-kod, som inte kan köras i Node. `tests/harness.js` läser filen som text och klipper ut tre
+Mapbox-kod, som inte kan köras i Node. `tests/harness.js` läser filen som text och klipper ut
 block mellan **ankare**, inte radnummer:
 
 | Block | Från | Till |
@@ -211,6 +212,8 @@ block mellan **ankare**, inte radnummer:
 | `VENUES` | `const VENUES = [` | den avslutande klammern |
 | Väntetidsmodellen | `var PACE_RATE` | `function getStatusLabel` |
 | Fuzzy-sökningen | `function _searchNorm` | `// ── Utforska` |
+| Färskhetsraden | `function exsumTimeSince` | `function renderExploreSummary` |
+| "Bäst nu" | `function minutesToClose`, `function distanceKmTo`, `function computeBestNow` | var sin ankarkommentar efter funktionen |
 
 Blocken körs med `new Function`, och `getVenueById` och `allReports` matas in som attrapper
 eftersom de deklareras utanför blocken. Saknas ett ankare kastar hjälparen ett namngivet fel i
@@ -353,10 +356,10 @@ await page.route('**/*.supabase.co/**', r => r.fulfill({
 
 | Steg | Resultat |
 |---|---|
-| Enhetstester på modellen | Vitest, 120 tester i sex filer. Första körningen hittade `sessionRates`-buggen (avsnitt 3) |
+| Enhetstester på modellen | Vitest, 124 tester i sju filer. Första körningen hittade `sessionRates`-buggen (avsnitt 3) |
 | Ett kommando | `npm run verify` — tester, kontroller, bygge |
 | Spärr före commit | `.husky/pre-commit`, sätts upp av `npm install` |
-| E2E | Playwright, 10 tester i `e2e/`, mobil viewport, mockad Supabase |
+| E2E | Playwright, 12 tester i `e2e/`, mobil viewport, mockad Supabase |
 | CI | `.github/workflows/verify.yml` — två jobb, `verify` och `e2e` |
 
 Två saker som verifierades under arbetet och är värda att komma ihåg:
@@ -380,7 +383,7 @@ git ls-files --error-unmatch .env   # ska misslyckas
 
 ### Kvar: en linter — medvetet uppskjutet
 
-ESLint på en 3 187-radersfil i ES5-stil (`var`, `function`, inga moduler) skulle ge hundratals
+ESLint på en 3 407-radersfil i ES5-stil (`var`, `function`, inga moduler) skulle ge hundratals
 varningar och kräva konfigurationsbeslut som ingen tagit. Den ger mest värde **efter** att modellen
 flyttats till `src/model/`, när filerna är små nog att städa en i taget. Att slå på den nu skulle
 betyda antingen hundratals ignorerade varningar eller en stor omskrivning utan testtäckning i de
@@ -389,7 +392,7 @@ delar som inte är rena funktioner.
 ### Kvar: flytta modellen till `src/model/`
 
 **Först nu**, när testerna finns. De bevisar att flytten inte ändrar beteendet: `tests/harness.js`
-byts mot vanliga `import`-satser och alla 120 testerna ska fortsätta passera. Går de från grönt till
+byts mot vanliga `import`-satser och alla 124 testerna ska fortsätta passera. Går de från grönt till
 rött är det flytten som är fel, inte testet.
 
 Det öppnar också för att Expo-appen kan importera samma modell, som den i dag helt saknar.

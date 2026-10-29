@@ -40,10 +40,20 @@ const searchBlock = between('function _searchNorm', '// ── Utforska');
 // så den går att nå utan DOM. Stoppar före renderExploreSummary, som rör document.
 const exsumBlock = between('function exsumTimeSince', 'function renderExploreSummary');
 
+// "Bäst nu" med sina två hjälpare. computeBestNow läser allReports och window._userPos; båda sätts via
+// setTestReports nedan, så testet styr dem utan DOM.
+const bestNowBlock = [
+  between('function minutesToClose', '// A — vad som hänt'),
+  between('function distanceKmTo', '// Gångtid i minuter'),
+  between('function computeBestNow', '// Raderna glider in')
+].join('\n');
+
 // Beroenden som modellblocket använder men som deklareras utanför det.
 const shims = `
   function getVenueById(id) { return VENUES.find(function(v) { return v.id === id; }); }
   var allReports = [];
+  var window = { _userPos: null };
+  function setTestReports(reports, pos) { allReports = reports; window._userPos = pos || null; }
 `;
 
 const exported = [
@@ -52,12 +62,12 @@ const exported = [
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
   'getVenueById', '_searchNorm', 'venueScore', 'venueSearch',
-  'exsumText', 'exsumTimeSince'
+  'exsumText', 'exsumTimeSince', 'computeBestNow', 'setTestReports'
 ];
 
 const box = {};
 new Function('exports', [
-  venuesBlock, shims, modelBlock, searchBlock, exsumBlock,
+  venuesBlock, shims, modelBlock, searchBlock, exsumBlock, bestNowBlock,
   `Object.assign(exports, { ${exported.join(', ')} });`
 ].join('\n'))(box);
 
@@ -71,7 +81,7 @@ export const {
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
   getVenueById, _searchNorm, venueScore, venueSearch,
-  exsumText, exsumTimeSince
+  exsumText, exsumTimeSince, computeBestNow, setTestReports
 } = box;
 
 // ── Testdatabyggare ─────────────────────────────────────────────────────────

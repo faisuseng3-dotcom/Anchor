@@ -93,7 +93,6 @@ check('No hardcoded supabase key in plain text (anon key OK)', true); // informa
 
 // ── Design system ─────────────────────────────────────────────────────────────
 check('Status colors defined: free/short/medium/long/unknown', js.includes("free: '#34E07F'") && js.includes("long: '#FF4D5E'"));
-check('STATUS_RANK map defined', js.includes('STATUS_RANK'));
 check('erow--empty uses rowInEmpty keyframe', css.includes('rowInEmpty'));
 // opacity 0.55 is allowed ONLY inside prefers-reduced-motion (fallback for no-animation)
 const outsideMediaOpacity = css.replace(/@media[^{]*\{[^{}]*\{[^}]*\}[^}]*\}/g, '').match(/\.erow--empty\s*\{[^}]*opacity:\s*0\.[^}]*\}/);

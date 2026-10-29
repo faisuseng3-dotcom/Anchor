@@ -34,8 +34,8 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
-| Enhetstester | **Vitest** 5.x, 120 tester | `vitest.config.js`, `tests/` |
-| E2E | **Playwright** 1.56, 10 tester | `playwright.config.js`, `e2e/` |
+| Enhetstester | **Vitest** 5.x, 124 tester | `vitest.config.js`, `tests/` |
+| E2E | **Playwright** 1.56, 12 tester | `playwright.config.js`, `e2e/` |
 | Spärr före commit | **husky** 9.x — kör `npm run verify` | `.husky/pre-commit` |
 | CI | GitHub Actions | `.github/workflows/verify.yml` |
 
@@ -53,18 +53,18 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  326 rader   Allt DOM-skelett: 5 skärmar, modaler, bottom sheets
-src/main.js                3890 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1496 rader   Design tokens + alla komponentklasser
+index.html                  313 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
+src/main.js                3407 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1301 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
-tests/*.test.js             120 tester   Vitest: modell, sessioner, historik, sök, venues, lägen
+tests/*.test.js             124 tester   Vitest: modell, sessioner, historik, sök, venues, lägen, Bäst nu
 vitest.config.js                        TZ=Europe/Stockholm — nattgränsen hamnar fel i UTC
 e2e/support.js                          Supabase-mock; inget test rör produktionsdatabasen
-e2e/app.spec.js             10 tester   Playwright, 390×844: start, feltillstånd, sök, rapport
+e2e/app.spec.js             12 tester   Playwright, 390×844: start, feltillstånd, sök, rapport
 playwright.config.js                    Startar dev-servern själv, Stockholm-tidszon
 
-scripts/check.js            127 rader   55 strängbaserade kontroller
+scripts/check.js            181 rader   55 strängbaserade kontroller
 scripts/fetch-osm-venues.mjs 387 rader  Engångsverktyg: hämtar venue-kandidater från OpenStreetMap
 data/venues_candidates.*                Resultat från OSM-körningen. Används INTE av appen.
 
@@ -89,7 +89,7 @@ toppnivåskript — det finns ingen `init()`-funktion och ingen `DOMContentLoade
    `loadHistoricalPatterns` + `loadHistoricalRates` var 30 min
 8. `subscribeToReports()` — Realtime-prenumeration; en händelse ger en samlad `loadReports()` 1–4 s senare
 9. `updateProfileStats()`, `filterReportList()`, `checkConsent()`
-10. `Object.assign(window, {...})` exponerar 49 funktioner (`src/main.js`)
+10. `Object.assign(window, {...})` exponerar 39 funktioner (`src/main.js`)
 
 Steg 10 är **nödvändigt**: HTML-strängarna använder inline `onclick`, och ES-moduler har inget
 globalt scope. Lägger du till en ny `onclick`-handler måste den läggas till i det objektet,
@@ -127,12 +127,12 @@ flowchart TD
 
     subgraph DB["Supabase (EU)"]
         REPORTS[("reports")]
-        FAV[("favorites")]
+        FAV[("favorites<br/>används inte längre")]
         PROF[("user_profiles")]
         OMW[("on_my_way<br/>endast via RPC")]
     end
 
-    REPORTS -->|"select *, expires_at >= nu<br/>limit 100"| LR["loadReports()"]
+    REPORTS -->|"select *, expires_at >= nu<br/>limit 1000"| LR["loadReports()"]
     LR --> AR
     TD["injectTestData()<br/>48 falska rapporter"] -.->|"endast om testDataEnabled()"| AR
 
@@ -189,9 +189,7 @@ radnummer** — en enda commit kan flytta allt nedanför sig. Kör
 | **`Väntetid = kölängd ÷ köns hastighet`** | **Väntetidsmodellen** — `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait` | **ja** |
 | *(efter modellen)* | `escapeHtml`, `timeAgo`, toast | delvis |
 | `Dela (Share)` | `shareVenue` | nej |
-| `Bevaka (Watch)` | `getWatched`, `checkWatchedVenueAlerts` | delvis |
-| *(venue-kort, hemskärm)* | Kort och listor | nej (DOM) |
-| `Bottom sheet drag` | Dragning, snappning | nej (DOM) |
+| *(venue-kort, hemskärm)* | Kort, "Bäst nu"-kortet (`renderBestNowCard`) | nej (DOM) |
 | `Kartans inline-sökning` | Sökfält över kartan | nej (DOM) |
 | `Karta` | Mapbox: init, ikoner, lager, kluster, pulsanimation | nej |
 | `Supabase-funktioner` | `loadReports`, skelett, felläge, testdata, `submitReport` | nej |
@@ -203,12 +201,12 @@ radnummer** — en enda commit kan flytta allt nedanför sig. Kör
 | **`Gemensam fuzzy-sökning`** | `venueScore`, `venueSearch` | **ja** |
 | `Utforska` | Filter, rader, `computeExploreSummary` | delvis |
 | `Färskhetsrad` | `exsumText`, `renderExploreSummary` | delvis |
-| `Kvällsplanering` | Kvällsplan, "bäst nu", avstånd, stängningstid | delvis |
+| *(efter Utforska)* | `computeBestNow`: "Bäst nu" ur färska kömätningar, avstånd, stängningstid | delvis |
 | `Live-feed` | `_liveRowHtml`, `renderLiveFeed` | nej |
 | `På väg` | Banner, RPC-synk | nej |
 | `Rapportera` / `Snabbrapport` | De tre stegen, bottom sheet | nej |
 | `Profil` | Poäng, nivå, streak, märken | nej |
-| *(sist i filen)* | `Object.assign(window, …)` — **48 funktioner** | — |
+| *(sist i filen)* | `Object.assign(window, …)` — **39 funktioner** | — |
 
 **Konsekvens för utveckling:** de rena funktionerna under `Väntetid = kölängd ÷ köns hastighet` och
 `Gemensam fuzzy-sökning` är den enda
@@ -224,7 +222,7 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 | Supabase REST | Läsa och skriva rapporter | `_loadState` sätts till `'error'` och `renderLoadFailure()` kör. Finns rapporter kvar behålls de med varningen "siffrorna kan vara gamla"; finns inga visas felläge. Se [TESTING.md](TESTING.md) avsnitt 4 |
 | Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen går då var 30 s i stället för varannan minut |
 | Supabase RPC `on_my_way_counts` | "På väg"-räknare | Varning i konsolen, räknaren visas inte |
-| Supabase RPC `increment_points` | Inget — **funktionen finns inte** | Tyst fel. Poäng räknas ändå klientsidan |
+| ~~Supabase RPC `increment_points`~~ | Anropen borttagna — funktionen fanns inte. Poäng räknas klientsidan | — |
 | Mapbox Styles/Tiles | Kartan | `showMapError()` visar ett felläge. **Verifierat fungerande.** |
 | Fontshare (Satoshi) | Hela typografin | Fallback `system-ui`. Hela utseendet byter karaktär |
 | Google Fonts (Geist Mono) | Alla siffror | Fallback `monospace` |

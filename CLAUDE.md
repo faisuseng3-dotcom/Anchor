@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 890 rader), `src/style.css` (1 496 rader), `index.html` (326 rader) |
+| Kod | `src/main.js` (3 407 rader), `src/style.css` (1 301 rader), `index.html` (313 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -73,12 +73,13 @@ blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
 |---|---|
 | **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
 | Venue-data | `VENUES` — 28 objekt. **Inte i databasen** — ändring = deploy |
-| Supabase-läsning | `loadReports` — de 100 senaste icke-utgångna rapporterna |
+| Supabase-läsning | `loadReports` — alla icke-utgångna rapporter (≤45 min, tak 1000) |
 | Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
 | Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
 | Kalibrering | `computeCalibration` — skriv `qbCalibration()` i konsolen |
 | Karta och lager | mellan `showMapError` och `getUserId`: `registerTypePins`, `addTypePin`, `updateMapStatuses` |
 | Utforska-summering | `computeExploreSummary`, `exsumText`, `renderExploreSummary` |
+| "Bäst nu" | `computeBestNow`, `renderBestNowCard` — kartans kort, listans fästa rad och den blå ramen |
 | Sökning | `venueScore`, `venueSearch`, `_searchNorm` |
 | XSS-skydd | `escapeHtml` — fyra anropsställen |
 
@@ -92,7 +93,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 120 enhetstester (Vitest)
+npm test                   # 124 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -301,7 +302,11 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - `animation-fill-mode: forwards` krävs för keyframes som sätter ett sluttillstånd
 - `@keyframes rowInEmpty` kodar `opacity: 0.55` i `to` — sätt aldrig opacity direkt på `.erow--empty`
 - Tomma kort **måste** sorteras sist — använd alltid `localeCompare(b.name, 'sv')`
-- `STATUS_RANK`: `{free: 0, none: 0, short: 1, medium: 2, long: 3}` — för trendberäkning
+- Köstatus heter **`'none'`** i modellen (`waitToStatus`, `computeStatus`), aldrig `'free'` — `free` är bara CSS-klassen
+  (`getStatusClass`). Jämför aldrig `computeStatus(...)` med `'free'`: "Bäst nu" valde aldrig ett ställe utan kö av
+  just det skälet (låst fast av `tests/bestnow.test.js`)
+- Utforska utan sökning: färska först, **kortast kö överst** (`QUEUE_RANK`), sedan nyast rapport. Chippet "Kort" är
+  bara `short`; medel syns under "Alla". Listans trendpil kräver två mätningar med antal ≥10 min isär i olika intervall
 - Färskhetsraden ersatte den gamla "Stockholm just nu"-widgeten med räknare per status. Antalen
   finns redan i filterchipsen, så raden visar bara det chipsen inte säger — hur färsk datan är.
   Lägg inte tillbaka räknarna; det är redundans (princip 5)
@@ -341,9 +346,13 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   `prefers-reduced-motion`
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
-- Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3)
+- Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3). "Ingen kö" startar
+  ingen session — det finns ingen kö att stå i. Varje rapport avslutar "På väg"
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
 - "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
+- Favoriter finns bara i `qb_favorites` på enheten. Tabellen `favorites` skrivs inte längre (lästes aldrig tillbaka)
+- Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
+  data" lovade något koden aldrig gjorde
 - `forecastWait()` visas bara med ≥3 initial-rapporter på 30 min över ≥10 min
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.
   Priorn väger som 2 sessioner, så den är **trög** — med 3 mätningar väger den fortfarande 40 %
@@ -355,7 +364,7 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 
 1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
 2. *(åtgärdad, se nedan)*
-3. `increment_points`-RPC:n finns inte; poäng beräknas i klienten
+3. *(åtgärdad, se nedan)*
 4. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
    Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
 5. *(åtgärdad, se nedan)*
@@ -371,7 +380,7 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
   `tests/sessions.test.js`
 - Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
-- Modellen hade inga tester. 120 enhetstester + 12 E2E-tester finns nu
+- Modellen hade inga tester. 124 enhetstester + 12 E2E-tester finns nu
 - Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
   `.github/workflows/verify.yml`
 - `map.on('error')` nollade kartan vid **vilket** fel som helst, även ett tappat tile-anrop. Nu stänger bara fel före
@@ -391,6 +400,16 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 - Realtime + pollning: en realtime-händelse ger en samlad läsning 1–4 s senare (en skur = en läsning per klient).
   Pollningen är reserv — var 30 s utan realtime, varannan minut med. Historiken läses om var 30:e minut, inte vid
   varje insert
+- Granskningen 2026-10-30 (allt rättat):
+  - "Bäst nu" valde aldrig ett ställe utan kö (`'free'` mot `'none'`) och räknade uppföljningar som färsk mätning
+  - En rad i Live öppnade ett trasigt kort (sträng i stället för venue-objekt till `openVenueCard`)
+  - Kartan och "Bäst nu" stod kvar som färska vid serverfel — `renderLoadFailure` ritar nu om dem
+  - "På väg" utan GPS hittade på 15 min och skickade dem till servern
+  - `increment_points` anropas inte längre; tacket väntade på ett anrop som alltid misslyckades. Dubbeltryck skickade
+    två rapporter (`_reportSending`)
+  - "Brukar vara …" räknade bort alla "Ingen kö"-rapporter och jämförde timmar fel efter midnatt (nu `nightKey`)
+  - Borttaget: Kvällsplanering, det dolda "Nära dig"-arket, Bevaka, offline-bannern, serverkopian av favoriter och
+    ett tiotal döda funktioner/exporter med CSS (≈480 rader)
 
 ## Vidare läsning
 

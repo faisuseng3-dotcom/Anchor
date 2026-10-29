@@ -37,7 +37,7 @@ test.describe('1. Appen startar och Utforska renderar', () => {
     await goToScreen(page, 'explore');
 
     const utanData = page.locator('.erow', { hasText: 'Tjoget' }).first();
-    await expect(utanData).toContainText(/Ingen data/i);
+    await expect(utanData).toContainText(/Ingen rapport senaste 45 min/i);
   });
 });
 

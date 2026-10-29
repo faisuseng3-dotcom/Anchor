@@ -312,12 +312,12 @@ falla utanför en full kväll och sessionen försvinna ur `sessionRates` utan fe
 upp till 1000 (PostgREST:s standardtak), vilket täcker alla icke-utgångna rapporter (≤45 min) med
 marginal. Skulle `count` ändå överstiga det lästa skrivs en varning i konsolen.
 
-### B-06 — Historiken använder ett osorterat urval
+### ~~B-06 — Historiken använder ett osorterat urval~~ — åtgärdat
 
-`loadHistoricalPatterns` frågar utan `limit` och utan `order`. PostgREST returnerar
-högst 1000 rader, och vilka 1000 är inte definierat. Resultatet lagras i `_historicalPatterns`
-men påverkar inte väntetiden — bara en indikator i Utforska. `loadHistoricalRates`, som **faktiskt**
-påverkar väntetiden, sorterar däremot korrekt på `created_at desc`.
+`loadHistoricalPatterns` frågade utan `limit` och `order`, och filtrerade bort "Ingen kö" — så "Brukar
+vara …" lutade mot långa köer. Nu: `.order('created_at', desc).limit(1000)`, "Ingen kö" räknas med
+(äldre `'free'` läses som `'none'`), samma veckodag ±1 h via `nightKey` som `historicalRateFor`, och
+de senaste 12 h (kvällen just nu) räknas bort. Resultatet påverkar fortfarande inte väntetiden.
 
 ### ~~B-07 — Modellen har inga tester~~ — åtgärdat
 

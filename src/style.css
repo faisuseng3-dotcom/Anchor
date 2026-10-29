@@ -125,18 +125,6 @@
       .screen.active, #venue-card, .toast { animation: none !important; transition: none !important; }
     }
 
-    /* ── Typografi ─────────────────────────────────────────────────────── */
-    .screen-title {
-      font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25;
-      color: var(--text-primary);
-      margin-bottom: var(--space-2); flex-shrink: 0;
-    }
-    .section-label {
-      font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
-      color: var(--text-muted);
-      margin-bottom: var(--space-1); flex-shrink: 0;
-    }
-
     /* ── Skeleton Loading ──────────────────────────────────────────────── */
     @keyframes shimmer {
       0%   { background-position: -400px 0; }
@@ -148,11 +136,6 @@
       animation: shimmer 1.5s infinite linear;
       border-radius: var(--radius-md);
     }
-    .skeleton-card {
-      height: 88px; margin-bottom: var(--space-1);
-      border-radius: var(--radius-md);
-    }
-    .skeleton-card.skeleton { /* shimmer already applied */ }
     .skeleton-erow {
       display: flex; align-items: stretch;
       min-height: 80px; margin-bottom: 6px;
@@ -350,61 +333,7 @@
     .err-toast-msg { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-primary); }
     .err-toast-retry { font-size: 14px; font-weight: 700; color: var(--danger); background: none; border: 0; cursor: pointer; font-family: var(--font-base); white-space: nowrap; min-height: 44px; }
 
-    /* ── Bottom Sheet ("Nära dig") ─────────────────────────────────────── */
-    #nearby-sheet {
-      position: absolute; bottom: calc(96px + env(safe-area-inset-bottom));
-      left: 0; right: 0; z-index: 5;
-      background: #111113;
-      border-radius: 0;
-      border-top: 1px solid rgba(255,255,255,0.07);
-      transition: transform var(--dur-slow) var(--ease-out);
-      will-change: transform;
-      touch-action: none;
-    }
-    .sheet-handle-row {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 10px 16px 8px; cursor: grab; user-select: none;
-    }
-    .sheet-handle {
-      width: 32px; height: 4px; border-radius: var(--radius-full);
-      background: #D1D5DB; margin-bottom: 6px;
-    }
-    .sheet-count {
-      font-size: 13px; font-weight: 600; color: var(--text-muted); line-height: 1.0;
-    }
-    .sheet-list {
-      overflow-y: auto; padding: 0 12px 8px;
-      overscroll-behavior: contain;
-    }
-
-    /* ── Compact venue row (inside bottom sheet) ───────────────────────── */
-    .vcrow {
-      display: flex; align-items: center; gap: 12px;
-      height: 64px; padding: 0 4px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: background var(--dur-fast) ease;
-    }
-    .vcrow:last-child { border-bottom: 0; }
-    .vcrow:active { background: var(--surface-hover); }
-    .vcrow-dot {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-      border: 2px solid var(--bg-secondary);
-    }
-    .vcrow-info { flex: 1; min-width: 0; }
-    .vcrow-name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .vcrow-area { font-size: 11px; font-weight: 400; color: rgba(255,255,255,0.45); margin-top: 1px; }
-    .vcrow-badge {
-      flex-shrink: 0; border-radius: var(--radius-full);
-      padding: 3px 10px; font-size: 12px; font-weight: 700; line-height: 1.0;
-    }
-    .vcrow-badge.free   { background: rgba(52,224,127,0.12); color: var(--status-free); }
-    .vcrow-badge.short  { background: rgba(255,210,63,0.12); color: var(--status-short); }
-    .vcrow-badge.medium { background: rgba(255,138,61,0.12); color: var(--status-medium); }
-    .vcrow-badge.long   { background: rgba(255,77,94,0.12);  color: var(--status-long); }
-    .vcrow-badge.unknown{ background: rgba(255,255,255,0.06); color: var(--text-muted); }
-
-    /* ── Heart Button ──────────────────────────────────────────────────── */
+    /* ── Favorit: studs när stjärnan trycks (toggleFavorite) ──────────────── */
     @keyframes heartBounce { 0%{transform:scale(1)} 30%{transform:scale(1.35)} 60%{transform:scale(0.9)} 100%{transform:scale(1)} }
 
     /* ── Bottom Sheet (Venue Card) ─────────────────────────────────────── */
@@ -464,7 +393,7 @@
     }
     .vc-tool svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: miter; stroke-linecap: square; }
     .vc-tool:active { color: var(--text-primary); }
-    #vc-fav.fav { color: var(--status-short); }
+    #vc-fav.fav { color: var(--text-primary); }
     #vc-fav.fav svg { fill: currentColor; }
 
     /* En kolumn i viktighetsordning, ingen faktakolumn bredvid: väntetiden ensam och störst, sedan vad den bygger på i
@@ -558,7 +487,6 @@
       transition: background var(--dur-fast) ease, transform 100ms ease;
     }
     .consent-accept:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-    .consent-decline { width: 100%; min-height: 44px; background: none; border: 0; font-family: var(--font-base); font-size: 15px; color: var(--text-secondary); cursor: pointer; padding: 8px 0; }
 
     /* ── Onboarding — tooltip bubble ─────────────────────────────────── */
     #onboarding-overlay {
@@ -858,9 +786,8 @@
       line-height: 1.2; overflow-wrap: break-word;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .erow-fav, .erow-watch { width: 14px; height: 14px; flex-shrink: 0; }
-    .erow-fav { fill: var(--status-long); }
-    .erow-watch { fill: none; stroke: var(--text-secondary); stroke-width: 2; }
+    /* Favoritens stjärna — samma form och färg som kortets knapp. Statusfärger är reserverade för status. */
+    .erow-fav { width: 14px; height: 14px; flex-shrink: 0; fill: var(--text-primary); }
     /* Layer 2 — area · typ · avstånd */
     .erow-meta { display: block; font-size: 13px; color: var(--text-secondary); font-weight: 500; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -909,65 +836,6 @@
     .erow-trend--down   { color: var(--status-free); }
     .erow-comment { font-size: 13px; color: var(--text-secondary); font-style: italic; padding-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* ── Kvällsplanering ────────────────────────────────────────────────── */
-    .plan-badge {
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: var(--bg-primary);
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .plan-badge--empty {
-      background: transparent;
-      border: 2px solid var(--border-hover);
-    }
-    #plan-bar {
-      position: absolute; left: 0; right: 0; z-index: 50;
-      bottom: calc(68px + env(safe-area-inset-bottom));
-      padding: 12px 16px;
-      background: linear-gradient(to top, var(--bg-primary) 60%, transparent);
-    }
-    #plan-create-btn {
-      width: 100%; height: 54px; border-radius: 14px; border: none; cursor: pointer;
-      background: var(--accent); color: var(--bg-primary);
-      font-family: var(--font-base); font-size: 16px; font-weight: 700;
-      transition: opacity 150ms;
-    }
-    #plan-create-btn:disabled { opacity: 0.45; cursor: default; }
-    #plan-modal { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; justify-content: flex-end; }
-    .plan-modal-dim { flex: 1; background: rgba(0,0,0,0.6); }
-    .plan-modal-sheet {
-      width: min(430px, 100vw); margin: 0 auto;
-      background: var(--surface); border: 1px solid var(--border-hover); border-bottom: 0;
-      border-radius: 22px 22px 0 0;
-      padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
-      font-family: var(--font-base);
-    }
-    .plan-modal-eyebrow { font-size: 13px; font-weight: 600; color: var(--accent); }
-    .plan-modal-sub { font-size: 14px; color: var(--text-secondary); margin: 4px 0 8px; }
-    .plan-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
-    .plan-item-num {
-      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--accent-light); color: var(--accent);
-      font-family: var(--font-mono); font-size: 15px; font-weight: 700;
-    }
-    .plan-item-body { flex: 1; min-width: 0; }
-    .plan-item-name { font-size: 17px; font-weight: 700; color: var(--text-primary); }
-    .plan-item-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-    .plan-item-wait { font-family: var(--font-mono); font-size: 18px; font-weight: 700; white-space: nowrap; letter-spacing: -0.03em; }
-    .plan-modal-close {
-      margin-top: 20px; width: 100%; height: 52px; border-radius: 14px;
-      background: var(--text-primary); color: var(--bg-primary); border: 0;
-      font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
-    }
-
     /* ── Färskhetsrad (ovanför listan) ──────────────────────────────────── */
     .exsum-line { padding: 4px 2px 0; font-size: 13px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; line-height: 1.4; }
     /* Fel ska läsas som ett påstående, inte som en svag fotnot: ljusare text och en prick.
@@ -977,7 +845,6 @@
       content: ''; width: 6px; height: 6px; border-radius: 50%;
       background: var(--danger); flex-shrink: 0;
     }
-    #filter-context { font-size: 13px; font-weight: 600; color: var(--text-secondary); padding: 14px 2px 0; }
 
     /* ── Filter chips with live counts ──────────────────────────────────── */
     .chips-scroll {
@@ -1000,12 +867,6 @@
       line-height: 1;
     }
     .fcount:empty { display: none; }
-
-    .fbtn--plan {
-      color: var(--accent);
-      border-color: var(--accent-line);
-      background: var(--accent-light);
-    }
 
     /* ── Bäst-nu-etikett (ovanför namnet på den fästa raden) ───────────── */
     .bast-chip {
@@ -1178,11 +1039,6 @@
     .q-btn:active { background: var(--surface-hover); }
     .q-btn.selected { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
 
-    .q-btn-none   { border-left: 4px solid var(--status-free); }
-    .q-btn-short  { border-left: 4px solid var(--status-short); }
-    .q-btn-medium { border-left: 4px solid var(--status-medium); }
-    .q-btn-long   { border-left: 4px solid var(--status-long); }
-
     /* Antal framför — neutral fyllnadsmätare, inte statusfärg: antal ≠ väntetid, det avgör dörrens takt */
     .q-btn-count { display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; }
     .q-btn-count::before {
@@ -1221,57 +1077,6 @@
     .qs-close { flex-shrink: 0; width: 36px; height: 36px; margin: -6px -6px 0 0; background: none; border: none; color: var(--text-muted); font-size: 22px; line-height: 1; cursor: pointer; }
 
     .rs-back { background: none; border: 0; margin-top: 4px; font-family: var(--font-base); font-size: 14px; color: var(--text-secondary); cursor: pointer; align-self: flex-start; padding: 4px 0; }
-
-    /* ── Watch (Bevaka) button on each explore row ────────────────────── */
-    .erow-watch-btn {
-      flex-shrink: 0;
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
-      margin-left: 4px;
-    }
-    .erow-watch-btn:hover {
-      background: rgba(255,255,255,0.12);
-      border-color: rgba(255,255,255,0.3);
-      color: rgba(255,255,255,0.9);
-    }
-    .erow-watch-btn.watching {
-      background: rgba(255,255,255,0.12);
-      border-color: rgba(255,255,255,0.3);
-      color: rgba(255,255,255,0.9);
-    }
-    .erow-watch-btn.watching:hover {
-      background: rgba(255,255,255,0.18);
-      border-color: rgba(255,255,255,0.4);
-      color: #FFFFFF;
-    }
-
-    /* ── Share button on each explore row ─────────────────────────────── */
-    .erow-share-btn {
-      flex-shrink: 0;
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 150ms ease, color 150ms ease;
-      margin-left: 4px;
-    }
-    .erow-share-btn:hover {
-      background: rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.8);
-    }
 
     /* ── Quick-report sheet animation ─────────────────────────────────── */
     @keyframes sheetIn {
@@ -1482,7 +1287,7 @@
 
     /* ── Historiska mönster chip ────────────────────────────────────────── */
     .hist-chip {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 500;
       padding: 2px 6px;
       border-radius: 4px;
@@ -1493,4 +1298,4 @@
     .hist-chip--long   { background: rgba(255,77,94,0.12);  color: var(--status-long); }
     .hist-chip--medium { background: rgba(255,138,61,0.12); color: var(--status-medium); }
     .hist-chip--short  { background: rgba(255,210,63,0.12); color: var(--status-short); }
-    .hist-chip--free   { background: rgba(52,224,127,0.10); color: var(--status-free); }
+    .hist-chip--none   { background: rgba(52,224,127,0.10); color: var(--status-free); }

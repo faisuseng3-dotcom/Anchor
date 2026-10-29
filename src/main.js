@@ -48,7 +48,7 @@ import './style.css';
       document.querySelectorAll('.tab').forEach(function(el) {
         el.classList.toggle('active', el.dataset.screen === name);
       });
-      if (name === 'home') setTimeout(function() { if (map) map.resize(); if (window.expandSheetHalf === undefined) {} }, 50);
+      if (name === 'home') setTimeout(function() { if (map) map.resize(); }, 50);
       if (name === 'profile') loadUserHistory();
       if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
         selectedRV = null;
@@ -87,44 +87,6 @@ import './style.css';
       errToastTimer = setTimeout(function() {
         toast.classList.remove('visible');
       }, 8000);
-    }
-
-    function autoRetrySupabase(attempt) {
-      if (attempt > 3) {
-        console.warn('[QueueBar] Supabase: alla 3 retry-försök misslyckades — kör i offline-läge');
-        showOfflineBanner();
-        showConnectionBanner();
-        return;
-      }
-      console.log('[QueueBar] Supabase retry ' + attempt + '/3...');
-      setTimeout(function() {
-        if (supabase) { console.log('[QueueBar] Supabase redan tillgänglig, avbryter retry'); return; }
-        try {
-          supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-          });
-          console.log('[QueueBar] Supabase klient skapad vid auto-retry ' + attempt);
-          var toast = document.getElementById('err-toast');
-          if (toast) toast.classList.remove('visible');
-          loadReports();
-          subscribeToReports();
-        } catch(err) {
-          console.error('[QueueBar] Supabase auto-retry ' + attempt + ' init-fel:', err);
-          autoRetrySupabase(attempt + 1);
-        }
-      }, 1000 * attempt);
-    }
-
-    function showOfflineBanner() {
-      var el = document.getElementById('explore-offline-banner');
-      if (el) return;
-      var sticky = document.getElementById('explore-sticky');
-      if (!sticky) return;
-      var banner = document.createElement('div');
-      banner.id = 'explore-offline-banner';
-      banner.style.cssText = 'background:rgba(59,130,246,0.12);border-bottom:1px solid rgba(59,130,246,0.22);padding:8px 16px;font-size:13px;color:rgba(255,255,255,0.75);font-family:var(--font-base);';
-      banner.textContent = 'Offline-läge — visar sparad data';
-      sticky.parentNode.insertBefore(banner, sticky.nextSibling);
     }
 
     function retrySupabase() {
@@ -462,9 +424,12 @@ import './style.css';
       var venue = getVenueById(venueId);
       if (!venue) return;
       var waitText = venueWaitText(venueId);
-      var statusText = waitText
-        ? venue.name + ' — ' + (waitText === 'Ingen kö' || waitText === 'Fullt' ? waitText.toLowerCase() : waitText + ' kö') + ' just nu'
-        : venue.name + ' — ingen data just nu';
+      // Säg hur gammal siffran är i stället för "just nu" — en delad länk läses ofta långt senare.
+      var latest = allReports.filter(function(r) { return r.venue_id === venueId && isQueueReport(r); })
+        .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+      var statusText = waitText && latest
+        ? venue.name + ' — ' + (waitText === 'Ingen kö' || waitText === 'Fullt' ? waitText.toLowerCase() : waitText + ' kö') + ' · rapporterat ' + timeAgo(latest.created_at)
+        : venue.name + ' — ingen färsk rapport';
 
       if (navigator.share) {
         navigator.share({
@@ -482,60 +447,11 @@ import './style.css';
       }
     }
 
-    // ── Bevaka (Watch) ────────────────────────────────────────────────────────────
-    var STATUS_RANK_NUM = { none: 0, free: 0, short: 1, medium: 2, long: 3 };
-
-    function getWatched() {
-      try { return JSON.parse(localStorage.getItem('qb_watched') || '{}'); } catch(e) { return {}; }
-    }
-
-    function saveWatched(obj) {
-      try { localStorage.setItem('qb_watched', JSON.stringify(obj)); } catch(e) {}
-    }
-
-    function isWatching(venueId) {
-      return !!getWatched()[venueId];
-    }
-
-    function checkWatchedVenueAlerts() {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
-      var watched = getWatched();
-      var changed = false;
-      Object.keys(watched).forEach(function(venueId) {
-        var prevStatus = watched[venueId];
-        var currStatus = computeStatus(venueId, allReports);
-        var prevRank = STATUS_RANK_NUM[prevStatus] !== undefined ? STATUS_RANK_NUM[prevStatus] : 1;
-        var currRank = STATUS_RANK_NUM[currStatus] !== undefined ? STATUS_RANK_NUM[currStatus] : 1;
-        // Status improved (rank went down)
-        if (currRank < prevRank) {
-          var venue = getVenueById(venueId);
-          var name = venue ? venue.name : venueId;
-          var msg = currRank === 0 ? 'Fri ingång nu!' : (currStatus === 'short' ? 'Ca 15 min kö nu' : 'Ca 25 min kö nu');
-          try {
-            new Notification('Qbar — ' + name, {
-              body: msg,
-              icon: '/favicon.ico',
-              tag: 'qb-' + venueId
-            });
-          } catch(e) {}
-          watched[venueId] = currStatus;
-          changed = true;
-        } else if (currStatus && currStatus !== prevStatus) {
-          // Update stored status even if not improved (so we track from latest)
-          watched[venueId] = currStatus;
-          changed = true;
-        }
-      });
-      if (changed) saveWatched(watched);
-    }
-
     var favorites = JSON.parse(localStorage.getItem('qb_favorites') || '[]');
     function isFavorite(venueId) { return favorites.indexOf(venueId) > -1; }
 
     var activeVenue = null;
     var allReports = [];
-    var _planningMode = false;
-    var _planVenues = [];
 
     // Minuter kvar till stängning, eller null om tiden saknas. En enda beräkning som både listan och kortet använder,
     // så att "Stänger snart" aldrig kan visa olika saker. Stängning före 06:00 räknas som nästa dygn (02:00 = 26:00).
@@ -548,18 +464,6 @@ import './style.css';
       var d = new Date(), nowMin = d.getHours() * 60 + d.getMinutes();
       if (nowMin < 12 * 60) nowMin += 1440;
       return total - nowMin;
-    }
-
-    // Riktning på kön: jämför de två senaste köstatusarna. null när det inte finns två rapporter eller de är lika,
-    // och då visas ingenting — en trend vi inte har får inte uppfinnas.
-    var TREND_RANK = { free: 0, none: 0, short: 1, medium: 2, long: 3 };
-    function queueTrend(reports) {
-      if (!reports || reports.length < 2) return null;
-      var a = TREND_RANK[reports[0].queue_status], b = TREND_RANK[reports[1].queue_status];
-      a = a !== undefined ? a : 1; b = b !== undefined ? b : 1;
-      if (a > b) return 'up';
-      if (a < b) return 'down';
-      return null;
     }
 
     // A — vad som hänt. En rad som jämför den senaste rapporten med den innan, i det som faktiskt rapporterades (antal
@@ -596,7 +500,7 @@ import './style.css';
       var WINDOW = 45 * 60 * 1000, now = Date.now();
       var rows = reports.filter(function(r) { return now - new Date(r.created_at).getTime() <= WINDOW; });
       if (rows.length < 2) return '';
-      var label = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medel kö', long: 'Lång kö' };
+      var label = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medellång kö', long: 'Lång kö' };
       var body = rows.map(function(r) {
         var ago = Math.max(0, Math.floor((now - new Date(r.created_at)) / 60000));
         var what = r.people_ahead != null ? (r.people_ahead ? aheadBucket(r.people_ahead).label + ' i kö' : 'Ingen kö') : (label[r.queue_status] || 'Kö') + ' · ej mätt';
@@ -606,7 +510,7 @@ import './style.css';
           '<span class="vc-rep-ago">' + (ago < 1 ? 'nu' : ago + ' min') + '</span></li>';
       }).join('');
       return '<button class="vc-reps-toggle" aria-expanded="' + _vcListOpen + '" onclick="toggleVcReports()">' +
-        '<span>' + rows.length + ' rapporter senaste 45 min</span>' +
+        '<span>Visa rapporter (' + rows.length + ')</span>' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
         '<ul class="vc-reps"' + (_vcListOpen ? '' : ' hidden') + '>' + body + '</ul>';
     }
@@ -646,22 +550,22 @@ import './style.css';
         var nMedian = reports.filter(function(r) {
           return r.people_ahead != null && Date.now() - new Date(r.created_at).getTime() < 20 * 60 * 1000;
         }).length;
-        subParts.push(est.ahead ? aheadBucket(est.ahead).label + ' personer i kö' : 'Ingen kö');
+        // Antalet bara när det säger något nytt — vid ingen kö står "Ingen kö" redan i siffran ovanför.
+        if (est.ahead) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
         subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
       }
-      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('uppskattad tid');
+      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('uppskattning');
       if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
       document.getElementById('vc-sub').textContent = waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
 
-      // Resten på en lugn rad: senaste rapport, stängning, hur många som är på väg. Trenden bara när trendraden saknas.
+      // Resten på en lugn rad: stängning och hur många som är på väg. Klockslaget för senaste rapporten bara när det
+      // är den enda — med fler står tiderna redan i ändringsraden och listan under.
       var meta = [];
-      if (reports.length) meta.push('Senaste rapport ' + clockOfIso(reports[0].created_at));
+      if (reports.length === 1) meta.push('Rapporterat ' + clockOfIso(reports[0].created_at));
       var toClose = minutesToClose(venue);
       if (toClose !== null) meta.push('Stänger ' + venue.closing + (toClose > 0 && toClose <= 90 ? ' (om ' + toClose + ' min)' : ''));
       var omwN = onMyWayCount(venue.id);
       if (omwN) meta.push(omwN + ' på väg');
-      var trend = queueChange(reports) ? null : queueTrend(reports);
-      if (trend) meta.push(trend === 'up' ? '▲ kön växer' : '▼ kön krymper');
       document.getElementById('vc-meta').textContent = meta.join(' · ');
 
       // Om du går nu: när du är framme och kön då. Samma prognos och ordval som "På väg"-bannern; bara med prognos.
@@ -709,10 +613,8 @@ import './style.css';
     function vcShare() { if (activeVenue) shareVenue(activeVenue.id); }
     function vcToggleFavorite(event) {
       if (!activeVenue) return;
-      var btn = event.currentTarget;
-      toggleFavorite(event, activeVenue.id).then(function() {
-        if (activeVenue) btn.classList.toggle('fav', isFavorite(activeVenue.id));
-      });
+      toggleFavorite(event, activeVenue.id);
+      event.currentTarget.classList.toggle('fav', isFavorite(activeVenue.id));
     }
 
     function closeVenueCard() {
@@ -808,39 +710,19 @@ import './style.css';
         : 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + to, '_blank');
     }
 
-    function renderCompactVenueRow(venue) {
-      var status = computeStatus(venue.id, allReports);
-      var label = venueWaitText(venue.id);
-      var cls = getStatusClass(status);
-      var dotColor = getStatusColor(cls);
-      return '<div class="vcrow" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'), \'sheet\')">' +
-        '<span class="vcrow-dot" style="background:' + dotColor + '"></span>' +
-        '<div class="vcrow-info">' +
-          '<div class="vcrow-name">' + venue.name + '</div>' +
-          '<div class="vcrow-area">' + venue.area + '</div>' +
-        '</div>' +
-        (label ? '<span class="vcrow-badge ' + cls + '">' + label + '</span>' : '<span class="vcrow-badge unknown">–</span>') +
-        '</div>';
-    }
-
-    function renderHomeVenues() {
-      var el = document.getElementById('sheet-list');
-      if (el) el.innerHTML = VENUES.map(renderCompactVenueRow).join('');
-      var cnt = document.getElementById('sheet-count');
-      if (cnt) cnt.textContent = VENUES.length + ' ställen nära dig';
-      renderBestNowCard();
-    }
-
-    // Kartans enda kort: svaret på "vart går vi nu?". Visar bara färsk data (computeBestNow: ≤30 min).
+    // Kartans enda kort: svaret på "vart går vi nu?". Visar bara färsk data (computeBestNow: ≤30 min). Följer samma
+    // inläsningslägen som färskhetsraden — ett serverfel får aldrig se ut som en lugn kväll.
     function renderBestNowCard() {
       var card = document.getElementById('best-now-card');
       if (!card) return;
       var best = computeBestNow();
       if (!best) {
-        var anyData = allReports.length > 0;
+        var text = _loadState === 'error' ? 'Ingen kontakt med servern'
+          : _loadState !== 'ok' ? 'Hämtar rapporter…'
+          : allReports.some(isQueueReport) ? 'Ingen färsk rapport om kort kö just nu' : 'Inga rapporter senaste 45 min';
         card.innerHTML = '<button class="bn-card bn-card--empty" onclick="showScreen(\'explore\')">' +
           '<span class="bn-eyebrow">Bäst nu</span>' +
-          '<span class="bn-empty-text">' + (anyData ? 'Ingen färsk rapport om kort kö just nu' : 'Inga rapporter ännu i kväll') + '</span>' +
+          '<span class="bn-empty-text">' + text + '</span>' +
           '<span class="bn-cta">Se alla ställen →</span>' +
           '</button>';
         return;
@@ -852,6 +734,7 @@ import './style.css';
       var meta = [v.area, venueTypeLabel(v.type)];
       if (best.dist != null) meta.push(formatDistance(best.dist));
       if (latest) meta.push(timeAgo(latest.created_at));
+      if (_loadState === 'error') meta.push('ingen kontakt — kan vara gammalt');
       card.innerHTML = '<button class="bn-card" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
         '<span class="bn-eyebrow">Bäst nu</span>' +
         '<span class="bn-row">' +
@@ -862,121 +745,7 @@ import './style.css';
         '</button>';
     }
 
-    console.log('[QueueBar] Renderar venues');
-    renderHomeVenues();
-
-    // ── Bottom sheet drag ────────────────────────────────────────────────────
-    (function() {
-      var sheet = document.getElementById('nearby-sheet');
-      if (!sheet) return;
-
-      var PEEK = 0;       // px from bottom (just handle visible)
-      var sheetHeight = 0;
-      var currentSnap = 'peek';
-
-      function getAppHeight() {
-        var app = document.getElementById('app');
-        return app ? app.offsetHeight : window.innerHeight;
-      }
-      function getNavHeight() {
-        return 64 + (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab') || '0') || 0);
-      }
-
-      function snapTo(snap, animated) {
-        sheetHeight = sheet.offsetHeight;
-        var appH = getAppHeight();
-        var navH = 64; // approx
-        var listEl = sheet.querySelector('.sheet-list');
-
-        var translateY;
-        if (snap === 'peek') {
-          translateY = sheetHeight - 48;
-          if (listEl) { listEl.style.maxHeight = '0px'; listEl.style.overflow = 'hidden'; }
-        } else if (snap === 'half') {
-          var halfH = appH * 0.45;
-          translateY = sheetHeight - halfH;
-          if (listEl) { listEl.style.maxHeight = (halfH - 48) + 'px'; listEl.style.overflow = 'auto'; }
-        } else {
-          var fullH = appH * 0.85;
-          translateY = sheetHeight - fullH;
-          if (listEl) { listEl.style.maxHeight = (fullH - 48) + 'px'; listEl.style.overflow = 'auto'; }
-        }
-        translateY = Math.max(translateY, 0);
-        currentSnap = snap;
-        sheet.style.transition = animated ? 'transform var(--dur-slow) var(--ease-out)' : 'none';
-        sheet.style.transform = 'translateY(' + translateY + 'px)';
-      }
-
-      // init after DOM settles
-      setTimeout(function() { snapTo('peek', false); }, 100);
-      window.addEventListener('resize', function() { snapTo(currentSnap, false); });
-
-      var startY = 0, startTranslate = 0, isDragging = false, velSamples = [];
-
-      function getTranslateY() {
-        var t = new WebKitCSSMatrix(getComputedStyle(sheet).transform);
-        return t.m42;
-      }
-
-      sheet.addEventListener('touchstart', function(e) {
-        var handle = e.target.closest('#sheet-handle-row');
-        if (!handle) return;
-        isDragging = true;
-        startY = e.touches[0].clientY;
-        startTranslate = getTranslateY();
-        velSamples = [];
-        sheet.style.transition = 'none';
-      }, { passive: true });
-
-      document.addEventListener('touchmove', function(e) {
-        if (!isDragging) return;
-        var dy = e.touches[0].clientY - startY;
-        var newT = Math.max(0, startTranslate + dy);
-        sheet.style.transform = 'translateY(' + newT + 'px)';
-        velSamples.push({ t: Date.now(), y: e.touches[0].clientY });
-        if (velSamples.length > 5) velSamples.shift();
-      }, { passive: true });
-
-      document.addEventListener('touchend', function() {
-        if (!isDragging) return;
-        isDragging = false;
-        sheetHeight = sheet.offsetHeight;
-        var appH = getAppHeight();
-
-        // velocity
-        var vel = 0;
-        if (velSamples.length >= 2) {
-          var last = velSamples[velSamples.length - 1];
-          var prev = velSamples[0];
-          var dt = last.t - prev.t;
-          if (dt > 0) vel = (last.y - prev.y) / dt; // px/ms, positive = downward
-        }
-
-        var cur = getTranslateY();
-        var fullT = sheetHeight - appH * 0.85;
-        var halfT = sheetHeight - appH * 0.45;
-
-        var snap;
-        if (vel < -0.5) snap = 'full';
-        else if (vel > 0.5) snap = 'peek';
-        else if (cur <= (fullT + halfT) / 2) snap = 'full';
-        else if (cur <= (halfT + (sheetHeight - 48)) / 2) snap = 'half';
-        else snap = 'peek';
-
-        snapTo(snap, true);
-      });
-
-      // expose for map click
-      window.expandSheetHalf = function() { snapTo('half', true); };
-    })();
-
-    function focusExploreSearch() {
-      showScreen('explore');
-      setTimeout(function() {
-        var inp = document.getElementById('explore-search');
-        if (inp) { inp.focus(); inp.select(); }
-      }, 150);
-    }
+    renderBestNowCard();
 
     // ── Kartans inline-sökning ──────────────────────────────────────────────
     var _mapSearchActive = false;
@@ -1035,7 +804,7 @@ import './style.css';
       resultsEl.style.display = 'block';
 
       if (!hits.length) {
-        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + query + '"</div>';
+        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + escapeHtml(query) + '"</div>';
         return;
       }
 
@@ -1080,7 +849,7 @@ import './style.css';
         return {
           type: 'Feature', id: v.id,
           geometry: { type: 'Point', coordinates: [v.lng, v.lat] },
-          properties: { id: v.id, name: v.name, type: v.type, status: 'unknown', wait_label: '', pill_image: '', urgent: 0, ring_image: '', best: 0 }
+          properties: { id: v.id, name: v.name, type: v.type, status: 'unknown', pill_image: '', urgent: 0, ring_image: '', best: 0 }
         };
       })
     };
@@ -1114,16 +883,6 @@ import './style.css';
           attributionControl: false
         });
         map.touchZoomRotate.disableRotation();
-
-        function addMapIcon(map, name, drawFn) {
-          var size = 28;
-          var canvas = document.createElement('canvas');
-          canvas.width = size; canvas.height = size;
-          var ctx = canvas.getContext('2d');
-          drawFn(ctx, size);
-          var imageData = ctx.getImageData(0, 0, size, size);
-          map.addImage(name, { width: size, height: size, data: imageData.data });
-        }
 
         // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
         var PIN_STATUS_COLORS = {
@@ -1691,15 +1450,6 @@ import './style.css';
     }
 
     function showSkeletons() {
-      var lists = ['sheet-list'];
-      lists.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el && !el.querySelector('.vcrow')) {
-          el.innerHTML = [1,2,3,4].map(function() {
-            return '<div class="skeleton skeleton-card"></div>';
-          }).join('');
-        }
-      });
       var exploreList = document.getElementById('explore-list');
       if (exploreList && !exploreList.querySelector('.erow')) {
         exploreList.innerHTML = '<div class="venue-group">' + [1,2,3,4,5].map(function() {
@@ -1732,6 +1482,9 @@ import './style.css';
       if (!allReports.length) showExploreError();
       if (typeof renderExploreSummary === 'function') renderExploreSummary();
       if (typeof renderLiveFeed === 'function') renderLiveFeed();
+      // Kartan och "Bäst nu" åldras och säger "ingen kontakt" i stället för att stå kvar som om allt vore färskt.
+      updateMapStatuses();
+      renderBestNowCard();
     }
 
     async function loadReports() {
@@ -1740,11 +1493,10 @@ import './style.css';
         _loadState = 'error';
         if (testDataEnabled()) injectTestData();
         updateMapStatuses();
-        renderHomeVenues();
+        renderBestNowCard();
         if (typeof renderExploreVenues === 'function') renderExploreVenues();
         if (typeof renderLiveFeed === 'function') renderLiveFeed();
         if (typeof updateProfileStats === 'function') updateProfileStats();
-        checkWatchedVenueAlerts();
         updateOnMyWayUI();
         return;
       }
@@ -1774,11 +1526,10 @@ import './style.css';
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
           if (testDataEnabled()) injectTestData();
           updateMapStatuses();
-          renderHomeVenues();
+          renderBestNowCard();
           if (typeof renderExploreVenues === 'function') renderExploreVenues();
           if (typeof renderLiveFeed === 'function') renderLiveFeed();
           if (typeof updateProfileStats === 'function') updateProfileStats();
-          checkWatchedVenueAlerts();
           updateOnMyWayUI();
           loadOnMyWayCounts().then(updateOnMyWayUI);
         }
@@ -1827,7 +1578,6 @@ import './style.css';
         return Object.assign({}, f, {
           properties: Object.assign({}, f.properties, {
             status: pill ? status : 'unknown',
-            wait_label: venueWaitText(id),
             pill_image: pill,
             urgent: urgent ? 1 : 0,
             ring_image: urgent ? 'ring|' + text : '',
@@ -2041,7 +1791,7 @@ import './style.css';
         'spy-bar':         { level: 'long',   count: 6,  dow: testDow, hour: testHour },
         'sturecompagniet': { level: 'medium', count: 5,  dow: testDow, hour: testHour },
         'berns':           { level: 'short',  count: 4,  dow: testDow, hour: testHour },
-        'under-bron':      { level: 'free',   count: 3,  dow: testDow, hour: testHour }
+        'under-bron':      { level: 'none',   count: 3,  dow: testDow, hour: testHour }
       };
     }
 
@@ -2052,7 +1802,7 @@ import './style.css';
       var recent = allReports.filter(function(r) { return r.user_id === userId && isQueueReport(r) && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
       if (recent.length > 0) {
         var wait = Math.ceil(20 - (now - new Date(recent[0].created_at)) / 60000);
-        throw new Error('Vänta ' + wait + ' minuter innan nästa rapport');
+        throw new Error('Vänta ' + wait + (wait === 1 ? ' minut' : ' minuter') + ' innan du rapporterar igen (gäller alla ställen)');
       }
       var draft = { venue_id: venueId, people_ahead: peopleAhead, report_type: 'initial', created_at: now.toISOString() };
       // Status för just den här rapporten: dess antal + kvällens uppmätta hastighet, inte andras köantal.
@@ -2067,16 +1817,19 @@ import './style.css';
       var result;
       try {
         result = await supabase.from('reports').insert(insertObj);
-        if (result.error && result.error.message && result.error.message.toLowerCase().includes('comment')) {
-          // Column missing — retry without comment
+        // Bara när kolumnen saknas (PostgREST PGRST204 / Postgres 42703) — ett annat fel som nämner "comment" ska inte
+        // tyst kasta bort kommentaren.
+        if (comment && result.error && (result.error.code === 'PGRST204' || result.error.code === '42703')) {
           delete insertObj.comment;
           result = await supabase.from('reports').insert(insertObj);
         }
       } catch(e) { result = { error: e }; }
       if (result.error) throw result.error;
-      startQueueSession({ id: insertObj.queue_session, venueId: venueId, venueName: venueName, ahead: peopleAhead, at: now.getTime() });
-      await supabase.rpc('increment_points', { p_user_id: userId, p_points: 10 });
-      await loadReports();
+      // Den som rapporterar står vid stället: "På väg" är över. En kö-session bara när det finns en kö att stå i.
+      if (_onMyWay) cancelOnMyWay();
+      if (peopleAhead > 0) startQueueSession({ id: insertObj.queue_session, venueId: venueId, venueName: venueName, ahead: peopleAhead, at: now.getTime() });
+      else endQueueSession(); // en gammal kö på ett annat ställe står man inte längre i
+      loadReports(); // i bakgrunden — tacket ska synas direkt
       return true;
     }
 
@@ -2108,7 +1861,6 @@ import './style.css';
     }
 
     function startQueueSession(r) {
-      if (_onMyWay) cancelOnMyWay();
       var s = { id: r.id, venueId: r.venueId, venueName: r.venueName, startedAt: r.at, lastAhead: r.ahead, lastAt: r.at, followups: 0 };
       try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
       updateOnMyWayUI();
@@ -2163,7 +1915,6 @@ import './style.css';
         var res = await submitSessionReport('entered', 0);
         var mins = Math.max(1, Math.round((res.at - res.session.startedAt) / 60000));
         endQueueSession();
-        if (supabase) await supabase.rpc('increment_points', { p_user_id: getUserId(), p_points: 5 });
         showToast('Inne efter ' + mins + ' min — tack!');
         loadReports();
       } catch(err) { showToast(reportErrorText(err)); }
@@ -2212,29 +1963,32 @@ import './style.css';
     // ── Historiska mönster ───────────────────────────────────────────────────
     var _historicalPatterns = {};
 
+    // "Brukar vara …" (listan och På väg, bara när färsk data saknas): vanligaste köstatusen samma veckodag ±1 h
+    // tidigare kvällar — samma regel som historicalRateFor, via nightKey så att 00:30 hör till kvällen innan. Kvällen
+    // just nu räknas inte; den har egen data. "Ingen kö" räknas med, annars överdrivs köerna.
+    // shortcut: de 1000 senaste initial-rapporterna på 8 veckor (PostgREST-taket); flytta till en RPC när det inte räcker.
     async function loadHistoricalPatterns() {
       if (!supabase) return;
       try {
-        var now = new Date();
-        var dow = now.getDay();
-        var hour = now.getHours();
-        var eightWeeksAgo = new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString();
+        var now = Date.now();
+        var key = nightKey(now);
         var result = await supabase
           .from('reports')
           .select('venue_id, queue_status, created_at')
-          .gte('created_at', eightWeeksAgo)
-          .not('queue_status', 'eq', 'none')
-          .eq('report_type', 'initial');
+          .gte('created_at', new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString())
+          .eq('report_type', 'initial')
+          .order('created_at', { ascending: false })
+          .limit(1000);
         if (result.error || !result.data) return;
         var byVenue = {};
         result.data.forEach(function(r) {
-          var d = new Date(r.created_at);
-          var rdow = d.getDay();
-          var rhour = d.getHours();
-          if (rdow !== dow) return;
-          if (Math.abs(rhour - hour) > 1) return;
-          if (!byVenue[r.venue_id]) byVenue[r.venue_id] = {};
-          byVenue[r.venue_id][r.queue_status] = (byVenue[r.venue_id][r.queue_status] || 0) + 1;
+          var t = new Date(r.created_at).getTime();
+          if (now - t < 12 * 3600 * 1000) return;
+          var k = nightKey(t), dh = Math.abs(k.hour - key.hour);
+          if (k.dow !== key.dow || Math.min(dh, 24 - dh) > 1) return;
+          var s = r.queue_status === 'free' ? 'none' : r.queue_status; // äldre rader skrev 'free'
+          var c = byVenue[r.venue_id] = byVenue[r.venue_id] || {};
+          c[s] = (c[s] || 0) + 1;
         });
         _historicalPatterns = {};
         Object.keys(byVenue).forEach(function(vid) {
@@ -2242,7 +1996,7 @@ import './style.css';
           var total = Object.values(counts).reduce(function(a, b) { return a + b; }, 0);
           if (total < 3) return;
           var modal = Object.keys(counts).reduce(function(a, b) { return counts[a] >= counts[b] ? a : b; });
-          _historicalPatterns[vid] = { level: modal, count: total, dow: dow, hour: hour };
+          _historicalPatterns[vid] = { level: modal, count: total };
         });
         renderExploreVenues();
       } catch(e) {}
@@ -2340,22 +2094,17 @@ import './style.css';
     }
 
     // ── Favoriter ────────────────────────────────────────────────────────────
-    async function toggleFavorite(event, venueId) {
+    // Bara på enheten. Tabellen favorites lästes aldrig tillbaka, så en serverkopia lovade något appen inte gjorde.
+    function toggleFavorite(event, venueId) {
       event.stopPropagation();
       var btn = event.currentTarget;
       btn.style.animation = 'none';
       setTimeout(function() { btn.style.animation = 'heartBounce 0.4s ease'; }, 10);
       var idx = favorites.indexOf(venueId);
-      if (idx > -1) {
-        favorites.splice(idx, 1);
-        if (supabase) await supabase.from('favorites').delete().eq('venue_id', venueId).eq('user_id', getUserId());
-      } else {
-        favorites.push(venueId);
-        if (supabase) await supabase.from('favorites').insert({ venue_id: venueId, user_id: getUserId() });
-      }
-      localStorage.setItem('qb_favorites', JSON.stringify(favorites));
-      showToast(favorites.includes(venueId) ? 'Sparad som favorit' : 'Borttagen från favoriter');
-      renderHomeVenues();
+      if (idx > -1) favorites.splice(idx, 1);
+      else favorites.push(venueId);
+      try { localStorage.setItem('qb_favorites', JSON.stringify(favorites)); } catch(e) {}
+      showToast(idx > -1 ? 'Borttagen från favoriter' : 'Sparad som favorit');
       if (typeof renderExploreVenues === 'function') renderExploreVenues();
     }
 
@@ -2372,42 +2121,13 @@ import './style.css';
       document.getElementById('consent-modal').style.display = 'none';
       showOnboarding();
     }
-    function declineConsent() {
-      localStorage.setItem('qb_consent', 'declined');
-      document.getElementById('consent-modal').style.display = 'none';
-    }
 
     // ── Onboarding ───────────────────────────────────────────────────────────
     var OB = [
-      {
-        screen: 'home',
-        title: 'Se läget, välj stället',
-        subtitle: 'Varje prick är en krog — just nu',
-        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)' },
-        arrow: 'arr-u', arrowX: '50%'
-      },
-      {
-        screen: 'explore',
-        title: 'Välj rätt ställe',
-        subtitle: 'Aldrig chansa med kön igen',
-        pos: { top: '24%', right: '8px' },
-        arrow: 'arr-l', arrowY: '22px'
-      },
-      {
-        screen: 'live',
-        title: 'Direkt från kön',
-        subtitle: 'Från de som är ute just nu',
-        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)' },
-        arrow: 'arr-d', arrowX: '50%'
-      },
-      {
-        screen: 'home',
-        title: 'Står du i kö? Rapportera',
-        subtitle: 'Fem sekunder — och alla ser läget',
-        target: 'report-btn',
-        pos: { bottom: 'calc(72px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)' },
-        arrow: 'arr-d', arrowX: '50%'
-      }
+      { screen: 'home', title: 'Se läget, välj stället', subtitle: 'Varje markering visar kön just nu' },
+      { screen: 'explore', title: 'Välj rätt ställe', subtitle: 'Jämför köerna innan du går' },
+      { screen: 'live', title: 'Direkt från kön', subtitle: 'Från de som är ute just nu' },
+      { screen: 'home', title: 'Står du i kö? Rapportera', subtitle: 'Fem sekunder — och alla ser läget', target: 'report-btn' }
     ];
     var obStep = 0;
 
@@ -2497,7 +2217,10 @@ import './style.css';
       var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
 
       if (s.screen === 'home' && !s.target && map && typeof map.project === 'function') {
-        var venue = VENUES.find(function(v) { return v.id === 'spy-bar'; });
+        // Visa ett ställe som faktiskt har data: "Bäst nu", annars senast rapporterade, annars Spy Bar.
+        var best = computeBestNow();
+        var latest = allReports.filter(isQueueReport).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+        var venue = best ? best.venue : getVenueById(latest ? latest.venue_id : 'spy-bar');
         if (venue) {
           var px = map.project([venue.lng, venue.lat]);
           var cr = map.getContainer().getBoundingClientRect();
@@ -2555,12 +2278,9 @@ import './style.css';
       }, 60);
     }
 
+    // Via showScreen, så att fliken och currentScreen följer med det som visas.
     function obRenderScreen() {
-      var s = OB[obStep];
-      document.querySelectorAll('.screen').forEach(function(el) {
-        el.classList.toggle('active', el.id === 'screen-' + s.screen);
-      });
-      if (s.screen === 'home' && map) setTimeout(function() { map.resize(); }, 50);
+      showScreen(OB[obStep].screen);
     }
 
     function obRenderContent() {
@@ -2709,7 +2429,6 @@ import './style.css';
 
     // ── Utforska ─────────────────────────────────────────────────────────────
     var _exploreFilter = 'all'; // 'all' | 'free' | 'short' | 'long'
-    var exploreFilter = 'all'; // legacy alias kept for safety
     var exploreDebounceTimer = null;
 
     // Sticky header shadow on scroll
@@ -2723,11 +2442,6 @@ import './style.css';
       }
     })();
 
-    function setFilter(f, btn) {
-      // Legacy — kept for any external calls
-      setExploreFilter(f);
-    }
-
     function venueTypeLabel(type) {
       if (!type) return '';
       var t = type.toLowerCase();
@@ -2738,7 +2452,6 @@ import './style.css';
 
     function setExploreFilter(f) {
       _exploreFilter = f;
-      exploreFilter = f; // keep legacy alias in sync
       document.querySelectorAll('.fbtn[data-filter]').forEach(function(b) {
         b.classList.toggle('active', b.dataset.filter === f);
       });
@@ -2817,326 +2530,149 @@ import './style.css';
       }, 30000);
     }
 
+    // Favoritens stjärna — samma form i listan som på kortets knapp (#vc-fav).
+    var STAR_PATH = 'M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z';
+
     function renderExploreVenueRow(venue, index, bestData) {
       var isBest = !!bestData;
       var bastReason = '';
       if (bestData) {
-        if (bestData.status === 'free') bastReason = 'Fri ingång';
+        if (bestData.status === 'none') bastReason = 'Ingen kö';
         else if (bestData.status === 'short') bastReason = 'Kortast kö';
       }
-      var now = new Date();
-      var venueReports = allReports.filter(function(r) { return r.venue_id === venue.id && isQueueReport(r); })
-        .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+      // Bara kömätningar från de senaste 45 min — samma fönster som estimateWait och färskhetsraden.
+      var nowMs = Date.now();
+      var venueReports = allReports.filter(function(r) {
+        return r.venue_id === venue.id && isQueueReport(r) && nowMs - new Date(r.created_at).getTime() < 45 * 60000;
+      }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       var latestReport = venueReports[0] || null;
       var status = computeStatus(venue.id, allReports);
       var est = estimateWait(venue.id, allReports);
-      var cls = getStatusClass(status);
-      var color = getStatusColor(cls);
+      var color = getStatusColor(getStatusClass(status));
       var hasData = venueReports.length > 0;
-      var minsOld = hasData && latestReport ? (now - new Date(latestReport.created_at)) / 60000 : Infinity;
-      var isAging = hasData && minsOld >= 15 && minsOld < 45;
-      var isStale = hasData && minsOld >= 45;
-      var isEmpty = !hasData || isStale;
+      var minsOld = hasData ? (nowMs - new Date(latestReport.created_at)) / 60000 : Infinity;
+      var isAging = hasData && minsOld >= 15;
 
       // Visual level (4 tiers)
       var level; // 'long' | 'medium' | 'free' | 'empty'
-      if (!hasData) {
-        level = 'empty';
-      } else if (status === 'long') {
-        level = 'long';
-      } else if (status === 'free' || status === 'none') {
-        level = 'free';
-      } else {
-        level = 'medium'; // short or medium
-      }
+      if (!hasData) level = 'empty';
+      else if (status === 'long') level = 'long';
+      else if (status === 'none') level = 'free';
+      else level = 'medium'; // short or medium
 
       var levelBg = { long: 'rgba(255,77,94,0.06)', medium: 'rgba(255,138,61,0.04)', free: 'rgba(52,224,127,0.05)', empty: 'rgba(255,255,255,0.02)' }[level];
-      var stateClass = isEmpty ? ' erow--empty' : (isAging ? ' erow--stale' : '');
-      var agingStyle = '';
-      var barColor = isEmpty ? 'rgba(255,255,255,0.08)' : color;
+      var stateClass = !hasData ? ' erow--empty' : (isAging ? ' erow--stale' : '');
+      var barColor = hasData ? color : 'rgba(255,255,255,0.08)';
 
-      // Hero number
+      // Hero number. "Fri" är den korta formen av "Ingen kö" — samma ord som pillen på kartan.
       var heroText, heroColor;
       if (!hasData) {
         heroText = '–'; heroColor = '#85858A';
       } else {
-        heroText = (est ? est.ahead === 0 : (status === 'free' || status === 'none')) ? 'Fri' : venueWaitText(venue.id);
+        heroText = (est ? est.ahead === 0 : status === 'none') ? 'Fri' : venueWaitText(venue.id);
         // Nivån "medium" täcker kort+medel för bakgrunden — siffran får exakt statusfärg
         var heroColors = { free: '#34E07F', medium: getStatusColor(status), long: '#FF4D5E' };
         heroColor = heroColors[level] || '#85858A';
       }
 
       // Freshness check for pulse dot: only show if long AND report < 20 min old
-      var minutesSince = latestReport ? (Date.now() - new Date(latestReport.created_at)) / 60000 : Infinity;
-      var showPulseDot = level === 'long' && minutesSince < 20;
+      var showPulseDot = level === 'long' && minsOld < 20;
       var pulseHtml = showPulseDot ? '<span class="erow-pulse-dot"></span>' : '';
 
-      // Trend (replaces badge — new information, not redundant with hero)
+      // Trend: två mätningar med antal som ligger minst 10 min isär och hamnar i olika intervall. Två personer som
+      // rapporterar samtidigt men olika är oenighet, inte en trend; på äldre data visas ingen pil alls.
       var trendHtml = '';
-      var STATUS_RANK = { free: 0, none: 0, short: 1, medium: 2, long: 3 };
-      if (hasData && venueReports.length >= 2) {
-        var r1 = venueReports[0].queue_status; // newest
-        var r2 = venueReports[1].queue_status; // previous
-        var rank1 = STATUS_RANK[r1] !== undefined ? STATUS_RANK[r1] : 1;
-        var rank2 = STATUS_RANK[r2] !== undefined ? STATUS_RANK[r2] : 1;
-        if (rank1 > rank2) {
-          trendHtml = '<span class="erow-trend erow-trend--up">↑ Ökar</span>';
-        } else if (rank1 < rank2) {
-          trendHtml = '<span class="erow-trend erow-trend--down">↓ Minskar</span>';
+      var counted = venueReports.filter(function(r) { return r.people_ahead != null; });
+      if (!isAging && counted.length >= 2) {
+        var newest = counted[0];
+        var older = counted.find(function(r) { return new Date(newest.created_at) - new Date(r.created_at) >= 10 * 60000; });
+        if (older && aheadBucket(newest.people_ahead).label !== aheadBucket(older.people_ahead).label) {
+          trendHtml = newest.people_ahead > older.people_ahead
+            ? '<span class="erow-trend erow-trend--up">↑ Ökar</span>'
+            : '<span class="erow-trend erow-trend--down">↓ Minskar</span>';
         }
       }
 
-      // Tertiary row: antal rapporter + ålder (ersätter konfidensstaplar, "pers bekräftade" och sparkline)
       var reportCount = venueReports.length;
-
-      // Distance (if available)
       var typeLabel = venueTypeLabel(venue.type);
-      var metaText = venue.area + (typeLabel ? ' · ' + typeLabel : '');
-      if (window._userPos && venue.lat && venue.lng) {
-        var dlat = (venue.lat - window._userPos.lat) * 111000;
-        var dlng = (venue.lng - window._userPos.lng) * 111000 * Math.cos(venue.lat * Math.PI / 180);
-        var dist = Math.round(Math.sqrt(dlat * dlat + dlng * dlng) / 100) * 100;
-        metaText = venue.area + (typeLabel ? ' · ' + typeLabel : '') + ' · ' + (dist >= 1000 ? (dist / 1000).toFixed(1) + ' km' : dist + 'm');
-      }
+      var dist = distanceKmTo(venue);
+      var metaText = venue.area + (typeLabel ? ' · ' + typeLabel : '') + (dist !== null ? ' · ' + formatDistance(dist) : '');
 
       var delay = _listIntro ? (index * 75 + 340) + 'ms' : '0ms';
       var levelClass = level === 'long' ? ' erow--long' : level === 'medium' ? ' erow--medium' : level === 'free' ? ' erow--free' : '';
 
-      // Planning mode
-      var planIdx = _planVenues.indexOf(venue.id);
-      var planBadge = (_planningMode && planIdx >= 0)
-        ? '<div class="plan-badge" style="margin-right:8px">' + (planIdx + 1) + '</div>'
-        : (_planningMode ? '<div class="plan-badge plan-badge--empty" style="margin-right:8px"></div>' : '');
-      var rowOnClick = _planningMode
-        ? 'togglePlanVenue(\'' + venue.id + '\')'
-        : 'openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')';
+      var pat = _historicalPatterns[venue.id];
+      var patLabels = { long: 'Brukar vara lång kö nu', medium: 'Brukar vara medellång kö nu', short: 'Brukar vara kort kö nu', none: 'Brukar inte vara kö nu' };
+      // Historiskt mönster visas bara när färsk data saknas — annars konkurrerar det med verkligheten
+      var patHtml = (!hasData && pat && patLabels[pat.level]) ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
+      var recentWithComment = venueReports.filter(function(r) {
+        return r.comment && nowMs - new Date(r.created_at).getTime() < 30 * 60 * 1000;
+      })[0];
+      var commentHtml = recentWithComment ? '<div class="erow-comment">"' + escapeHtml(recentWithComment.comment) + '"</div>' : '';
+      var minsLeft = minutesToClose(venue);
+      var closingSoonHtml = minsLeft !== null && minsLeft > 0 && minsLeft <= 90
+        ? '<span class="erow-tertiary-sep">·</span><span class="erow-closing">Stänger ' + venue.closing + '</span>' : '';
+      var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ uppskattning</span>' : '';
+      var tertiaryHtml = hasData
+        ? '<div class="erow-tertiary">' +
+            '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
+            '<span class="erow-tertiary-sep">·</span>' +
+            '<span' + (isAging ? ' class="erow-stale-label"' : '') + '>' + timeAgo(latestReport.created_at) + (isAging ? ' · äldre' : '') + '</span>' +
+            estHtml +
+            closingSoonHtml +
+          '</div>'
+        : '<div class="erow-tertiary">' +
+            (patHtml || '<span class="erow-empty-cta">Ingen rapport senaste 45 min — rapportera</span>') +
+            closingSoonHtml +
+          '</div>';
 
-      return '<div class="erow' + stateClass + levelClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="' + rowOnClick + '">' +
+      return '<div class="erow' + stateClass + levelClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')">' +
         '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
         '<div class="erow-inner">' +
-          planBadge +
           '<div class="erow-body">' +
             (isBest ? '<div class="bast-chip"><span class="bast-chip-dot"></span>Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</div>' : '') +
             '<div class="erow-name-row">' +
               pulseHtml +
               '<div class="erow-name">' + venue.name + '</div>' +
-              (isFavorite(venue.id) ? '<svg class="erow-fav" viewBox="0 0 24 24" aria-label="Favorit"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' : '') +
-              (isWatching(venue.id) ? '<svg class="erow-watch" viewBox="0 0 24 24" aria-label="Bevakas"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' : '') +
+              (isFavorite(venue.id) ? '<svg class="erow-fav" viewBox="0 0 24 24" aria-label="Favorit"><path d="' + STAR_PATH + '"/></svg>' : '') +
             '</div>' +
             '<div class="erow-meta">' + metaText + '</div>' +
-            (function() {
-              var pat = _historicalPatterns[venue.id];
-              var patLabels = { long: 'Brukar vara lång kö nu', medium: 'Brukar vara medel kö nu', short: 'Brukar vara kort kö nu', free: 'Brukar vara fri ingång nu' };
-              // Historiskt mönster visas bara när färsk data saknas — annars konkurrerar det med verkligheten
-              var patHtml = (isEmpty && pat && patLabels[pat.level]) ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
-              var recentWithComment = venueReports.filter(function(r) {
-                return r.comment && (Date.now() - new Date(r.created_at).getTime()) < 30 * 60 * 1000;
-              }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
-              var commentHtml = recentWithComment ? '<div class="erow-comment">"' + escapeHtml(recentWithComment.comment) + '"</div>' : '';
-              var closingSoonHtml = '';
-              if (venue.closing) {
-                var cParts = venue.closing.split(':');
-                var cH = parseInt(cParts[0]), cM = parseInt(cParts[1] || 0);
-                var cTotal = cH < 6 ? (cH + 24) * 60 + cM : cH * 60 + cM;
-                var nowD = new Date(); var nowAdj = nowD.getHours() * 60 + nowD.getMinutes();
-                if (nowAdj < 12 * 60) nowAdj += 1440;
-                var minsLeft = cTotal - nowAdj;
-                if (minsLeft > 0 && minsLeft <= 90) {
-                  closingSoonHtml = '<span class="erow-tertiary-sep">·</span><span class="erow-closing">Stänger ' + venue.closing + '</span>';
-                }
-              }
-              var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ uppskattning</span>' : '';
-              var tertiaryHtml = (hasData && !isStale)
-                ? '<div class="erow-tertiary">' +
-                    '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
-                    '<span class="erow-tertiary-sep">·</span>' +
-                    '<span' + (isAging ? ' class="erow-stale-label"' : '') + '>' + timeAgo(latestReport.created_at) + (isAging ? ' · äldre' : '') + '</span>' +
-                    estHtml +
-                    closingSoonHtml +
-                  '</div>'
-                : '<div class="erow-tertiary">' +
-                    (patHtml || '<span class="erow-empty-cta">' + (isStale ? 'Ingen färsk rapport' : 'Ingen data i kväll') + ' — rapportera</span>') +
-                    closingSoonHtml +
-                  '</div>';
-              return tertiaryHtml + commentHtml;
-            })() +
+            tertiaryHtml + commentHtml +
           '</div>' +
           '<div class="erow-right">' +
             '<span class="erow-hero' + (_listIntro ? ' erow-hero--animate' : '') + '" style="color:' + heroColor + '">' + waitRollHtml('list', venue.id, heroText, heroColor) + '</span>' +
-            (isStale ? '' : trendHtml) +
+            trendHtml +
           '</div>' +
         '</div>' +
         '</div>';
     }
 
-    function goToVenueOnMap(venue) {
-      if (!venue) return;
-      showScreen('home');
-      if (map && venue.lat && venue.lng) {
-        setTimeout(function() {
-          map.flyTo({ center: [venue.lng, venue.lat], zoom: 16, duration: 800 });
-        }, 80);
-      }
-      setTimeout(function() { openVenueCard(venue, 'explore'); }, 200);
-    }
-
-    // ── Kvällsplanering ──────────────────────────────────────────────────────────
-
-    function togglePlanningMode() {
-      _planningMode = !_planningMode;
-      _planVenues = [];
-      renderExploreVenues();
-      // Update plan chip label
-      var planChip = document.querySelector('.fbtn--plan');
-      if (planChip) planChip.textContent = _planningMode ? 'Avbryt plan' : 'Planera kväll';
-      // Legacy btn (no longer in DOM, guard kept)
-      var btn = document.getElementById('plan-mode-btn');
-      if (btn) btn.textContent = _planningMode ? 'Avbryt' : 'Planera kväll';
-      var bar = document.getElementById('plan-bar');
-      if (bar) bar.style.display = _planningMode ? 'flex' : 'none';
-      var createBtn = document.getElementById('plan-create-btn');
-      if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Välj 2–4 ställen'; }
-    }
-
-    function togglePlanVenue(venueId) {
-      if (!_planningMode) return;
-      var idx = _planVenues.indexOf(venueId);
-      if (idx >= 0) {
-        _planVenues.splice(idx, 1);
-      } else if (_planVenues.length < 4) {
-        _planVenues.push(venueId);
-      }
-      renderExploreVenues();
-      var bar = document.getElementById('plan-bar');
-      if (bar) {
-        var count = _planVenues.length;
-        var createBtn = document.getElementById('plan-create-btn');
-        if (createBtn) {
-          createBtn.disabled = count < 2;
-          createBtn.textContent = count >= 2 ? 'Skapa plan (' + count + ')' : 'Välj ' + (2 - count) + ' till';
-        }
-      }
-    }
-
-    function computeEveningPlan() {
-      if (_planVenues.length < 2) return;
-      var STATUS_SCORE = { free: 0, short: 1, medium: 2, long: 3, none: 1 };
-
-      var scored = _planVenues.map(function(vid) {
-        var venue = getVenueById(vid);
-        var status = computeStatus(vid, allReports);
-        var statusScore = STATUS_SCORE[status] !== undefined ? STATUS_SCORE[status] : 1;
-        var closingMins = 999;
-        if (venue && venue.closing) {
-          var parts = venue.closing.split(':');
-          var h = parseInt(parts[0]), m = parseInt(parts[1] || 0);
-          closingMins = h < 6 ? (h + 24) * 60 + m : h * 60 + m;
-        }
-        var distScore = 0;
-        if (window._userPos && venue) {
-          var dlat = venue.lat - window._userPos.lat;
-          var dlng = venue.lng - window._userPos.lng;
-          distScore = Math.sqrt(dlat * dlat + dlng * dlng) * 100;
-        }
-        return { id: vid, venue: venue, status: status, statusScore: statusScore, closingMins: closingMins, distScore: distScore };
-      });
-
-      scored.sort(function(a, b) {
-        if (a.closingMins !== b.closingMins) return a.closingMins - b.closingMins;
-        if (a.statusScore !== b.statusScore) return a.statusScore - b.statusScore;
-        return a.distScore - b.distScore;
-      });
-
-      showEveningPlan(scored);
-    }
-
-    function showEveningPlan(scored) {
-      var items = scored.map(function(s, i) {
-        var label = venueWaitText(s.id);
-        var color = label ? getStatusColor(s.status) : 'var(--text-muted)';
-        var closing = s.venue && s.venue.closing ? 'Stänger ' + s.venue.closing : '';
-        var area = s.venue ? s.venue.area : '';
-        return '<div class="plan-item">'
-          + '<div class="plan-item-num">' + (i + 1) + '</div>'
-          + '<div class="plan-item-body">'
-          + '<div class="plan-item-name">' + (s.venue ? s.venue.name : s.id) + '</div>'
-          + '<div class="plan-item-meta">' + [area, closing].filter(Boolean).join(' · ') + '</div>'
-          + '</div>'
-          + '<div class="plan-item-wait" style="color:' + color + '">' + (label || 'Ingen data') + '</div>'
-          + '</div>';
-      }).join('');
-
-      var modal = document.createElement('div');
-      modal.id = 'plan-modal';
-      modal.innerHTML = '<div class="plan-modal-dim" onclick="closePlanModal()"></div>'
-        + '<div class="plan-modal-sheet">'
-        + '<div class="plan-modal-eyebrow">Din kvällsplan</div>'
-        + '<div class="plan-modal-sub">Ordning efter stängningstid, sedan kö just nu</div>'
-        + items
-        + '<button class="plan-modal-close" onclick="closePlanModal()">Klar</button>'
-        + '</div>';
-      document.body.appendChild(modal);
-
-      _planningMode = false;
-      _planVenues = [];
-      renderExploreVenues();
-      var planChip = document.querySelector('.fbtn--plan');
-      if (planChip) planChip.textContent = 'Planera kväll';
-      var bar = document.getElementById('plan-bar');
-      if (bar) bar.style.display = 'none';
-    }
-
-    function closePlanModal() {
-      var m = document.getElementById('plan-modal');
-      if (m) m.remove();
-    }
-
+    // "Vart går vi nu?": ställen utan kö eller med kort kö, med en kömätning från de senaste 30 min, som inte stänger
+    // inom 45 min. Ingen kö väger mer än kort kö; närhet och färskhet avgör inom samma nivå.
     function computeBestNow() {
-      var now = new Date();
-      var nowH = now.getHours() + now.getMinutes() / 60;
       var freshCutoff = Date.now() - 30 * 60 * 1000;
-
-      function distKm(lat1, lng1, lat2, lng2) {
-        var R = 6371;
-        var dLat = (lat2 - lat1) * Math.PI / 180;
-        var dLng = (lng2 - lng1) * Math.PI / 180;
-        var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
-                Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
-                Math.sin(dLng/2)*Math.sin(dLng/2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      }
-
-      function closingHour(str) {
-        var parts = str.split(':');
-        var h = parseInt(parts[0]);
-        return h < 12 ? h + 24 : h;
+      function freshQueueReports(v) {
+        return allReports.filter(function(r) {
+          return r.venue_id === v.id && isQueueReport(r) && new Date(r.created_at).getTime() > freshCutoff;
+        });
       }
 
       var candidates = VENUES.filter(function(v) {
         var status = computeStatus(v.id, allReports);
-        if (status !== 'free' && status !== 'short') return false;
-        var fresh = allReports.some(function(r) {
-          return r.venue_id === v.id && new Date(r.created_at).getTime() > freshCutoff;
-        });
-        if (!fresh) return false;
-        var cl = closingHour(v.closing);
-        var nowAdj = nowH < 12 ? nowH + 24 : nowH;
-        if (cl - nowAdj < 0.75) return false;
-        return true;
+        if (status !== 'none' && status !== 'short') return false;
+        if (!freshQueueReports(v).length) return false;
+        var left = minutesToClose(v);
+        return left === null || left >= 45;
       });
 
       if (!candidates.length) return null;
 
       candidates = candidates.map(function(v) {
         var status = computeStatus(v.id, allReports);
-        var score = status === 'free' ? 2 : 1;
-        var dist = null;
-        if (window._userPos) {
-          dist = distKm(window._userPos.lat, window._userPos.lng, v.lat, v.lng);
-          score -= dist * 0.1;
-        }
-        var reports = allReports.filter(function(r) { return r.venue_id === v.id; });
-        var latest = reports.reduce(function(max, r) { return Math.max(max, new Date(r.created_at).getTime()); }, 0);
+        var score = status === 'none' ? 2 : 1;
+        var dist = distanceKmTo(v);
+        if (dist !== null) score -= dist * 0.1;
+        var latest = freshQueueReports(v).reduce(function(max, r) { return Math.max(max, new Date(r.created_at).getTime()); }, 0);
         var minsAgo = (Date.now() - latest) / 60000;
         score += Math.max(0, (30 - minsAgo) / 30) * 0.5;
         return { venue: v, status: status, score: score, dist: dist };
@@ -3165,20 +2701,11 @@ import './style.css';
 
       // Status-based filter (new chip logic)
       if (_exploreFilter === 'free') {
-        list = list.filter(function(v) {
-          var s = computeStatus(v.id, allReports);
-          return s === 'free' || s === 'none';
-        });
+        list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'none'; });
       } else if (_exploreFilter === 'short') {
-        list = list.filter(function(v) {
-          var s = computeStatus(v.id, allReports);
-          return s === 'short' || s === 'medium';
-        });
+        list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'short'; });
       } else if (_exploreFilter === 'long') {
-        list = list.filter(function(v) {
-          var s = computeStatus(v.id, allReports);
-          return s === 'long';
-        });
+        list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'long'; });
       } else if (_exploreFilter === 'bar') {
         list = list.filter(function(v) { return v.type === 'bar'; });
       } else if (_exploreFilter === 'klubb') {
@@ -3186,18 +2713,9 @@ import './style.css';
       }
       // 'all' — no additional filter
 
-      // Filter context line
-      var contextEl = document.getElementById('filter-context');
-      if (_exploreFilter !== 'all') {
-        var label = { free: 'venues med fri ingång just nu', short: 'venues med kort kö just nu', long: 'venues med lång kö just nu', bar: 'barer', klubb: 'klubbar' }[_exploreFilter] || '';
-        if (contextEl) { contextEl.textContent = list.length + ' ' + label; contextEl.style.display = 'block'; }
-      } else {
-        if (contextEl) contextEl.style.display = 'none';
-      }
-
       if (!list.length) {
         var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
-        var filterLabels = { free: 'fri ingång', short: 'kort kö', long: 'lång kö', bar: 'typ bar', klubb: 'typ klubb' };
+        var filterLabels = { free: 'ingen kö', short: 'kort kö', long: 'lång kö', bar: 'typ bar', klubb: 'typ klubb' };
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
           emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
@@ -3216,13 +2734,18 @@ import './style.css';
       }
 
       // Sort strategy:
-      //   No query  → urgency (long first) then recency; stale venues last
-      //   Query set → relevance score first; within same score bucket: urgency then recency
-      var URGENCY_RANK = { long: 3, medium: 2, short: 1, none: 0, free: 0, unknown: -1 };
+      //   No query  → färska först, kortast kö överst (frågan är "vart går vi?"), sedan nyast rapport; utan färsk data
+      //               sist i bokstavsordning
+      //   Query set → relevance score first; within same score bucket: fresh, then shortest queue
+      var QUEUE_RANK = { none: 0, short: 1, medium: 2, long: 3 };
+      function queueRank(v) {
+        var r = QUEUE_RANK[computeStatus(v.id, allReports)];
+        return r === undefined ? 4 : r;
+      }
       var activeQuery = (document.getElementById('explore-search') || {}).value || '';
       list = list.slice().sort(function(a, b) {
-        var aReports = allReports.filter(function(r) { return r.venue_id === a.id; });
-        var bReports = allReports.filter(function(r) { return r.venue_id === b.id; });
+        var aReports = allReports.filter(function(r) { return r.venue_id === a.id && isQueueReport(r); });
+        var bReports = allReports.filter(function(r) { return r.venue_id === b.id && isQueueReport(r); });
         var aLatest = aReports.length > 0 ? Math.max.apply(null, aReports.map(function(r) { return new Date(r.created_at).getTime(); })) : 0;
         var bLatest = bReports.length > 0 ? Math.max.apply(null, bReports.map(function(r) { return new Date(r.created_at).getTime(); })) : 0;
         var now45 = Date.now() - 45 * 60 * 1000;
@@ -3234,25 +2757,16 @@ import './style.css';
           var aScore = venueScore(activeQuery, a);
           var bScore = venueScore(activeQuery, b);
           if (bScore !== aScore) return bScore - aScore;
-          // Tie-break within same score: fresh + urgency
           if (!aFresh && bFresh) return 1;
           if (aFresh && !bFresh) return -1;
-          var aStatus = computeStatus(a.id, allReports);
-          var bStatus = computeStatus(b.id, allReports);
-          var aRank = URGENCY_RANK[aStatus] !== undefined ? URGENCY_RANK[aStatus] : -1;
-          var bRank = URGENCY_RANK[bStatus] !== undefined ? URGENCY_RANK[bStatus] : -1;
-          return bRank - aRank;
+          return queueRank(a) - queueRank(b);
         }
 
-        // No query: urgency sort, stale last
         if (!aFresh && bFresh) return 1;
         if (aFresh && !bFresh) return -1;
         if (!aFresh && !bFresh) return a.name.localeCompare(b.name, 'sv');
-        var aStatus = computeStatus(a.id, allReports);
-        var bStatus = computeStatus(b.id, allReports);
-        var aRank = URGENCY_RANK[aStatus] !== undefined ? URGENCY_RANK[aStatus] : -1;
-        var bRank = URGENCY_RANK[bStatus] !== undefined ? URGENCY_RANK[bStatus] : -1;
-        if (bRank !== aRank) return bRank - aRank;
+        var rankDiff = queueRank(a) - queueRank(b);
+        if (rankDiff) return rankDiff;
         return bLatest - aLatest;
       });
 
@@ -3300,8 +2814,8 @@ import './style.css';
       VENUES.forEach(function(v) {
         var s = computeStatus(v.id, allReports);
         counts.all++;
-        if (s === 'free' || s === 'none') counts.free++;
-        if (s === 'short' || s === 'medium') counts.short++;
+        if (s === 'none') counts.free++;
+        if (s === 'short') counts.short++;
         if (s === 'long') counts.long++;
       });
       var fcAll   = document.getElementById('fc-all');
@@ -3359,7 +2873,7 @@ import './style.css';
           '<span>' + (open ? 'Dölj' : '+' + olderCount + ' tidigare') + '</span>' +
           '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>';
       }
-      return '<div class="lv-row" role="button" tabindex="0" onclick="openVenueCard(\'' + r.venue_id + '\')">' +
+      return '<div class="lv-row" role="button" tabindex="0" onclick="openVenueCard(getVenueById(\'' + r.venue_id + '\'), \'live\')">' +
         '<span class="lv-bar" style="background:' + color + '"></span>' +
         '<div class="lv-inner"><div class="lv-body">' +
           '<div class="lv-name">' + name + '</div>' +
@@ -3393,13 +2907,14 @@ import './style.css';
     function renderLiveFeed() {
       var el = document.getElementById('live-feed');
       if (!el) return;
-      // Pricken på Live-fliken säger något bara om det finns en färsk rapport (< 10 min) — annars visas den inte.
+      // Prickarna (fliken och rubriken) säger "live" bara när det finns en färsk rapport (< 10 min) och kontakt med
+      // servern — en pulserande prick bredvid "Ingen kontakt" säger emot texten.
+      var freshCut = Date.now() - 10 * 60 * 1000;
+      var isLive = _loadState !== 'error' && allReports.some(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > freshCut; });
       var navDot = document.querySelector('.live-dot');
-      if (navDot) {
-        var freshCut = Date.now() - 10 * 60 * 1000;
-        var hasFresh = allReports.some(function(r) { return isQueueReport(r) && new Date(r.created_at).getTime() > freshCut; });
-        navDot.classList.toggle('on', hasFresh);
-      }
+      if (navDot) navDot.classList.toggle('on', isLive);
+      var headDot = document.getElementById('live-dot');
+      if (headDot) headDot.hidden = !isLive;
       var subText = document.getElementById('live-sub-text');
       if (!supabase) {
         if (subText) subText.textContent = 'Offline';
@@ -3507,11 +3022,13 @@ import './style.css';
     function goOnMyWay(venueId) {
       var venue = getVenueById(venueId);
       if (!venue) return;
+      // Utan position finns ingen gångtid att räkna med — en gissad siffra skulle visas som data och hamna i andras
+      // "N på väg". Vägbeskrivningen har redan öppnats; mer gör vi inte.
+      var walkMins = walkMinutesTo(venue);
+      if (walkMins === null) { closeVenueCard(); return; }
       if (_onMyWay && _onMyWay.timerId) clearTimeout(_onMyWay.timerId);
       // Den som går till ett annat ställe står inte längre i sin gamla kö.
       if (getQueueSession()) endQueueSession();
-
-      var walkMins = walkMinutesTo(venue) || 15; // utan position: en rimlig promenad i innerstan
 
       _onMyWay = { venueId: venueId, arrivalTime: Date.now() + walkMins * 60 * 1000, walkMins: walkMins, timerId: null };
       scheduleArrival();
@@ -3577,7 +3094,7 @@ import './style.css';
       } else {
         var waitNow = venueWaitText(_onMyWay.venueId);
         var pat = _historicalPatterns[_onMyWay.venueId];
-        var hintMap = { free: 'brukar vara fri ingång nu', short: 'brukar vara kort kö nu', medium: 'brukar vara medel kö nu', long: 'brukar vara lång kö nu' };
+        var hintMap = { none: 'brukar inte vara kö nu', short: 'brukar vara kort kö nu', medium: 'brukar vara medellång kö nu', long: 'brukar vara lång kö nu' };
         var fc = forecastWait(_onMyWay.venueId, minsLeft, Math.max(0, onMyWayCount(_onMyWay.venueId) - 1));
         var fcText = fc ? formatWait(fc) : '';
         var context = fc ? (fcText === 'Ingen kö' ? 'troligen ingen kö då' : 'troligen ' + fcText + ' kö då')
@@ -3601,9 +3118,11 @@ import './style.css';
       var canUpdate = sinceLast >= QS_MIN_GAP && qs.followups < QS_MAX_FOLLOWUPS;
       var inQueue = Math.max(0, Math.round((Date.now() - (qs.startedAt || qs.lastAt)) / 60000)) || 0;
       var ahead = aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför' : '');
-      var sub = canUpdate
-        ? ahead + ' · ' + timeAgo(new Date(qs.lastAt).toISOString()) + ' · hur många nu?'
-        : ahead + ' · ' + timeAgo(new Date(qs.lastAt).toISOString());
+      var since = timeAgo(new Date(qs.lastAt).toISOString());
+      // Efter sista uppdateringen kommer knappen inte tillbaka — säg det, annars väntar man på den.
+      var sub = canUpdate ? ahead + ' · ' + since + ' · hur många nu?'
+        : qs.followups >= QS_MAX_FOLLOWUPS ? ahead + ' · ' + since + ' · tryck "Jag är inne" när du kommer in'
+        : ahead + ' · ' + since;
       banner.style.display = 'block';
       banner.innerHTML = '<div class="qs-row"><div class="qs-text">'
         + '<div class="qs-kicker"><span class="qs-live"></span>I kön · ' + qs.venueName + '</div>'
@@ -3720,8 +3239,12 @@ import './style.css';
       }
     }
 
+    // Ett tryck i taget: medan en rapport skickas finns den inte i allReports än, så klientspärren släpper igenom ett
+    // andra tryck. Gäller båda vägarna in (rapportskärmen och snabbarket).
+    var _reportSending = false;
     async function pickAhead(peopleAhead) {
-      if (!selectedRV) return;
+      if (!selectedRV || _reportSending) return;
+      _reportSending = true;
       var commentEl = document.getElementById('rs-comment');
       var comment = commentEl ? commentEl.value.trim().slice(0, 80) : '';
       try {
@@ -3729,6 +3252,9 @@ import './style.css';
         if (commentEl) commentEl.value = '';
         maybeShowInstallPrompt();
         rsStep(3);
+        // "Står du kvar?" bara när det finns en kö att stå i — vid "Ingen kö" startar ingen kö-session.
+        var nextEl = document.querySelector('#rs3 .rs-next');
+        if (nextEl) nextEl.hidden = peopleAhead === 0;
         var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
         var reportedId = selectedRV.id;
         selectedRV = null;
@@ -3741,9 +3267,10 @@ import './style.css';
           if (dest === 'explore') flashVenueRow(reportedId);
         }, 2800);
       } catch(err) { showToast(reportErrorText(err)); }
+      finally { _reportSending = false; }
     }
 
-    // ── Snabbrapport (bottom sheet från Utforska) ────────────────────────────
+    // ── Snabbrapport (ark från "På väg"-bannern och kö-sessionens "Uppdatera") ──
     var qrVenue = null;
     var qrMode = 'initial';
 
@@ -3772,20 +3299,20 @@ import './style.css';
     }
 
     async function quickPickAhead(peopleAhead) {
-      if (!qrVenue) return;
+      if (!qrVenue || _reportSending) return;
       var v = qrVenue;
       var mode = qrMode;
       closeQuickReport();
-      if (mode === 'followup') { submitQueueFollowup(peopleAhead); return; }
+      _reportSending = true;
       try {
+        if (mode === 'followup') { await submitQueueFollowup(peopleAhead); return; }
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
         flashVenueRow(v.id);
         showToast('Rapport skickad — tack!');
-        loadReports();
       } catch(e) {
         showToast(reportErrorText(e));
-      }
+      } finally { _reportSending = false; }
     }
 
     filterReportList();
@@ -3823,7 +3350,7 @@ import './style.css';
     }
 
     function showPrivacyPolicy() {
-      alert('Integritetspolicy\n\nQbar sparar ett anonymt ID, körapporter och favoriter.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
+      alert('Integritetspolicy\n\nQbar sparar ett anonymt ID och dina kö-rapporter (ställe, antal i kö, tid, ev. kommentar).\nFavoriter och din position stannar på din enhet.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
     }
 
     function confirmDelete() {
@@ -3843,19 +3370,14 @@ Object.assign(window, {
   backToRs1,
   cancelOnMyWay,
   clearMapSearch,
-  closePlanModal,
   closeQuickReport,
   closeVenueCard,
-  computeEveningPlan,
   confirmDelete,
-  declineConsent,
   debouncedFilterExplore,
   dismissInstall,
   dismissQueueSession,
   filterReportList,
   getVenueById,
-  goOnMyWay,
-  goToReport,
   loadReports,
   obNext,
   onMyWayArrived,
@@ -3865,8 +3387,6 @@ Object.assign(window, {
   onMapSearchFocus,
   onMapSearchInput,
   onMapSearchKey,
-  openDirections,
-  openQuickReport,
   openVenueCard,
   pickAhead,
   pickRV,
@@ -3880,11 +3400,8 @@ Object.assign(window, {
   shareVenue,
   showPrivacyPolicy,
   showScreen,
-  toggleFavorite,
   toggleLiveVenue,
   toggleVcReports,
-  togglePlanningMode,
-  togglePlanVenue,
   vcShare,
   vcToggleFavorite,
 });

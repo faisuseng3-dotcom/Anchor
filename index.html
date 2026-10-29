@@ -84,13 +84,6 @@
         <button class="err-toast-retry" onclick="retrySupabase()">Försök igen</button>
       </div>
       <div id="best-now-card"></div>
-      <div id="nearby-sheet" style="display:none">
-        <div class="sheet-handle-row" id="sheet-handle-row">
-          <div class="sheet-handle"></div>
-          <div class="sheet-count" id="sheet-count">Laddar...</div>
-        </div>
-        <div class="sheet-list" id="sheet-list"></div>
-      </div>
     </section>
 
     <section id="screen-explore" class="screen">
@@ -113,17 +106,12 @@
             <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')"><span class="fdot fdot--long"></span>Lång <span class="fcount" id="fc-long"></span></button>
             <button class="fbtn" data-filter="bar" onclick="setExploreFilter('bar')">Barer</button>
             <button class="fbtn" data-filter="klubb" onclick="setExploreFilter('klubb')">Klubbar</button>
-            <button class="fbtn fbtn--plan" onclick="togglePlanningMode()">Planera kväll</button>
           </div>
         </div>
       </div>
       <div id="explore-list-wrap">
         <div id="explore-summary" style="display:none"></div>
-        <div id="filter-context" style="display:none"></div>
         <div id="explore-list"></div>
-      </div>
-      <div id="plan-bar" style="display:none">
-        <button id="plan-create-btn" onclick="computeEveningPlan()" disabled>Välj 2–4 ställen</button>
       </div>
     </section>
 
@@ -132,7 +120,7 @@
         <div class="screen-head">
           <div class="live-titles">
             <h1 class="explore-title">Live</h1>
-            <div class="live-sub"><span id="live-dot"></span><span id="live-sub-text">Senaste 45 min</span></div>
+            <div class="live-sub"><span id="live-dot" hidden></span><span id="live-sub-text">Senaste 45 min</span></div>
           </div>
           <button class="avatar-btn avatar-btn--sm" onclick="showScreen('profile')" aria-label="Profil">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
@@ -288,14 +276,13 @@
         <span>Qbar</span>
       </div>
       <div class="consent-title">Innan du börjar</div>
-      <div class="consent-text">Vi sparar ett anonymt ID på din enhet. Inget namn eller email.</div>
+      <div class="consent-text">Qbar bygger på allas rapporter. Inget namn, ingen e-post — och du kan radera allt under Profil.</div>
       <div class="consent-list">
-        <div class="consent-list-item"><span class="consent-dot"></span>Anonymt ID</div>
-        <div class="consent-list-item"><span class="consent-dot"></span>Dina körapporter</div>
-        <div class="consent-list-item"><span class="consent-dot"></span>Din position (bara om du tillåter)</div>
+        <div class="consent-list-item"><span class="consent-dot"></span>Ett anonymt ID på din enhet</div>
+        <div class="consent-list-item"><span class="consent-dot"></span>Dina kö-rapporter: ställe, antal i kö, tid, ev. kommentar</div>
+        <div class="consent-list-item"><span class="consent-dot"></span>Din position stannar på enheten och sparas aldrig</div>
       </div>
-      <button class="consent-accept" onclick="acceptConsent()">Jag förstår och godkänner</button>
-      <button class="consent-decline" onclick="declineConsent()">Använd utan att spara data</button>
+      <button class="consent-accept" onclick="acceptConsent()">Jag förstår</button>
     </div>
   </div>
 

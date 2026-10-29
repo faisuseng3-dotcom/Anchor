@@ -33,8 +33,8 @@ deploy**, inte en databasuppdatering.
 | `address` | string | `'Birger Jarlsgatan 20'` | Visas i venue-kort, sökbart (poäng 20). |
 | `area` | string | `'Östermalm'` | Visas, sökbart (poäng 30–40), gruppering. |
 | `type` | `'bar'` \| `'klubb'` | `'klubb'` | Filter i Utforska, väljer kartikon (glas/not). |
-| `lat`, `lng` | number | `59.3360, 18.0730` | Kartnål, avståndsberäkning, kvällsplan. |
-| `closing` | string `HH:MM` | `'05:00'` | `closingHour()` → kvällsplan, "hinner du". |
+| `lat`, `lng` | number | `59.3360, 18.0730` | Kartnål, avstånd och gångtid (`distanceKmTo`), "Bäst nu". |
+| `closing` | string `HH:MM` | `'05:00'` | `closingHour()` / `minutesToClose()` → "Bäst nu", "hinner du". |
 | `pace` | `'slow'` \| `'normal'` \| `'fast'` | `'slow'` | **Startgissning för dörrtakt** innan mätningar finns. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md). |
 
 Alla 28 objekt har samtliga nio fält (verifierat). `pace` fördelar sig `fast: 14`, `normal: 9`,
@@ -95,7 +95,7 @@ mindre än intervallets bredd. Detta är avsiktligt och ska inte "städas bort".
 ### Rapporttyperna
 
 ```
-initial    Mäter kölängden. Startar en queue_session. Enda typen som räknas som en
+initial    Mäter kölängden. Startar en queue_session (inte vid "Ingen kö"). Enda typen som räknas som en
            kömätning (isQueueReport). Ger 10 poäng.
 followup   "Står du kvar?" — en ny position i SAMMA kö. Mäter hur snabbt kön rör sig.
            Räknas INTE som en kömätning. Minst 4 min mellan varje, max 4 stycken.
@@ -107,8 +107,8 @@ entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verk
 
 | Funktion | Fråga | Gräns |
 |---|---|---|
-| `loadReports` | `select * where expires_at >= nu order by created_at desc` | **limit 100** |
-| `loadHistoricalPatterns` | `select venue_id, queue_status, created_at where created_at >= 8 v, queue_status != 'none', report_type = 'initial'` | ingen → PostgREST-default 1000, **osorterat** |
+| `loadReports` | `select * where expires_at >= nu order by created_at desc` | **limit 1000** (B-05) |
+| `loadHistoricalPatterns` | `select venue_id, queue_status, created_at where created_at >= 8 v, report_type = 'initial' order by created_at desc` — "Ingen kö" räknas med, kvällen just nu (senaste 12 h) räknas bort i klienten | **limit 1000** |
 | `loadHistoricalRates` | `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
 | `loadUserHistory` | `select * where user_id = mitt` | ingen |
 
@@ -118,13 +118,13 @@ entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verk
 
 | Kolumn | Skrivs | Läses |
 |---|---|---|
-| `user_id` | ja | nej |
-| `venue_id` | ja | nej |
+| `user_id` | nej | nej |
+| `venue_id` | nej | nej |
 
-Appen **läser aldrig** från `favorites`. Favoriter visas från `localStorage.qb_favorites`
-(`src/main.js`). Tabellen får `insert` och `delete` men värdet används inte.
-Konsekvens: favoriter följer inte med mellan enheter, och tabellen fyller ingen funktion i appen
-idag.
+Appen **varken skriver eller läser** `favorites` längre. Favoriter finns bara i
+`localStorage.qb_favorites` (`src/main.js`, `toggleFavorite`). Det enda anropet som rör tabellen är
+`delete` i `deleteAllUserData()`, som tar bort gamla rader från när appen skrev dit.
+Konsekvens: favoriter följer inte med mellan enheter — det sägs också i integritetstexten.
 
 **OVERIFIERAT:** tidigare observation i projektet var att tabellen har en RLS-policy med
 `ALL = true`, alltså att vem som helst kan radera vem som helsts favoriter. Kan inte bekräftas
@@ -144,8 +144,8 @@ Poäng, nivå, streak och märken beräknas helt i klienten i `updateProfileStat
 poäng = (antal initial-rapporter × 10) + (antal entered-rapporter × 5)
 ```
 
-Det betyder att tabellen är **funktionellt oanvänd** och att RPC-anropet `increment_points`
-är verkningslöst. Se F-04 i granskningen.
+Det betyder att tabellen är **funktionellt oanvänd**. RPC-anropet `increment_points` är borttaget
+(avsnitt 6). Se F-04 i granskningen.
 
 ---
 
@@ -168,16 +168,11 @@ person är på väg någonstans. **Det här är mönstret som bör användas fö
 
 ---
 
-## 6. `increment_points` — en RPC som inte finns
+## ~~6. `increment_points` — en RPC som inte finns~~ — åtgärdat
 
-`submitReport` och `queueSessionEntered` anropar
-`supabase.rpc('increment_points', …)`. Funktionen finns enligt tidigare observation inte i
-databasen.
-
-Supabase-klienten **kastar inte** vid RPC-fel — den returnerar `{ data, error }`. Returvärdet
-kontrolleras inte på något av ställena. Felet är därför **helt tyst**. Eftersom poängen ändå
-beräknas i klienten syns ingen skillnad för användaren; anropet är ett bortkastat nätverksanrop
-per rapport och ett vilseledande spår i koden.
+`submitReport` och `queueSessionEntered` anropade `supabase.rpc('increment_points', …)`, en funktion
+som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) och poängen beräknas
+ändå i klienten. Anropen är borttagna; appen anropar inte längre någon poäng-RPC.
 
 ---
 
@@ -190,9 +185,8 @@ per rapport och ett vilseledande spår i koden.
 | `qb_on_my_way` | Aktivt "På väg"-läge | Bannern försvinner, servern har kvar posten tills den löper ut |
 | `qb_favorites` | Array med venue-id | Favoriterna försvinner (de läses inte från databasen) |
 | `qb_testdata` | `'1'` = testdata på (Alt + 2) | — |
-| `qb_consent` | Samtycke givet | Samtyckesmodalen visas igen |
+| `qb_consent` | `'true'` när informationsrutan bekräftats ("Jag förstår"); inget annat värde sätts | Informationsrutan visas igen |
 | `qb_onboarding_done` | Introduktionen klar | Introduktionen visas igen |
-| `qb_watched` | Bevakade ställen | — (funktionen är delvis död, se F-05) |
 | `qb_install_dismissed` | PWA-prompten avvisad | — |
 
 ---
@@ -206,7 +200,7 @@ per rapport och ett vilseledande spår i koden.
    åt, och ingen klient kan bevisa vem den är. **Detta är grundorsaken till punkterna 2–4.**
 
 2. **Spärren mot dubbelrapportering är enbart klientsidan.** `submitReport` letar efter
-   egna rapporter under 20 minuter i `allReports` — alltså i de **100 senaste** inlästa raderna.
+   egna rapporter under 20 minuter i `allReports` — alltså i de **1000 senaste** inlästa raderna.
    Finns ens den egna rapporten inte där, släpper spärren igenom. Och den som rensar
    `localStorage` får ett nytt `user_id` och är fri igen.
    Felsträngarna `rate_limited` och `too_soon` i `reportErrorText` antyder att en
@@ -250,7 +244,7 @@ Stängd för databastext, men beroendet är indirekt och värt att skydda:
 - Vilka RLS-policyer som faktiskt gäller för `reports`, `favorites`, `user_profiles`, `on_my_way`
 - Om det finns serverside-triggrar som validerar `people_ahead`, `queue_status`, `expires_at`
 - Om det finns en serverspärr mot dubbelrapportering
-- Om `increment_points` finns
+- Om `increment_points` finns (appen anropar den inte längre)
 - Kolumntyper, NOT NULL, CHECK-begränsningar, index och främmande nycklar
 
 Ett försök att hämta PostgREST:s OpenAPI-schema (som hade gett kolumner och typer utan att röra en
