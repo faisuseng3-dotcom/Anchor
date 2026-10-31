@@ -200,7 +200,7 @@ Samma kölängd (37) ger 10–15 min eller 25–50 min beroende på dörren. Det
 | Villkor | Status | Färg |
 |---|---|---|
 | `full` | `long` | `#FF4D5E` |
-| `ahead === 0` eller `mins < 3` | `none` | `#34E07F` |
+| `ahead === 0` (bara när ingen står framför) | `none` | `#34E07F` |
 | `mins < 18` | `short` | `#FFD23F` |
 | `mins < 30` | `medium` | `#FF8A3D` |
 | annars | `long` | `#FF4D5E` |
@@ -213,14 +213,13 @@ för gamla rapporter utan `people_ahead`.
 
 `computeStatus` används när `estimateWait` returnerar `null`:
 
-1. Finns en väntetidsskattning → `waitToStatus(est)`.
-2. Annars: ta `initial`-rapporter för stället. Finns ingen → `'unknown'`.
-3. Ta de som är färskare än 45 minuter; finns inga, ta **enbart den senaste** oavsett ålder.
-4. Returnera den **vanligaste** `queue_status` i den gruppen.
+1. Stängt ställe (`isClosed`) → `'unknown'`.
+2. Finns en väntetidsskattning → `waitToStatus(est)`.
+3. Annars: ta `initial`-rapporter för stället som är färskare än 45 minuter. Finns ingen → `'unknown'`.
+4. Returnera den **vanligaste** `queue_status` i den gruppen (gammalt `'free'` läses som `'none'`).
 
-Steg 3 är värt att känna till: en rapport från i förrgår kan avgöra statusen om inget nyare finns.
-Gränssnittet markerar detta genom tidsstämpeln i raden, men **statusfärgen degraderas inte** med
-åldern.
+~~Steg 3 föll tidigare tillbaka på den senaste rapporten oavsett ålder~~ — kartan visade då "30+ min"
+där listan sa "–". Åtgärdat: bara färsk data ger status, samma gräns som `estimateWait`.
 
 ---
 
@@ -248,11 +247,17 @@ Används av "På väg"-bannern. Kräver:
 
 - minst **3 `initial`-rapporter** senaste 30 minuterna,
 - som sträcker sig över minst **10 minuter**,
+- från minst **2 olika personer** (`user_id`) — en persons rapporter är ingen trend,
 - och att man är minst 5 minuter bort.
 
-Annars returneras `null` och bannern visar "kön nu" i stället. Trenden extrapoleras linjärt och
-andra som är på väg läggs till med **halv vikt** (`othersOnWay / 2`), eftersom inte alla som
-säger att de är på väg faktiskt kommer.
+Annars returneras `null` och bannern visar "kön nu" i stället. Trenden är lutningen (minsta
+kvadrat) över **alla** dessa rapporter, begränsad till **±0,5 personer/min**, och extrapoleras
+linjärt. Väntas kön inte ändras ges samma spridning som skattningen. Andra som är på väg läggs
+till med **halv vikt** (`othersOnWay / 2`), eftersom inte alla som säger att de är på väg faktiskt
+kommer.
+
+~~Trenden räknades förut på första mot sista rapporten~~ — ordningen avgjorde allt: 5, 17, 60 gav
+"25–50" och 60, 17, 5 gav "Ingen kö". Åtgärdat med lutningen ovan.
 
 ### `computeCalibration` — håller modellen ärlig
 
@@ -352,7 +357,7 @@ fel.
 |---|---|
 | `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `setWaitRange`, `aheadBucket`, `median` | **Ja** — rena funktioner, samma indata ger alltid samma utdata |
 | `historicalRateFor`, `computeCalibration` | **Ja**, men kräver att tiden skickas in (vilket den kan) |
-| `computeStatus`, `venueWaitText`, `forecastWait` | **Nej** — läser `Date.now()` och den globala `allReports` internt |
+| `computeStatus`, `venueWaitText`, `forecastWait` | **Nej** — läser `Date.now()` och den globala `allReports` internt. `estimateWait` utan `now` tål 2 min klockskillnad, så en egen nyss skickad rapport döljs inte av en telefonklocka som ligger efter |
 | Allt som visas | Beror på vilka 100 rapporter `loadReports` råkade hämta |
 
 De rena funktionerna i första raden kan testas direkt i Node utan webbläsare, utan Supabase och

@@ -44,7 +44,7 @@ const exsumBlock = between('function exsumTimeSince', 'function renderExploreSum
 // setTestReports nedan, så testet styr dem utan DOM.
 const bestNowBlock = [
   between('function minutesToClose', '// A — vad som hänt'),
-  between('function distanceKmTo', '// Gångtid i minuter'),
+  between('function distanceKmTo', '// "650 m" under 950 m'),
   between('function computeBestNow', '// Raderna glider in')
 ].join('\n');
 

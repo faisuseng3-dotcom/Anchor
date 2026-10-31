@@ -7,8 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="apple-touch-icon" href="/favicon.svg">
-  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Qbar&quot;,&quot;short_name&quot;:&quot;Qbar&quot;,&quot;start_url&quot;:&quot;/&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230B0B0D&quot;,&quot;theme_color&quot;:&quot;%230B0B0D&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;/favicon.svg&quot;,&quot;sizes&quot;:&quot;any&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;,&quot;purpose&quot;:&quot;any&quot;}]}">
+  <!-- iOS kräver PNG för hemskärmen; SVG blev en skärmdump. Manifestet som fil: en data:-URL kan inte tolka start_url. -->
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
   <title>Qbar</title>
   <!-- Introt spelas en gång per session; körs före första målningen så att det aldrig blinkar till. -->
   <script>try { sessionStorage.getItem('qb_splash') ? document.documentElement.classList.add('no-splash') : sessionStorage.setItem('qb_splash', '1'); } catch (e) {}</script>
@@ -151,6 +152,7 @@
 
       <div id="rs2" style="display:none">
         <div id="rs-vname"></div>
+        <div id="rs-far" class="rs-far" hidden></div>
         <div class="rs-question">Hur många står framför dig?</div>
         <input id="rs-comment" class="rs-comment" type="text" maxlength="80" placeholder="Kommentar (valfritt): fri entré, dresscode, VIP-kö…" />
         <button class="q-btn q-btn-count q-fill-0" onclick="pickAhead(0)"><span class="q-btn-num">0</span><span class="q-btn-sub">Ingen kö — gå rakt in</span></button>

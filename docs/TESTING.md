@@ -8,7 +8,7 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 | Verktyg | Finns | Kommando |
 |---|---|---|
-| **Vitest — 124 enhetstester** | ✅ | `npm test` |
+| **Vitest — 132 enhetstester** | ✅ | `npm test` |
 | **Playwright — 12 E2E-tester** | ✅ | `npm run e2e` |
 | `scripts/check.js` — 55 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
@@ -47,9 +47,10 @@ CI kör båda vid varje push. Det är den enda kontrollen som inte går att hopp
 | `tests/search.test.js` | 20 | `venueScore`, `venueSearch`, `_searchNorm` |
 | `tests/venues.test.js` | 16 | `VENUES`-integritet, koordinater, överlappande kartnålar |
 | `tests/loadstate.test.js` | 9 | `exsumText` — serverfel får aldrig se ut som en tyst kväll |
-| `tests/bestnow.test.js` | 4 | `computeBestNow` — "Ingen kö" kan bli "Bäst nu", bara färska kömätningar räknas |
+| `tests/bestnow.test.js` | 5 | `computeBestNow` — "Ingen kö" kan bli "Bäst nu", bara färska kömätningar räknas, tid tills du är inne avgör (kort kö intill slår ingen kö 2,7 km bort) |
+| `tests/status.test.js` | 7 | `computeStatus` bara på färsk data, stängt → `unknown`; `forecastWait` lutning max ±0,5/min, oförändrad kö behåller spridningen, en persons rapporter är ingen trend |
 | `e2e/support.js` | — | Supabase-mock, rapportbyggare, uppstart |
-| `e2e/app.spec.js` | 12 | Start, feltillstånd, sök, rapportflödet, kartans felläge |
+| `e2e/app.spec.js` | 12 | Start, feltillstånd, sök, rapportflödet, kartans felläge. Klockan låses till `E2E_NOW` (fredag 23:00) med `page.clock.setFixedTime`, så stängningstider inte beror på när testet körs |
 
 Testerna kör i tidszonen **Europe/Stockholm** (`vitest.config.js`). Det är inte kosmetika:
 `nightKey()` drar bort sex timmar för att en fredag 00:30 ska höra till fredagskvällen, och
@@ -213,7 +214,7 @@ block mellan **ankare**, inte radnummer:
 | Väntetidsmodellen | `var PACE_RATE` | `function getStatusLabel` |
 | Fuzzy-sökningen | `function _searchNorm` | `// ── Utforska` |
 | Färskhetsraden | `function exsumTimeSince` | `function renderExploreSummary` |
-| "Bäst nu" | `function minutesToClose`, `function distanceKmTo`, `function computeBestNow` | var sin ankarkommentar efter funktionen |
+| "Bäst nu" | `function minutesToClose` (+ `isClosed`), `function distanceKmTo` … `othersOnWay`, `function computeBestNow` | var sin ankarkommentar efter blocket |
 
 Blocken körs med `new Function`, och `getVenueById` och `allReports` matas in som attrapper
 eftersom de deklareras utanför blocken. Saknas ett ankare kastar hjälparen ett namngivet fel i
@@ -356,7 +357,7 @@ await page.route('**/*.supabase.co/**', r => r.fulfill({
 
 | Steg | Resultat |
 |---|---|
-| Enhetstester på modellen | Vitest, 124 tester i sju filer. Första körningen hittade `sessionRates`-buggen (avsnitt 3) |
+| Enhetstester på modellen | Vitest, 132 tester i åtta filer. Första körningen hittade `sessionRates`-buggen (avsnitt 3) |
 | Ett kommando | `npm run verify` — tester, kontroller, bygge |
 | Spärr före commit | `.husky/pre-commit`, sätts upp av `npm install` |
 | E2E | Playwright, 12 tester i `e2e/`, mobil viewport, mockad Supabase |
@@ -392,7 +393,7 @@ delar som inte är rena funktioner.
 ### Kvar: flytta modellen till `src/model/`
 
 **Först nu**, när testerna finns. De bevisar att flytten inte ändrar beteendet: `tests/harness.js`
-byts mot vanliga `import`-satser och alla 124 testerna ska fortsätta passera. Går de från grönt till
+byts mot vanliga `import`-satser och alla 132 testerna ska fortsätta passera. Går de från grönt till
 rött är det flytten som är fel, inte testet.
 
 Det öppnar också för att Expo-appen kan importera samma modell, som den i dag helt saknar.

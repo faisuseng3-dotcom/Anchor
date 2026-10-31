@@ -95,13 +95,20 @@ mindre än intervallets bredd. Detta är avsiktligt och ska inte "städas bort".
 ### Rapporttyperna
 
 ```
-initial    Mäter kölängden. Startar en queue_session (inte vid "Ingen kö"). Enda typen som räknas som en
-           kömätning (isQueueReport). Ger 10 poäng.
+initial    Mäter kölängden. Startar en queue_session (inte vid "Ingen kö", och inte när man är långt
+           från stället — isFarFrom, >300 m minus GPS-noggrannhet). Enda typen som räknas som en
+           kömätning (isQueueReport). Ger 10 poäng. Har man redan en session på samma ställe blir
+           rapporten i stället en followup/entered.
 followup   "Står du kvar?" — en ny position i SAMMA kö. Mäter hur snabbt kön rör sig.
            Räknas INTE som en kömätning. Minst 4 min mellan varje, max 4 stycken.
 entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verkliga
-           väntetiden och används för kalibrering. Ger 5 poäng.
+           väntetiden och används för kalibrering. Ger 5 poäng. Mer än 20 min efter senaste
+           punkten (QS_STALE_GAP) frågar bannern "Kom du in nyss?"; "Tidigare" avslutar
+           sessionen lokalt utan att skicka (en sen tryckning gav takten 0,53 i stället för ~2,5).
 ```
+
+Inga rapporter skickas i testläge ("Testläge — inget skickas") och stängda ställen går inte att
+rapportera.
 
 ### Läsfrågor
 
@@ -110,7 +117,7 @@ entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verk
 | `loadReports` | `select * where expires_at >= nu order by created_at desc` | **limit 1000** (B-05) |
 | `loadHistoricalPatterns` | `select venue_id, queue_status, created_at where created_at >= 8 v, report_type = 'initial' order by created_at desc` — "Ingen kö" räknas med, kvällen just nu (senaste 12 h) räknas bort i klienten | **limit 1000** |
 | `loadHistoricalRates` | `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
-| `loadUserHistory` | `select * where user_id = mitt` | ingen |
+| `loadUserHistory` | `select id, queue_session, report_type, created_at where user_id = mitt` — profilen räknar unika kö-sessioner; "–" medan den hämtar eller om den misslyckas | ingen |
 
 ---
 

@@ -34,7 +34,7 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
-| Enhetstester | **Vitest** 5.x, 124 tester | `vitest.config.js`, `tests/` |
+| Enhetstester | **Vitest** 5.x, 132 tester | `vitest.config.js`, `tests/` |
 | E2E | **Playwright** 1.56, 12 tester | `playwright.config.js`, `e2e/` |
 | Spärr före commit | **husky** 9.x — kör `npm run verify` | `.husky/pre-commit` |
 | CI | GitHub Actions | `.github/workflows/verify.yml` |
@@ -53,12 +53,12 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  313 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
-src/main.js                3407 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1301 rader   Design tokens + alla komponentklasser
+index.html                  315 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
+src/main.js                3590 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1318 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
-tests/*.test.js             124 tester   Vitest: modell, sessioner, historik, sök, venues, lägen, Bäst nu
+tests/*.test.js             132 tester   Vitest: modell, status, sessioner, historik, sök, venues, lägen, Bäst nu
 vitest.config.js                        TZ=Europe/Stockholm — nattgränsen hamnar fel i UTC
 e2e/support.js                          Supabase-mock; inget test rör produktionsdatabasen
 e2e/app.spec.js             12 tester   Playwright, 390×844: start, feltillstånd, sök, rapport
@@ -201,7 +201,7 @@ radnummer** — en enda commit kan flytta allt nedanför sig. Kör
 | **`Gemensam fuzzy-sökning`** | `venueScore`, `venueSearch` | **ja** |
 | `Utforska` | Filter, rader, `computeExploreSummary` | delvis |
 | `Färskhetsrad` | `exsumText`, `renderExploreSummary` | delvis |
-| *(efter Utforska)* | `computeBestNow`: "Bäst nu" ur färska kömätningar, avstånd, stängningstid | delvis |
+| *(efter Utforska)* | `isClosed`, `isAtVenue`, `isFarFrom`, `othersOnWay`; `computeBestNow`: "Bäst nu" rangordnat efter tid tills du är inne (gångtid + kötid, +5 min för data 15–30 min gammal), utan ställen >40 min bort eller som stänger för tidigt | delvis |
 | `Live-feed` | `_liveRowHtml`, `renderLiveFeed` | nej |
 | `På väg` | Banner, RPC-synk | nej |
 | `Rapportera` / `Snabbrapport` | De tre stegen, bottom sheet | nej |
@@ -219,7 +219,7 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 
 | Beroende | Används för | Vad händer om det fallerar |
 |---|---|---|
-| Supabase REST | Läsa och skriva rapporter | `_loadState` sätts till `'error'` och `renderLoadFailure()` kör. Finns rapporter kvar behålls de med varningen "siffrorna kan vara gamla"; finns inga visas felläge. Se [TESTING.md](TESTING.md) avsnitt 4 |
+| Supabase REST | Läsa och skriva rapporter | `_loadState` sätts till `'error'` och `renderLoadFailure()` kör, som ritar om allt via `renderReports()` så att raderna åldras under varningen. Finns rapporter kvar behålls de med varningen "siffrorna kan vara gamla"; finns inga visas felläge. `loadReports` har sekvensnummer (ett äldre svar skriver inte över ett nyare) och 15 s timeout. Se [TESTING.md](TESTING.md) avsnitt 4 |
 | Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen går då var 30 s i stället för varannan minut |
 | Supabase RPC `on_my_way_counts` | "På väg"-räknare | Varning i konsolen, räknaren visas inte |
 | ~~Supabase RPC `increment_points`~~ | Anropen borttagna — funktionen fanns inte. Poäng räknas klientsidan | — |

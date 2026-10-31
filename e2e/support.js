@@ -6,10 +6,15 @@
 
 const DAY = 24 * 3600 * 1000;
 
+/**
+ * Testernas klocka: fredag 23:00 lokal tid, i både webbläsaren (openApp) och testdatan (report). Appen räknar med
+ * stängningstider, så med verklig klocka berodde utfallet på när testerna kördes — klockan 01:30 var Tjoget stängt.
+ */
+export const E2E_NOW = new Date(2026, 9, 16, 23, 0).getTime();
+
 /** En rapport i samma form som tabellen `reports` levererar. */
 export function report(venueId, minsAgo, peopleAhead, opts = {}) {
-  const now = Date.now();
-  const at = (m) => new Date(now - m * 60000).toISOString();
+  const at = (m) => new Date(E2E_NOW - m * 60000).toISOString();
   return {
     id: `${venueId}-${minsAgo}-${opts.type || 'initial'}`,
     venue_id: venueId,
@@ -88,6 +93,8 @@ export async function skipOnboarding(page) {
 export async function openApp(page, path = '/') {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  // Fast tid, inte fryst: Date.now() står på E2E_NOW men timers och animationer går som vanligt.
+  await page.clock.setFixedTime(E2E_NOW);
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   // Appen startar sin inläsning direkt vid import; vänta på att något har renderats.
   await page.waitForFunction(

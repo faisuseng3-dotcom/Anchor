@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 407 rader), `src/style.css` (1 301 rader), `index.html` (313 rader) |
+| Kod | `src/main.js` (3 590 rader), `src/style.css` (1 318 rader), `index.html` (315 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -93,7 +93,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 124 enhetstester (Vitest)
+npm test                   # 132 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -306,7 +306,14 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   (`getStatusClass`). Jämför aldrig `computeStatus(...)` med `'free'`: "Bäst nu" valde aldrig ett ställe utan kö av
   just det skälet (låst fast av `tests/bestnow.test.js`)
 - Utforska utan sökning: färska först, **kortast kö överst** (`QUEUE_RANK`), sedan nyast rapport. Chippet "Kort" är
-  bara `short`; medel syns under "Alla". Listans trendpil kräver två mätningar med antal ≥10 min isär i olika intervall
+  bara `short`; medel syns under "Alla". Trenden (kortets ändringsrad och listans pil) är **en** regel, `queueChange`:
+  senaste mätningen mot den senaste som är ≥10 min äldre, i olika intervall
+- **"Ingen kö" (`'none'`) betyder att ingen står framför** — aldrig "det går fort". 1–10 personer vid en snabb dörr är
+  `short` och "<5 min". Låst fast av `tests/wait.test.js` och `tests/status.test.js`
+- **Stängt** (`isClosed`: från stängningstid till lunch): ingen väntetid (`venueWaitText` ''), status `unknown`, ingen
+  pill, sist i listan med "Stängt", kortet utan knappar, kan inte rapporteras. Stänger stället innan du hinner fram säger
+  kortet det i stället för att visa en prognos
+- **Ingen data äldre än 45 min** någonstans — inte heller `computeStatus` reservväg för rapporter utan antal
 - Färskhetsraden ersatte den gamla "Stockholm just nu"-widgeten med räknare per status. Antalen
   finns redan i filterchipsen, så raden visar bara det chipsen inte säger — hur färsk datan är.
   Lägg inte tillbaka räknarna; det är redundans (princip 5)
@@ -333,8 +340,15 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   personer i kö · 2 rapporter senaste 20 min" — siffran är medianen, `estimateWait`), resten på en lugn rad
   (`#vc-meta`), prognosrutan (`#vc-go`, bara när `forecastWait` ger en), rapporterna hopfällda. Satoshi, inga versaler
   i monospace, inget visat två gånger
-- Huvudknappen följer läget (`openVenueCard`): ≤150 m från stället → "Rapportera kön"; annars "Gå hit · 12 min"
-  (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad → "Vägbeskrivning · 7,8 km" utan "på väg"
+- Huvudknappen följer läget (`renderVenueCard`): vid stället (`isAtVenue`: ≤150 m med GPS-osäkerheten, högst 100 m, till
+  din fördel) → "Rapportera kön"; annars "Gå hit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
+  eller om stället stänger innan du är framme → bara "Vägbeskrivning · 7,8 km"
+- `renderVenueCard` ritar innehållet, `openVenueCard` öppnar. Ett öppet kort ritas om vid ny data och ny position
+  (`refreshVenueCard`). All omritning efter läsning, fel och väckning går genom `renderReports()`
+- Positionen följer med (`watchPosition`, omritning efter ≥25 m). `loadReports` har löpnummer (ett äldre svar skriver
+  aldrig över ett nyare) och 15 s tidsgräns; `visibilitychange` ritar om direkt när telefonen väcks
+- "Bäst nu" rangordnar efter **tid tills du är inne**: promenad + kö (+5 min om datan är 15–30 min). Över 40 min
+  promenad räknas inte, och stället måste ha ≥45 min kvar när du är framme
 - Avstånd och gångtid: `distanceKmTo` / `walkMinutesTo` (5 km/h fågelvägen) / `formatDistance` — samma siffror i
   kortet, "Bäst nu" och "På väg"
 - Kluster bara för tätt liggande ställen (`clusterRadius` 20, t.o.m. zoom 13,99). Startvyn (`startCamera`) ramar in
@@ -347,13 +361,17 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
 - Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3). "Ingen kö" startar
-  ingen session — det finns ingen kö att stå i. Varje rapport avslutar "På väg"
+  ingen session — det finns ingen kö att stå i. En rapport vid stället avslutar "På väg"; en rapport långt ifrån
+  (`isFarFrom`, >300 m) tas emot men startar ingen session. Står du redan i kö på samma ställe blir en ny rapport en
+  uppföljning. "Jag är inne" >20 min efter senaste punkten frågar "Kom du in nyss?" — "Tidigare" skickar inget
+- Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
 - "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
 - Favoriter finns bara i `qb_favorites` på enheten. Tabellen `favorites` skrivs inte längre (lästes aldrig tillbaka)
 - Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
   data" lovade något koden aldrig gjorde
-- `forecastWait()` visas bara med ≥3 initial-rapporter på 30 min över ≥10 min
+- `forecastWait()` visas bara med ≥3 initial-rapporter från ≥2 personer på 30 min över ≥10 min. Trenden är lutningen
+  över alla rapporter, med tak ±0,5 personer/min — inte första mot sista rapport
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.
   Priorn väger som 2 sessioner, så den är **trög** — med 3 mätningar väger den fortfarande 40 %
 - `qbCalibration()` i konsolen: medianfel, bias (+ = appen lovade för kort väntan), andel i intervall
@@ -410,6 +428,12 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   - "Brukar vara …" räknade bort alla "Ingen kö"-rapporter och jämförde timmar fel efter midnatt (nu `nightKey`)
   - Borttaget: Kvällsplanering, det dolda "Nära dig"-arket, Bevaka, offline-bannern, serverkopian av favoriter och
     ett tiotal döda funktioner/exporter med CSS (≈480 rader)
+- Djupgranskningen 2026-10-31 (allt rättat): stängda ställen såg öppna ut; kartan och kortet visade data äldre än 45 min;
+  ett sent "Jag är inne" förstörde dörrtakten; testläget skickade riktiga rapporter; prognosen avgjordes av ordningen
+  mellan tre rapporter; listan, ett öppet kort och "Bäst nu" stod kvar som färska vid fel, väckning och ny data; positionen
+  lästes en gång; "Bäst nu" skickade folk 4 km för att slippa 10 min kö; kluster glödde av gammal data; ingen
+  installation på iPhone (SVG-ikon, data:-manifest); listan gick inte att nå med tangentbord. E2E-testerna kör nu på en
+  fast kvällstid (`E2E_NOW` i `e2e/support.js`), annars berodde de på när de kördes
 
 ## Vidare läsning
 

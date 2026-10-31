@@ -309,6 +309,7 @@
       letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--st); white-space: nowrap;
     }
     .bn-meta { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .bn-card--aging .bn-wait { opacity: 0.55; }
     .bn-card--empty { border-left-color: var(--status-unknown); }
     /* Mapbox-attribution ovanför navigationen, dämpad mot mörk karta */
     #screen-home .mapboxgl-ctrl-bottom-right,
@@ -442,6 +443,7 @@
 
     /* Knappar: en huvudhandling som följer läget (Gå hit eller Rapportera kön, se openVenueCard) och en sekundär. */
     .vc-actions-main { display: flex; gap: 8px; }
+    .vc-actions-main[hidden] { display: none; }
     .vc-btn {
       flex: 1; border: 1px solid var(--border-hover); border-radius: 10px; height: 50px; padding: 0 16px;
       font-family: var(--font-base); font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
@@ -831,6 +833,7 @@
       font-variant-numeric: tabular-nums; line-height: 1; text-align: right;
       transition: opacity 150ms ease; white-space: nowrap;
     }
+    .erow--closed .erow-hero { font-family: var(--font-base); font-size: 15px; font-weight: 600; letter-spacing: 0; }
     .erow-trend { font-size: 13px; font-weight: 700; line-height: 1; white-space: nowrap; }
     .erow-trend--up     { color: var(--status-medium); }
     .erow-trend--down   { color: var(--status-free); }
@@ -1008,6 +1011,9 @@
     .rs-item:active { background: rgba(255,255,255,0.04); }
     .rs-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .rs-dot--none { border: 2px solid var(--text-muted); }
+    .rs-item--closed { opacity: 0.5; }
+    /* Långt från stället: ett lugnt besked ovanför knapparna, ingen varningsfärg — det är information, inte ett fel. */
+    .rs-far { font-size: 14px; line-height: 1.4; color: var(--text-primary); background: var(--surface); border: 1px solid var(--border-hover); border-radius: 12px; padding: 10px 12px; margin-bottom: var(--space-2); }
     .rs-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .rs-name { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); line-height: 1.25; }
     .rs-area { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
@@ -1299,3 +1305,14 @@
     .hist-chip--medium { background: rgba(255,138,61,0.12); color: var(--status-medium); }
     .hist-chip--short  { background: rgba(255,210,63,0.12); color: var(--status-short); }
     .hist-chip--none   { background: rgba(52,224,127,0.10); color: var(--status-free); }
+
+    /* ── Testläge ───────────────────────────────────────────────────────── */
+    /* Påhittade köer får aldrig misstas för riktiga. Neutral etikett, ingen statusfärg — det är ett läge, inte en kö. */
+    .qb-testdata body::after {
+      content: 'Testdata · Alt + 2 stänger av';
+      position: fixed; z-index: 2000; left: 50%; transform: translateX(-50%);
+      bottom: calc(76px + env(safe-area-inset-bottom));
+      padding: 3px 10px; border-radius: 6px; pointer-events: none;
+      background: var(--text-primary); color: var(--bg-primary);
+      font: 700 12px/1.4 var(--font-base);
+    }

@@ -34,4 +34,10 @@ describe('computeBestNow', () => {
     setTestReports([report('kristall', 5, 60)]);
     expect(computeBestNow()).toBeNull();
   });
+
+  it('tid tills du är inne avgör: kort kö runt hörnet slår ingen kö 2,7 km bort', () => {
+    // Du står vid Kristall. Neu (2,7 km, ~32 min promenad) har ingen kö; Kristall har 10–25 framför (~9 min).
+    setTestReports([report('neu', 5, 0), report('kristall', 5, 17)], { lat: 59.334, lng: 18.062, acc: 10 });
+    expect(computeBestNow().venue.id).toBe('kristall');
+  });
 });

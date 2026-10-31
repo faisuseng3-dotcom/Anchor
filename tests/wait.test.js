@@ -243,9 +243,10 @@ describe('formatWait — texten', () => {
 });
 
 describe('waitToStatus — nivå och därmed färg', () => {
-  it('trösklarna ligger på 3, 18 och 30 minuter', () => {
+  it('trösklarna ligger på 18 och 30 minuter; "Ingen kö" bara när ingen står framför', () => {
     expect(waitToStatus({ ahead: 0, mins: 0, full: false })).toBe('none');
-    expect(waitToStatus({ ahead: 17, mins: 2, full: false })).toBe('none');
+    // 1–10 personer vid en snabb dörr är kort kö, inte "Ingen kö" — texten bredvid säger "<5 min"
+    expect(waitToStatus({ ahead: 5, mins: 1.7, full: false })).toBe('short');
     expect(waitToStatus({ ahead: 17, mins: 3, full: false })).toBe('short');
     expect(waitToStatus({ ahead: 17, mins: 17.9, full: false })).toBe('short');
     expect(waitToStatus({ ahead: 17, mins: 18, full: false })).toBe('medium');
