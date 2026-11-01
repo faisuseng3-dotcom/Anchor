@@ -27,7 +27,6 @@
       --accent:          #5B9BFF;
       --accent-hover:    #7BB0FF;
       --accent-light:    rgba(91,155,255,0.14);
-      --accent-line:     rgba(91,155,255,0.40);
 
       /* ── Status (semantiska) — en skala, används överallt ─────────── */
       --status-free:     #34E07F;
@@ -36,8 +35,6 @@
       --status-long:     #FF4D5E;
       --status-unknown:  #55555B;
       --overlay-surface: #151517;
-      --success:         #34E07F;
-      --warning:         #FFD23F;
       --danger:          #FF4D5E;
 
       /* ── Avstånd (8px-grid) ────────────────────────────────────────── */
@@ -48,29 +45,13 @@
       --space-5:  40px;
       --space-6:  48px;
 
-      /* Legacy aliases (used in JS-injected HTML) */
-      --space-xs:  4px;
-      --space-sm:  8px;
-      --space-md: 12px;
-      --space-lg: 16px;
-      --space-xl: 20px;
-      --space-xxl:24px;
-
       /* ── Hörnradier ────────────────────────────────────────────────── */
       --radius-sm:   8px;
       --radius-md:   12px;
-      --radius-lg:   14px;
-      --radius-xl:   16px;
       --radius-full: 999px;
-
-      /* ── Skuggor ───────────────────────────────────────────────────── */
-      --shadow-card:   none;
-      --shadow-sheet:  none;
-      --shadow-focus:  0 0 0 3px rgba(255,255,255,0.15);
 
       /* ── Animationer ───────────────────────────────────────────────── */
       --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
       --dur-fast:   150ms;
       --dur-mid:    200ms;
       --dur-slow:   300ms;
@@ -123,18 +104,14 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .screen.active, #venue-card, .toast { animation: none !important; transition: none !important; }
+      /* Blinkande och skimrande prickar står still: färgen säger samma sak utan rörelse. */
+      .skeleton-erow::after, .erow-pulse-dot, .bast-chip-dot, .qs-live { animation: none !important; }
     }
 
     /* ── Skeleton Loading ──────────────────────────────────────────────── */
     @keyframes shimmer {
       0%   { background-position: -400px 0; }
       100% { background-position:  400px 0; }
-    }
-    .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.06) 75%);
-      background-size: 400px 100%;
-      animation: shimmer 1.5s infinite linear;
-      border-radius: var(--radius-md);
     }
     .skeleton-erow {
       display: flex; align-items: stretch;
@@ -309,7 +286,7 @@
       letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--st); white-space: nowrap;
     }
     .bn-meta { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
-    .bn-card--aging .bn-wait { opacity: 0.55; }
+    .bn-card--aging .bn-wait { opacity: 0.75; }
     .bn-card--empty { border-left-color: var(--status-unknown); }
     /* Mapbox-attribution ovanför navigationen, dämpad mot mörk karta */
     #screen-home .mapboxgl-ctrl-bottom-right,
@@ -339,7 +316,6 @@
 
     /* ── Bottom Sheet (Venue Card) ─────────────────────────────────────── */
     #vc-overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.45); }
-    @keyframes overlayIn { from{opacity:0} to{opacity:1} }
 
     #venue-card {
       display: none; position: fixed; z-index: 30;
@@ -355,9 +331,9 @@
       border-bottom: 0;
       border-top: 3px solid var(--st, var(--status-unknown));
       padding: 0 16px 14px;
+      /* Med många rapporter utfällda växte kortet över skärmkanten; nu rullar det i stället. */
+      max-height: calc(100dvh - 16px - env(safe-area-inset-top)); overflow-y: auto; overscroll-behavior: contain;
       padding-bottom: calc(14px + env(safe-area-inset-bottom));
-      /* Stämplad data använder systemets monospace (Menlo/SF Mono) — finns på varje enhet, laddas inte */
-      --stamp: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     }
     /* Under pågående drag följer kortet fingret direkt (ingen övergång). Vid släpp fjädrar det tillbaka. */
     #venue-card.vc-dragging { transition: none; }
@@ -407,7 +383,7 @@
     #vc-sub { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 10px; }
     #vc-meta { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
     #vc-meta:empty { display: none; }
-    .vc--aging #vc-status { opacity: 0.55; }
+    .vc--aging #vc-status { opacity: 0.75; }
     .vc--nodata #vc-sub { color: var(--text-muted); }
     /* Om du går nu: det enda med ram, för det är svaret på "är det värt att gå?". Bara när det finns en prognos. */
     #vc-go:empty { display: none; }
@@ -695,17 +671,13 @@
     .fdot--long  { background: var(--status-long); }
 
     /* ── Venue data widget ─────────────────────────────────────────────── */
-    @keyframes rowIn {
+    @keyframes rowInEmpty {
       from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes rowInEmpty {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 0.55; transform: translateY(0); }
-    }
     @media (prefers-reduced-motion: reduce) {
       .erow        { animation: none !important; opacity: 1   !important; }
-      .erow--empty { animation: none !important; opacity: 0.55 !important; }
+      .erow--empty { animation: none !important; opacity: 1 !important; }
     }
 
     /* Listan: rader i full bredd med 1px avdelare — som en kontoutdragslista, utan kortlåda runt */
@@ -756,9 +728,12 @@
     .erow--empty { animation: rowInEmpty 0ms both !important; background: rgba(255,255,255,0.02) !important; }
     .erow--empty.erow--intro { animation: rowInEmpty 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both !important; }
     .erow--empty:hover { background: rgba(255,255,255,0.04) !important; }
+    /* Utan data tonas bara siffran och kanten. Texten ("Ingen rapport senaste 45 min", "Brukar vara …") är det enda raden
+       säger — tonad hela raden låg den på 2,3:1 i kontrast och gick inte att läsa i mörker. */
+    .erow--empty .erow-hero, .erow--empty .erow-left-bar { opacity: 0.55; }
     /* State — aging (15–45 min): färgen bleks, åldern visas i text */
     .erow--stale .erow-left-bar { opacity: 0.35; }
-    .erow--stale .erow-hero     { opacity: 0.5; }
+    .erow--stale .erow-hero     { opacity: 0.75; } /* röd vid 0,75 ≈ 3,8:1 — gammal ska synas, men gå att läsa */
     .erow-stale-label { color: var(--status-short); font-weight: 700; }
     /* Bäst nu — accentkant runt raden, etikett ovanför namnet */
     .erow--best { background: rgba(52,224,127,0.05); }
@@ -894,12 +869,7 @@
     .explore-empty-sub   { font-size: 14px; font-weight: 500; color: var(--text-secondary); text-align: center; }
 
     /* ── Empty / Error states ──────────────────────────────────────────── */
-    .empty {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; margin-top: 48px; gap: 10px;
-    }
     .empty-icon { width: 32px; height: 32px; color: var(--text-muted); }
-    .empty p { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
     .empty-btn {
       background: transparent; border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 8px 20px;
@@ -1080,9 +1050,9 @@
     .qs-actions { display: flex; gap: 8px; margin-top: 12px; }
     .qs-btn { flex: 1; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-hover); background: transparent; color: var(--text-primary); font-family: var(--font-base); font-size: 15px; font-weight: 700; cursor: pointer; }
     .qs-btn--primary { background: var(--accent); color: var(--bg-primary); border-color: var(--accent); }
-    .qs-close { flex-shrink: 0; width: 36px; height: 36px; margin: -6px -6px 0 0; background: none; border: none; color: var(--text-muted); font-size: 22px; line-height: 1; cursor: pointer; }
+    .qs-close { flex-shrink: 0; width: 44px; height: 44px; margin: -10px -10px 0 0; background: none; border: none; color: var(--text-muted); font-size: 22px; line-height: 1; cursor: pointer; }
 
-    .rs-back { background: none; border: 0; margin-top: 4px; font-family: var(--font-base); font-size: 14px; color: var(--text-secondary); cursor: pointer; align-self: flex-start; padding: 4px 0; }
+    .rs-back { background: none; border: 0; margin-top: 4px; font-family: var(--font-base); font-size: 14px; color: var(--text-secondary); cursor: pointer; align-self: flex-start; padding: 4px 0; min-height: 44px; }
 
     /* ── Quick-report sheet animation ─────────────────────────────────── */
     @keyframes sheetIn {
@@ -1156,11 +1126,11 @@
 
     /* ── Toast ─────────────────────────────────────────────────────────── */
     .toast {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
       background: var(--text-primary); color: var(--bg-primary);
       border-radius: var(--radius-md); padding: 10px 20px;
       font-family: var(--font-base); font-size: 13px; font-weight: 500;
-      z-index: 500; white-space: nowrap;
+      z-index: 500; width: max-content; max-width: calc(100vw - 32px); text-align: center;
       animation: toastIn 0.25s var(--ease-out);
     }
     @keyframes toastIn {
@@ -1298,7 +1268,6 @@
       padding: 2px 6px;
       border-radius: 4px;
       letter-spacing: 0.01em;
-      opacity: 0.75;
       flex-shrink: 0;
     }
     .hist-chip--long   { background: rgba(255,77,94,0.12);  color: var(--status-long); }
@@ -1316,3 +1285,5 @@
       background: var(--text-primary); color: var(--bg-primary);
       font: 700 12px/1.4 var(--font-base);
     }
+    /* Telefoner har ingen Alt + 2: där räcker beskedet. */
+    @media (hover: none) { .qb-testdata body::after { content: 'Testdata · inget skickas'; } }

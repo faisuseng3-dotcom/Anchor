@@ -164,7 +164,7 @@ genom tre security-definer-funktioner:
 | RPC | Parametrar | Används av |
 |---|---|---|
 | `start_on_my_way` | `p_user_id`, `p_venue_id`, `p_minutes` | `goOnMyWay()` |
-| `stop_on_my_way` | `p_user_id` | `cancelOnMyWay()` |
+| `stop_on_my_way` | `p_user_id` | `cancelOnMyWay()`, `deleteAllUserData()` |
 | `on_my_way_counts` | — | `loadOnMyWayCounts()` |
 
 `on_my_way_counts()` returnerar enligt klientkoden bara ställen med minst 3 aktiva, och klienten
@@ -223,11 +223,13 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    tillsammans med `venue_id` och `created_at` — alltså rekonstruera var en enskild person varit
    under en kväll, i vilken ordning. Fältet renderas aldrig i gränssnittet, men det ligger i svaret.
 
-6. ~~**Radering kan misslyckas tyst.**~~ Åtgärdat. `deleteAllUserData()` raderar i alla tre tabeller
-   och räknar sedan raderna kvar (`count: 'exact', head: true`) — en delete som RLS nekar ger
-   inget fel, bara noll rader. Bara om alla tre visar `count === 0` rensas `localStorage`
-   (och `qb_user_id`); annars en toast och id:t finns kvar så att användaren kan försöka igen.
-   Låst fast av "5. Radera min data" i `e2e/app.spec.js`.
+6. ~~**Radering kan misslyckas tyst.**~~ Åtgärdat. `deleteAllUserData()` stoppar först "På väg"
+   (`stop_on_my_way`), raderar sedan i alla tre tabeller och räknar raderna kvar (`count: 'exact',
+   head: true`) — en delete som RLS nekar ger inget fel, bara noll rader. En tabell som inte finns
+   (`PGRST205` / `42P01`) räknas som tom. Bara om allt är tomt rensas `localStorage` (och
+   `qb_user_id`); annars en toast och id:t finns kvar så att användaren kan försöka igen.
+   Låst fast av "5. Radera min data" i `e2e/app.spec.js`. Integritetstexten och samtyckesrutan
+   nämner att "Gå hit" sparar vart du är på väg.
 
 7. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
    Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och

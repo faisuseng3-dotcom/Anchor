@@ -81,7 +81,7 @@
       </div>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
-        <span class="err-toast-msg">Livedata kunde inte laddas</span>
+        <span class="err-toast-msg">Ingen kontakt med servern</span>
         <button class="err-toast-retry" onclick="retrySupabase()">Försök igen</button>
       </div>
       <div id="best-now-card"></div>
@@ -235,7 +235,7 @@
   </div>
 
   <div id="vc-overlay" onclick="closeVenueCard()"></div>
-  <div id="venue-card">
+  <div id="venue-card" role="dialog" aria-modal="true" aria-labelledby="vc-name">
     <div class="vc-grab" id="vc-grab"><div class="vc-handle"></div></div>
     <div class="vc-header">
       <div class="vc-title">
@@ -271,17 +271,18 @@
     <button class="vc-share" onclick="vcShare()">Dela ställe</button>
   </div>
 
-  <div id="consent-modal">
+  <div id="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
     <div class="consent-card">
       <div class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 48 48"><rect x="6" y="11" width="13" height="7" rx="3.5" fill="#34E07F"/><rect x="6" y="21" width="22" height="7" rx="3.5" fill="#FFD23F"/><rect x="6" y="31" width="30" height="7" rx="3.5" fill="#FF4D5E"/></svg>
         <span>Qbar</span>
       </div>
-      <div class="consent-title">Innan du börjar</div>
+      <div class="consent-title" id="consent-title">Innan du börjar</div>
       <div class="consent-text">Qbar bygger på allas rapporter. Inget namn, ingen e-post — och du kan radera allt under Profil.</div>
       <div class="consent-list">
         <div class="consent-list-item"><span class="consent-dot"></span>Ett anonymt ID på din enhet</div>
         <div class="consent-list-item"><span class="consent-dot"></span>Dina kö-rapporter: ställe, antal i kö, tid, ev. kommentar</div>
+        <div class="consent-list-item"><span class="consent-dot"></span>Vid "Gå hit": vart du är på väg och när du är framme</div>
         <div class="consent-list-item"><span class="consent-dot"></span>Din position stannar på enheten och sparas aldrig</div>
       </div>
       <button class="consent-accept" onclick="acceptConsent()">Jag förstår</button>
@@ -291,7 +292,7 @@
   <div id="onboarding-overlay">
     <div id="ob-dim" onclick="obSkip()"></div>
     <div id="ob-spotlight"></div>
-    <div id="ob-bubble">
+    <div id="ob-bubble" role="dialog" aria-labelledby="ob-title" aria-describedby="ob-subtitle">
       <div id="ob-counter"></div>
       <div id="ob-title"></div>
       <div id="ob-subtitle"></div>

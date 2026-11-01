@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 590 rader), `src/style.css` (1 318 rader), `index.html` (315 rader) |
+| Kod | `src/main.js` (3 666 rader), `src/style.css` (1 289 rader), `index.html` (316 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -232,7 +232,8 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 
 ## Viktiga CSS-klasser
 
-- `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--long/--free` — nivå
+- `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--stale` — 15–45 min · `.erow--closed` — stängt.
+  Nivån syns bara i radens bakgrund och vänsterkant (inline-stil), det finns inga nivåklasser
 - `.erow-pulse-dot` — blinkande röd punkt vid lång kö
 - `.exsum-line` — färskhetsraden i Utforska ("17 av 28 ställen har färsk rapport · senast 3 min sedan")
 - `.venue-group` — grupperad container med `1px solid rgba(255,255,255,0.09)`
@@ -434,6 +435,12 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   lästes en gång; "Bäst nu" skickade folk 4 km för att slippa 10 min kö; kluster glödde av gammal data; ingen
   installation på iPhone (SVG-ikon, data:-manifest); listan gick inte att nå med tangentbord. E2E-testerna kör nu på en
   fast kvällstid (`E2E_NOW` i `e2e/support.js`), annars berodde de på när de kördes
+- Tredje granskningen 2026-11-01 (allt rättat): Rapportera-fliken kringgick kö-sessionens spärrar (nu uppföljning i
+  samma session); rader utan data var olästa (bara siffran tonas); Live räknade "Inne efter" från en utgången rapport;
+  felrutan på kartan följer `_loadState` (`updateConnectionToast`) och "Försök igen" prenumererar inte två gånger;
+  kartans puls bara på kartskärmen; vågor bara för rapporter <2 min; pillarnas intro väntar på data; skeletten bara vid
+  första laddningen; radering stoppar "På väg"; venue-kortet rullar i stället för att växa över kanten; dialogerna har
+  `role="dialog"` och fokus; toasten radbryts och har `role="status"`; tryckytor ≥44 px; död CSS och oanvända variabler bort
 
 ## Vidare läsning
 
