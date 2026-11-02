@@ -126,6 +126,46 @@ Icons that answer "this looks like a professional app" are decoration. Review an
 
 ---
 
+### Status said twice: colored left edge + tinted row
+
+The number already carries the status color. A 3–4px colored left border and a tinted background repeat it, and the
+left-accent card is the most common generated card. Rows, Live rows and the "Bäst nu" card stay neutral.
+
+```bash
+grep -n "border-left: [0-9]px solid var(--st\|left-bar\|lv-bar" src/style.css src/main.js
+```
+
+---
+
+### Em dashes in UI copy
+
+"Rapport skickad — tack!", "Ingen rapport — rapportera". The em dash is the clearest sign of generated text. Write two
+short sentences, or use a comma or colon. Ranges use the en dash without spaces ("10–25").
+
+```bash
+grep -n " — " src/main.js index.html | grep -v "//\|console\.\|<!--"
+```
+
+---
+
+### Uppercase eyebrow labels
+
+Small uppercase headings with letter-spacing ("FÄRSKA RAPPORTER 17") read as a template. Use sentence case, and drop
+the heading entirely if the line above already says it.
+
+```bash
+grep -n "text-transform: uppercase" src/style.css
+```
+
+---
+
+### Coach-mark tours
+
+A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining. The screens must explain themselves. Qbar
+removed its tour on 2026-11-02; do not add one back.
+
+---
+
 ## Output format
 
 ```

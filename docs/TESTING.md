@@ -10,7 +10,7 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 |---|---|---|
 | **Vitest — 132 enhetstester** | ✅ | `npm test` |
 | **Playwright — 12 E2E-tester** | ✅ | `npm run e2e` |
-| `scripts/check.js` — 55 strängkontroller | ✅ | `node scripts/check.js` |
+| `scripts/check.js` — 53 strängkontroller | ✅ | `node scripts/check.js` |
 | **Hela kedjan i ett kommando** | ✅ | `npm run verify` |
 | **Spärr före commit** | ✅ | automatiskt, `.husky/pre-commit` |
 | **CI vid varje push** | ✅ | `.github/workflows/verify.yml` |
@@ -241,7 +241,7 @@ kördes om efter att färskhetsraden ersatte den gamla summeringswidgeten.
 
 | Läge | `#exsum-line` | Live-flödets underrad | `.erow`-rader |
 |---|---|---|---|
-| Tom databas | "Inga rapporter än — bli först att rapportera" | "Inga rapporter senaste 45 min" | 28 |
+| Tom databas | "Inga rapporter än. Bli först att rapportera." | "Inga rapporter senaste 45 min" | 28 |
 | **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge i listan |
 | **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | 28 **behållna** |
 | Normalt | "2 av 28 ställen har färsk rapport · senast 3 min sedan" | "2 ställen · 45 min" | 28 |

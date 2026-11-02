@@ -193,7 +193,6 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 | `qb_favorites` | Array med venue-id | Favoriterna försvinner (de läses inte från databasen) |
 | `qb_testdata` | `'1'` = testdata på (Alt + 2) | — |
 | `qb_consent` | `'true'` när informationsrutan bekräftats ("Jag förstår"); inget annat värde sätts | Informationsrutan visas igen |
-| `qb_onboarding_done` | Introduktionen klar | Introduktionen visas igen |
 | `qb_install_dismissed` | PWA-prompten avvisad | — |
 
 ---

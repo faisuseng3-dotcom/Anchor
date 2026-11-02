@@ -77,10 +77,9 @@ export async function mockSupabase(page, rows = [], opts = {}) {
   return { inserts };
 }
 
-/** Hoppar över introduktion och samtycke, så testet landar direkt i appen. */
+/** Hoppar över intro och samtycke, så testet landar direkt i appen. */
 export async function skipOnboarding(page) {
   await page.addInitScript(() => {
-    localStorage.setItem('qb_onboarding_done', 'true');
     localStorage.setItem('qb_consent', 'true');
     sessionStorage.setItem('qb_splash', '1'); // introt täcker appen i ~4 s; det testas inte här
     localStorage.removeItem('qb_testdata');

@@ -159,7 +159,7 @@ test.describe('4. Rapportera en kö', () => {
     await expect(page.locator('#rs-vname')).toContainText('Kristall');
 
     // Steg 2: välj antal framför
-    await page.locator('#rs2 button').nth(2).click();
+    await page.locator('#rs2 .q-btn').nth(2).click();
     await page.waitForTimeout(1500);
 
     // En rapport ska ha skickats, med de fält modellen behöver.
@@ -186,7 +186,7 @@ test.describe('4. Rapportera en kö', () => {
     await page.waitForTimeout(500);
     await page.locator('.rs-item').first().click();
     await page.waitForTimeout(400);
-    await page.locator('#rs2 button').first().click();
+    await page.locator('#rs2 .q-btn').first().click();
     await page.waitForTimeout(1500);
 
     expect(inserts).toHaveLength(1);
@@ -216,8 +216,8 @@ test.describe('5. Radera min data', () => {
 
   test('tom server efter radering rensar den lokala datan', async ({ page }) => {
     const id = await raderaViaProfilen(page, []);
-    await page.waitForLoadState('domcontentloaded');
-    await expect.poll(() => page.evaluate(() => window.localStorage.getItem('qb_user_id'))).not.toBe(id);
+    // Sidan laddas om efter raderingen; en läsning mitt i omladdningen räknas som "inte klar än".
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem('qb_user_id')).catch(() => id)).not.toBe(id);
   });
 });
 

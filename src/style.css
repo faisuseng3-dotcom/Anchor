@@ -105,7 +105,7 @@
     @media (prefers-reduced-motion: reduce) {
       .screen.active, #venue-card, .toast { animation: none !important; transition: none !important; }
       /* Blinkande och skimrande prickar står still: färgen säger samma sak utan rörelse. */
-      .skeleton-erow::after, .erow-pulse-dot, .bast-chip-dot, .qs-live { animation: none !important; }
+      .skeleton-erow::after, .erow-pulse-dot, .qs-live { animation: none !important; }
     }
 
     /* ── Skeleton Loading ──────────────────────────────────────────────── */
@@ -266,7 +266,6 @@
       width: 100%; display: flex; flex-direction: column; gap: 4px; text-align: left;
       background: var(--overlay-surface);
       border: 1px solid var(--border-hover);
-      border-left: 4px solid var(--st, var(--status-unknown));
       border-radius: 16px; padding: 12px 16px 14px;
       font-family: var(--font-base); color: var(--text-primary); cursor: pointer;
       transition: transform 100ms ease;
@@ -287,7 +286,6 @@
     }
     .bn-meta { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
     .bn-card--aging .bn-wait { opacity: 0.75; }
-    .bn-card--empty { border-left-color: var(--status-unknown); }
     /* Mapbox-attribution ovanför navigationen, dämpad mot mörk karta */
     #screen-home .mapboxgl-ctrl-bottom-right,
     #screen-home .mapboxgl-ctrl-bottom-left { bottom: calc(68px + env(safe-area-inset-bottom)); opacity: 0.6; }
@@ -448,15 +446,12 @@
       border: 1px solid var(--border-hover);
       border-bottom: 0;
     }
-    /* Ordmärke: tre köer i statusfärgerna + namnet. Används där appen presenterar sig (startrutan). */
-    .brand-mark { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 auto var(--space-3); }
-    .brand-mark svg { width: 32px; height: 32px; flex-shrink: 0; }
-    .brand-mark span { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-primary); }
-    .consent-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; text-align: center; }
-    .consent-text { font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-2); line-height: 1.6; text-align: center; }
-    .consent-list { font-size: 14px; margin: 0 auto var(--space-3); display: flex; flex-direction: column; gap: 8px; }
-    .consent-list-item { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); }
-    .consent-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .consent-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .consent-text { font-size: 15px; color: var(--text-secondary); line-height: 1.5; }
+    .consent-policy {
+      background: none; border: 0; padding: 0; min-height: 44px; margin-bottom: 8px; cursor: pointer;
+      font: 500 14px var(--font-base); color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px;
+    }
     .consent-accept {
       width: 100%; background: var(--accent); color: var(--bg-primary); border: 1px solid var(--accent);
       border-radius: 12px; height: 50px; font-family: var(--font-base);
@@ -465,147 +460,6 @@
       transition: background var(--dur-fast) ease, transform 100ms ease;
     }
     .consent-accept:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-
-    /* ── Onboarding — tooltip bubble ─────────────────────────────────── */
-    #onboarding-overlay {
-      position: fixed; inset: 0; z-index: 200;
-      display: none;
-    }
-    #onboarding-overlay.active { display: block; }
-    #ob-dim {
-      position: absolute; inset: 0;
-      background: rgba(8,9,15,0.68);
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
-    }
-    #ob-dim.dim-circle {
-      -webkit-mask-image: radial-gradient(circle at var(--sx,-200px) var(--sy,-200px), transparent var(--sr,0px), black calc(var(--sr,0px) + 16px));
-      mask-image: radial-gradient(circle at var(--sx,-200px) var(--sy,-200px), transparent var(--sr,0px), black calc(var(--sr,0px) + 16px));
-    }
-    #ob-dim.dim-rect {
-      -webkit-mask-image: linear-gradient(black, black), linear-gradient(black, black);
-      -webkit-mask-position: 0 0, var(--hx,-9999px) var(--hy,-9999px);
-      -webkit-mask-size: 100% 100%, var(--hw,0px) var(--hh,0px);
-      -webkit-mask-repeat: no-repeat;
-      -webkit-mask-composite: xor;
-      mask-image: linear-gradient(black, black), linear-gradient(black, black);
-      mask-position: 0 0, var(--hx,-9999px) var(--hy,-9999px);
-      mask-size: 100% 100%, var(--hw,0px) var(--hh,0px);
-      mask-repeat: no-repeat;
-      mask-composite: exclude;
-    }
-    #ob-spotlight {
-      position: absolute; z-index: 1;
-      border-radius: 14px;
-      border: 2px solid var(--accent);
-      display: none;
-      pointer-events: none;
-    }
-    #ob-bubble {
-      position: absolute; z-index: 1;
-      width: 196px;
-      background: var(--overlay-surface);
-      border: 1px solid rgba(255,255,255,0.13);
-      border-radius: 14px;
-      padding: 16px 18px 14px;
-      opacity: 0;
-    }
-    #ob-bubble.ob-visible {
-      animation: obBubbleIn 280ms cubic-bezier(0.22,1,0.36,1) forwards;
-    }
-    #ob-bubble.ob-hiding {
-      animation: obBubbleOut 160ms ease forwards;
-    }
-    @keyframes obBubbleIn {
-      from { transform: scale(0.90); opacity: 0; }
-      to   { transform: scale(1);    opacity: 1; }
-    }
-    @keyframes obBubbleOut {
-      from { transform: scale(1);    opacity: 1; }
-      to   { transform: scale(0.90); opacity: 0; }
-    }
-    #ob-bubble.arr-d::before {
-      content: ''; position: absolute;
-      bottom: -9px; left: var(--ax, 22px); transform: translateX(-50%);
-      width: 0; height: 0;
-      border-left: 8px solid transparent; border-right: 8px solid transparent;
-      border-top: 9px solid rgba(255,255,255,0.13);
-    }
-    #ob-bubble.arr-d::after {
-      content: ''; position: absolute;
-      bottom: -8px; left: var(--ax, 22px); transform: translateX(-50%);
-      width: 0; height: 0;
-      border-left: 7px solid transparent; border-right: 7px solid transparent;
-      border-top: 8px solid var(--overlay-surface);
-    }
-    #ob-bubble.arr-u::before {
-      content: ''; position: absolute;
-      top: -9px; left: var(--ax, 22px); transform: translateX(-50%);
-      width: 0; height: 0;
-      border-left: 8px solid transparent; border-right: 8px solid transparent;
-      border-bottom: 9px solid rgba(255,255,255,0.13);
-    }
-    #ob-bubble.arr-u::after {
-      content: ''; position: absolute;
-      top: -8px; left: var(--ax, 22px); transform: translateX(-50%);
-      width: 0; height: 0;
-      border-left: 7px solid transparent; border-right: 7px solid transparent;
-      border-bottom: 8px solid var(--overlay-surface);
-    }
-    #ob-bubble.arr-l::before {
-      content: ''; position: absolute;
-      left: -9px; top: var(--ay, 18px); transform: translateY(-50%);
-      width: 0; height: 0;
-      border-top: 8px solid transparent; border-bottom: 8px solid transparent;
-      border-right: 9px solid rgba(255,255,255,0.13);
-    }
-    #ob-bubble.arr-l::after {
-      content: ''; position: absolute;
-      left: -8px; top: var(--ay, 18px); transform: translateY(-50%);
-      width: 0; height: 0;
-      border-top: 7px solid transparent; border-bottom: 7px solid transparent;
-      border-right: 8px solid var(--overlay-surface);
-    }
-    #ob-bubble.arr-r::before {
-      content: ''; position: absolute;
-      right: -9px; top: var(--ay, 18px); transform: translateY(-50%);
-      width: 0; height: 0;
-      border-top: 8px solid transparent; border-bottom: 8px solid transparent;
-      border-left: 9px solid rgba(255,255,255,0.13);
-    }
-    #ob-bubble.arr-r::after {
-      content: ''; position: absolute;
-      right: -8px; top: var(--ay, 18px); transform: translateY(-50%);
-      width: 0; height: 0;
-      border-top: 7px solid transparent; border-bottom: 7px solid transparent;
-      border-left: 8px solid var(--overlay-surface);
-    }
-    #ob-counter {
-      font-family: var(--font-mono); font-size: 12px; font-weight: 700;
-      color: var(--accent); margin-bottom: 9px;
-    }
-    #ob-title {
-      font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
-      color: var(--text-primary); margin-bottom: 4px; line-height: 1.2;
-    }
-    #ob-subtitle {
-      font-size: 14px; color: var(--text-secondary); line-height: 1.4;
-    }
-    #ob-actions {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-top: 11px; padding-top: 9px;
-      border-top: 1px solid rgba(255,255,255,0.07);
-    }
-    #ob-next {
-      background: none; border: none; padding: 8px 0; min-height: 36px;
-      font-family: var(--font-base); font-size: 15px; font-weight: 700;
-      color: var(--accent); cursor: pointer;
-    }
-    #ob-skip {
-      background: none; border: none; padding: 8px 0; min-height: 36px;
-      font-family: var(--font-base); font-size: 14px;
-      color: var(--text-secondary); cursor: pointer;
-    }
 
     /* ── Utforska — sticky header ──────────────────────────────────────── */
     #screen-explore {
@@ -685,14 +539,9 @@
       margin: 12px -16px 0;
       border-top: 1px solid var(--border);
     }
-    /* Sektionsrubrik över en grupp rader. Själva gruppen har redan sin övre avdelare. */
-    .list-section {
-      display: flex; align-items: baseline; justify-content: space-between;
-      margin-top: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
-      text-transform: uppercase; color: var(--text-secondary);
-    }
+    /* Rubrik över gruppen utan färsk rapport. Vanlig skrift, inte versaler: den ska läsas, inte se ut som en mall. */
+    .list-section { margin-top: 24px; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
     .list-section + .venue-group { margin-top: 8px; }
-    .list-section-n { font-weight: 600; color: var(--text-muted); letter-spacing: 0; font-variant-numeric: tabular-nums; }
 
     @keyframes fadeSlideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 
@@ -728,25 +577,16 @@
     .erow--empty { animation: rowInEmpty 0ms both !important; background: rgba(255,255,255,0.02) !important; }
     .erow--empty.erow--intro { animation: rowInEmpty 550ms calc(var(--row-delay, 0ms)) cubic-bezier(0.22,1,0.36,1) both !important; }
     .erow--empty:hover { background: rgba(255,255,255,0.04) !important; }
-    /* Utan data tonas bara siffran och kanten. Texten ("Ingen rapport senaste 45 min", "Brukar vara …") är det enda raden
-       säger — tonad hela raden låg den på 2,3:1 i kontrast och gick inte att läsa i mörker. */
-    .erow--empty .erow-hero, .erow--empty .erow-left-bar { opacity: 0.55; }
+    /* Utan data tonas bara siffran. Texten ("Ingen rapport senaste 45 min", "Brukar vara …") är det enda raden säger —
+       tonad hela raden låg den på 2,3:1 i kontrast och gick inte att läsa i mörker. */
+    .erow--empty .erow-hero { opacity: 0.55; }
     /* State — aging (15–45 min): färgen bleks, åldern visas i text */
-    .erow--stale .erow-left-bar { opacity: 0.35; }
     .erow--stale .erow-hero     { opacity: 0.75; } /* röd vid 0,75 ≈ 3,8:1 — gammal ska synas, men gå att läsa */
     .erow-stale-label { color: var(--status-short); font-weight: 700; }
-    /* Bäst nu — accentkant runt raden, etikett ovanför namnet */
-    .erow--best { background: rgba(52,224,127,0.05); }
     @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
     .erow-pulse-dot { display: inline-flex; width: 8px; height: 8px; border-radius: 50%; background: var(--status-long); flex-shrink: 0; animation: pulseDot 2s ease-in-out infinite; align-self: center; margin-right: 6px; }
     @keyframes heroCountUp { from { opacity: 0; transform: translateY(4px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .erow-hero--animate { animation: heroCountUp 400ms cubic-bezier(0.16,1,0.3,1) forwards; }
-
-    /* 4px status edge (color set inline per status) */
-    .erow-left-bar {
-      width: 4px; flex-shrink: 0;
-      transition: opacity 150ms ease;
-    }
 
     .erow-inner {
       flex: 1; display: flex; align-items: center;
@@ -848,19 +688,12 @@
 
     /* ── Bäst-nu-etikett (ovanför namnet på den fästa raden) ───────────── */
     .bast-chip {
-      display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+      display: inline-flex; align-items: center; align-self: flex-start;
       font-size: 13px; font-weight: 700; white-space: nowrap;
       color: var(--status-free);
       margin-bottom: 2px;
     }
-    .bast-chip-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--status-free);
-      animation: pulseDot 2s ease-in-out infinite;
-      flex-shrink: 0;
-    }
 
-    
     /* ── Explore empty state ───────────────────────────────────────────── */
     .explore-empty {
       text-align: center; margin-top: 48px; padding: 0 24px;
@@ -897,12 +730,12 @@
       padding: 0 16px calc(160px + env(safe-area-inset-bottom));
     }
 
-    /* Rapportflöde: samma kortspråk som Lista — statuskant, namn, rapporterat värde till höger */
+    /* Rapportflöde: samma kortspråk som Lista — namn, rapporterat värde till höger i statusfärg */
     .lv-group { margin: 12px -16px 0; border-top: 1px solid var(--border); }
     .lv-item { border-bottom: 1px solid var(--border); }
     .lv-item:last-child { border-bottom: 1px solid var(--border); }
-    /* Ny rapport: raden glider in uppifrån och en accentkant tonar ut. Bara opacity/transform på raden;
-       markeringen ligger i en pseudo-element så statusfärgens kant (.lv-bar) inte skrivs över. */
+    /* Ny rapport: raden glider in uppifrån och en accentton tonar ut. Bara opacity/transform på raden;
+       markeringen ligger i ett pseudo-element. */
     .lv-item--new { position: relative; animation: lvIn 420ms var(--ease-out) both; }
     .lv-item--new::after {
       content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -921,7 +754,6 @@
       transition: background 120ms ease;
     }
     .lv-row:active { background: var(--surface-raised); }
-    .lv-bar { width: 4px; flex-shrink: 0; }
     .lv-inner { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 14px; }
     .lv-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
     .lv-name {
@@ -968,9 +800,8 @@
     .lv-empty .empty-btn { margin-top: 14px; min-height: 44px; padding: 0 22px; border-radius: var(--radius-full); }
     /* ── Rapportflöde ──────────────────────────────────────────────────── */
     .rp-wrap { flex-shrink: 0; margin-bottom: 4px; }
-    .rp-step-counter { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
-    .rs-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: var(--space-1); line-height: 1.0; }
+    .rs-label { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-1); }
     #rs1 .search-box { margin-bottom: var(--space-2); }
     .rs-item {
       display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
@@ -1015,19 +846,13 @@
     .q-btn:active { background: var(--surface-hover); }
     .q-btn.selected { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
 
-    /* Antal framför — neutral fyllnadsmätare, inte statusfärg: antal ≠ väntetid, det avgör dörrens takt */
-    .q-btn-count { display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; }
-    .q-btn-count::before {
-      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--q-fill, 0%);
-      background: rgba(255,255,255,0.06); pointer-events: none;
-    }
-    .q-fill-0 { --q-fill: 0%; } .q-fill-1 { --q-fill: 20%; } .q-fill-2 { --q-fill: 40%; }
-    .q-fill-3 { --q-fill: 65%; } .q-fill-4 { --q-fill: 100%; }
-    .q-btn-num { position: relative; font-family: var(--font-mono); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 78px; }
+    /* Antal framför: siffran och en förklaring, inget mer. Samma typsnitt som resten av knapparna. */
+    .q-btn-count { display: flex; align-items: center; gap: 14px; }
+    .q-btn-num { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 78px; }
     .q-btn-sub { position: relative; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
     .erow-est-label { color: rgba(255,255,255,0.45); font-style: italic; }
 
-    /* Topbanner (#omw-banner) — "live activity": ditt läge, accentblå kant */
+    /* Topbanner (#omw-banner) — "live activity": ditt läge, accentblå rubrik */
     #omw-banner {
       position: fixed; z-index: 800;
       top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
@@ -1035,7 +860,6 @@
       padding: 12px 14px 14px; border-radius: 16px;
       background: var(--overlay-surface);
       border: 1px solid var(--border-hover);
-      border-left: 4px solid var(--accent);
       animation: qsIn 260ms var(--ease-out, ease-out);
     }
     @keyframes qsIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -1119,8 +943,7 @@
     }
     .pf-row:last-child { border-bottom: 0; }
     .pf-row:hover { color: var(--accent); }
-    .pf-row small { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; font-weight: 400; }
-    .pf-row .arrow { color: var(--text-muted); font-size: 14px; }
+    .pf-row small { display: block; font-size: 13px; color: var(--text-muted); margin-top: 1px; font-weight: 400; }
     .pf-row.danger { color: var(--danger); }
     .pf-row.danger:hover { opacity: 0.75; color: var(--danger); }
 
@@ -1279,7 +1102,9 @@
     /* Påhittade köer får aldrig misstas för riktiga. Neutral etikett, ingen statusfärg — det är ett läge, inte en kö. */
     .qb-testdata body::after {
       content: 'Testdata · Alt + 2 stänger av';
-      position: fixed; z-index: 2000; left: 50%; transform: translateX(-50%);
+      /* Över kartan och navigationen (10), under kortets bakgrund (20) och allt som läggs ovanpå: etiketten dolde
+         venue-kortets huvudknapp. */
+      position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
       bottom: calc(76px + env(safe-area-inset-bottom));
       padding: 3px 10px; border-radius: 6px; pointer-events: none;
       background: var(--text-primary); color: var(--bg-primary);

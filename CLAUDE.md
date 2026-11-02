@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 666 rader), `src/style.css` (1 289 rader), `index.html` (316 rader) |
+| Kod | `src/main.js` (3 442 rader), `src/style.css` (1 114 rader), `index.html` (291 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -168,7 +168,7 @@ kväll. Verifierat i webbläsare:
 
 | Läge | Färskhetsraden | Live-flödets underrad | Rader |
 |---|---|---|---|
-| Tom databas | "Inga rapporter än — bli först att rapportera" | "Inga rapporter senaste 45 min" | 28 |
+| Tom databas | "Inga rapporter än. Bli först att rapportera." | "Inga rapporter senaste 45 min" | 28 |
 | **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge |
 | **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | 28 **behållna** |
 | Normalt | "17 av 28 ställen har färsk rapport · senast 3 min sedan" | "17 ställen · 45 min" | 28 |
@@ -233,7 +233,7 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 ## Viktiga CSS-klasser
 
 - `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--stale` — 15–45 min · `.erow--closed` — stängt.
-  Nivån syns bara i radens bakgrund och vänsterkant (inline-stil), det finns inga nivåklasser
+  Raden är neutral: statusen syns bara i den färgade siffran till höger. Ingen färgad kant, ingen tonad bakgrund
 - `.erow-pulse-dot` — blinkande röd punkt vid lång kö
 - `.exsum-line` — färskhetsraden i Utforska ("17 av 28 ställen har färsk rapport · senast 3 min sedan")
 - `.venue-group` — grupperad container med `1px solid rgba(255,255,255,0.09)`
@@ -441,6 +441,11 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   kartans puls bara på kartskärmen; vågor bara för rapporter <2 min; pillarnas intro väntar på data; skeletten bara vid
   första laddningen; radering stoppar "På väg"; venue-kortet rullar i stället för att växa över kanten; dialogerna har
   `role="dialog"` och fokus; toasten radbryts och har `role="status"`; tryckytor ≥44 px; död CSS och oanvända variabler bort
+- Granskningen av "AI-utseende" 2026-11-02: introduktionsrundturen borttagen (samtycket är den enda rutan vid första
+  start); färgad vänsterkant och tonad bakgrund borta från Lista, Live och "Bäst nu"; inga tankstreck i synlig text
+  (korta meningar i stället); rubriker i vanlig skrift, ingen "Färska rapporter 17" (färskhetsraden säger det); steg 2
+  utan gråa staplar, stegräknare och monospace, kommentaren hopfälld; samtycket är två meningar och en länk; Live-ikonen
+  är en aktivitetslinje, inte wifi; testlägets etikett ligger under kort och ark
 
 ## Vidare läsning
 

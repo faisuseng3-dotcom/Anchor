@@ -53,9 +53,9 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  315 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
-src/main.js                3590 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1318 rader   Design tokens + alla komponentklasser
+index.html                  291 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
+src/main.js                3442 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1114 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
 tests/*.test.js             132 tester   Vitest: modell, status, sessioner, historik, sök, venues, lägen, Bäst nu
@@ -64,7 +64,7 @@ e2e/support.js                          Supabase-mock; inget test rör produktio
 e2e/app.spec.js             12 tester   Playwright, 390×844: start, feltillstånd, sök, rapport
 playwright.config.js                    Startar dev-servern själv, Stockholm-tidszon
 
-scripts/check.js            181 rader   55 strängbaserade kontroller
+scripts/check.js            179 rader   53 strängbaserade kontroller
 scripts/fetch-osm-venues.mjs 387 rader  Engångsverktyg: hämtar venue-kandidater från OpenStreetMap
 data/venues_candidates.*                Resultat från OSM-körningen. Används INTE av appen.
 

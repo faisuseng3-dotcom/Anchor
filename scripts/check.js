@@ -117,8 +117,6 @@ check('No-data message in summary', js.includes('Inga rapporter än'));
 // ── Venue rows ────────────────────────────────────────────────────────────────
 check('erow-pulse-dot for long queue', js.includes('erow-pulse-dot'));
 check('pulseDot keyframe animation', css.includes('@keyframes pulseDot'));
-check('Level backgrounds: long rgba(255,77,94,0.06)', js.includes('rgba(255,77,94,0.06)'));
-check('Level backgrounds: empty rgba(255,255,255,0.02)', js.includes('rgba(255,255,255,0.02)'));
 check('Hero color long: #FF4D5E', js.includes('#FF4D5E'));
 check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
 // "Stabil" visades på varje rad utan att säga något nytt — bara ändring visas nu.

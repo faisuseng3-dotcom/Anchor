@@ -24,7 +24,7 @@ describe('exsumText — de tre lägena hålls åtskilda', () => {
   });
 
   it('tom databas säger att det är tomt och uppmanar till rapport', () => {
-    expect(exsumText(TOMT, 'ok')).toBe('Inga rapporter än — bli först att rapportera');
+    expect(exsumText(TOMT, 'ok')).toBe('Inga rapporter än. Bli först att rapportera.');
   });
 
   it('serverfel och tom databas ger ALDRIG samma text', () => {

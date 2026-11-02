@@ -454,8 +454,8 @@ import './style.css';
       var latest = allReports.filter(function(r) { return r.venue_id === venueId && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
       var statusText = waitText && latest
-        ? venue.name + ' — ' + (waitText === 'Ingen kö' || waitText === 'Fullt' ? waitText.toLowerCase() : waitText + ' kö') + ' · rapporterat ' + timeAgo(latest.created_at)
-        : venue.name + (isClosed(venue) ? ' — har stängt' : ' — ingen färsk rapport');
+        ? venue.name + ': ' + (waitText === 'Ingen kö' || waitText === 'Fullt' ? waitText.toLowerCase() : waitText + ' kö') + ' · rapporterat ' + timeAgo(latest.created_at)
+        : venue.name + (isClosed(venue) ? ' har stängt' : ': ingen färsk rapport');
 
       if (navigator.share) {
         navigator.share({
@@ -464,7 +464,7 @@ import './style.css';
           url: window.location.origin
         }).catch(function() {});
       } else {
-        var full = statusText + ' — ' + window.location.origin;
+        var full = statusText + '\n' + window.location.origin;
         navigator.clipboard.writeText(full).then(function() {
           showToast('Kopierat till urklipp');
         }).catch(function() {
@@ -642,7 +642,7 @@ import './style.css';
       var fc = !closed && !tooLate && walk !== null && walk <= 40 ? forecastWait(venue.id, walk, othersOnWay(venue.id)) : null;
       var fcText = fc ? formatWait(fc) : '';
       document.getElementById('vc-go').textContent = tooLate
-        ? 'Stänger ' + venue.closing + ' — innan du hinner fram (' + walk + ' min)'
+        ? 'Stänger ' + venue.closing + ', innan du hinner fram (' + walk + ' min)'
         : fc ? 'Går du nu: framme ' + clockOfIso(new Date(Date.now() + walk * 60000).toISOString()) +
           (fcText === 'Ingen kö' ? ' · troligen ingen kö då' : ' · troligen ' + fcText + ' kö då') : '';
 
@@ -782,7 +782,7 @@ import './style.css';
         var text = _loadState === 'error' ? 'Ingen kontakt med servern'
           : _loadState !== 'ok' ? 'Hämtar rapporter…'
           : allReports.some(isQueueReport) ? 'Ingen färsk rapport om kort kö just nu' : 'Inga rapporter senaste 45 min';
-        card.innerHTML = '<button class="bn-card bn-card--empty" onclick="showScreen(\'explore\')">' +
+        card.innerHTML = '<button class="bn-card" onclick="showScreen(\'explore\')">' +
           '<span class="bn-eyebrow">Bäst nu</span>' +
           '<span class="bn-empty-text">' + text + '</span>' +
           '<span class="bn-cta">Se alla ställen →</span>' +
@@ -796,7 +796,7 @@ import './style.css';
       var meta = [v.area, venueTypeLabel(v.type)];
       if (best.dist != null) meta.push(formatDistance(best.dist));
       if (latest) meta.push(timeAgo(latest.created_at));
-      if (_loadState === 'error') meta.push('ingen kontakt — kan vara gammalt');
+      if (_loadState === 'error') meta.push('ingen kontakt, kan vara gammalt');
       // Samma åldrande som listan och kortet: data som är 15–30 min gammal tonas, så "Bäst nu" aldrig ser färskare ut.
       card.innerHTML = '<button class="bn-card' + (best.minsAgo >= 15 ? ' bn-card--aging' : '') + '" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
         '<span class="bn-eyebrow">Bäst nu</span>' +
@@ -1919,7 +1919,7 @@ import './style.css';
     // Testläget (?testdata=true / Alt + 2) visar påhittade köer. Inget därifrån får nå de riktiga tabellerna: en
     // provrapport syntes annars hos alla, räknad med testdatans påhittade takter.
     function assertNotTestMode() {
-      if (testDataEnabled()) throw userError('Testläge — inget skickas. Stäng av med Alt + 2.');
+      if (testDataEnabled()) throw userError('Testläge: inget skickas. Stäng av med Alt + 2.');
     }
 
     // Långt från stället: över 300 m, med GPS:ens osäkerhet (högst 100 m) till din fördel. Utan position antar vi att
@@ -2001,10 +2001,10 @@ import './style.css';
     function reportErrorText(err) {
       if (err && err.userText) return err.userText;
       var msg = (err && err.message) || '';
-      if (msg.indexOf('rate_limited') >= 0) return 'Du har redan rapporterat nyss — vänta en stund';
+      if (msg.indexOf('rate_limited') >= 0) return 'Du har redan rapporterat nyss. Vänta en stund.';
       if (msg.indexOf('too_soon') >= 0) return 'Vänta några minuter innan du uppdaterar igen';
-      if (msg.indexOf('session_') >= 0) return 'Din kö-rapport har gått ut — rapportera på nytt';
-      return 'Fel — försök igen';
+      if (msg.indexOf('session_') >= 0) return 'Din kö-rapport har gått ut. Rapportera på nytt.';
+      return 'Något gick fel. Försök igen.';
     }
 
     // ── Kö-session: "Står du kvar?" + "Jag är inne" ──────────────────────────
@@ -2078,7 +2078,7 @@ import './style.css';
     async function submitQueueFollowup(peopleAhead) {
       try {
         await recordFollowup(peopleAhead);
-        showToast('Tack — nu vet vi hur snabbt kön rör sig');
+        showToast('Tack! Nu vet vi hur snabbt kön rör sig.');
       } catch(err) { showToast(reportErrorText(err)); }
     }
 
@@ -2108,7 +2108,7 @@ import './style.css';
       _reportSending = true;
       try {
         var mins = await recordEntered(s);
-        showToast('Inne efter ' + mins + ' min — tack!');
+        showToast('Inne efter ' + mins + ' min. Tack!');
       } catch(err) { showToast(reportErrorText(err)); updateOnMyWayUI(); }
       finally { _reportSending = false; }
     }
@@ -2333,238 +2333,11 @@ import './style.css';
       if (!localStorage.getItem('qb_consent')) {
         document.getElementById('consent-modal').style.display = 'flex';
         document.querySelector('#consent-modal .consent-accept').focus({ preventScroll: true });
-      } else if (!localStorage.getItem('qb_onboarding_done')) {
-        showOnboarding();
       }
     }
     function acceptConsent() {
       localStorage.setItem('qb_consent', 'true');
       document.getElementById('consent-modal').style.display = 'none';
-      showOnboarding();
-    }
-
-    // ── Onboarding ───────────────────────────────────────────────────────────
-    var OB = [
-      { screen: 'home', title: 'Se läget, välj stället', subtitle: 'Varje markering visar kön just nu' },
-      { screen: 'explore', title: 'Välj rätt ställe', subtitle: 'Jämför köerna innan du går' },
-      { screen: 'live', title: 'Direkt från kön', subtitle: 'Från de som är ute just nu' },
-      { screen: 'home', title: 'Står du i kö? Rapportera', subtitle: 'Fem sekunder — och alla ser läget', target: 'report-btn' }
-    ];
-    var obStep = 0;
-
-    function obGetTarget(screen, s) {
-      if (s && s.target === 'report-btn') {
-        return document.querySelector('.tab--report .tab-report-disc') || document.querySelector('.tab--report');
-      }
-      if (screen === 'explore') {
-        return document.querySelector('#explore-list .erow:not(.erow--empty)') ||
-               document.querySelector('#explore-list .erow');
-      } else if (screen === 'live') {
-        return document.querySelector('#live-feed > *');
-      } else if (screen === 'profile') {
-        return document.querySelector('#screen-profile .screen-head');
-      }
-      return null;
-    }
-
-    function obPlaceSpotRing(el) {
-      var spot = document.getElementById('ob-spotlight');
-      if (!spot) return;
-      var pad = 8;
-      var r = el.getBoundingClientRect();
-      spot.style.left = (r.left - pad) + 'px';
-      spot.style.top = (r.top - pad) + 'px';
-      spot.style.width = (r.width + pad * 2) + 'px';
-      spot.style.height = (r.height + pad * 2) + 'px';
-      spot.style.display = 'block';
-    }
-
-    function obApplyWidgetSpot(dim, spot, bubble, target, ar, BW, EDGE) {
-      var tr = target.getBoundingClientRect();
-      if (tr.width === 0) return;
-      var PAD = 12;
-      var GAP = 14;
-      var navH = 80;
-
-      // Rectangular hole in the dim overlay at the target widget
-      dim.classList.add('dim-rect');
-      dim.style.setProperty('--hx', (tr.left - PAD) + 'px');
-      dim.style.setProperty('--hy', (tr.top - PAD) + 'px');
-      dim.style.setProperty('--hw', (tr.width + PAD * 2) + 'px');
-      dim.style.setProperty('--hh', (tr.height + PAD * 2) + 'px');
-
-      // Spotlight ring on the target widget
-      obPlaceSpotRing(target);
-
-      // Bubble centered below (or above if near bottom)
-      var bLeft = Math.max(ar.left + EDGE, Math.min(ar.right - BW - EDGE, tr.left + tr.width / 2 - BW / 2));
-      var ax = Math.max(14, Math.min(BW - 14, tr.left + tr.width / 2 - bLeft));
-      bubble.style.left = bLeft + 'px';
-      bubble.style.setProperty('--ax', ax + 'px');
-
-      if ((tr.bottom + GAP + 130) < (ar.bottom - navH)) {
-        bubble.classList.add('arr-u');
-        bubble.style.top = (tr.bottom + GAP) + 'px';
-      } else {
-        bubble.classList.add('arr-d');
-        bubble.style.top = (tr.top - GAP - 120) + 'px';
-        setTimeout(function() {
-          var bh = bubble.getBoundingClientRect().height;
-          if (bh > 0) bubble.style.top = (tr.top - GAP - bh) + 'px';
-        }, 30);
-      }
-    }
-
-    function obSetupStep(s) {
-      var bubble = document.getElementById('ob-bubble');
-      var dim = document.getElementById('ob-dim');
-      var spot = document.getElementById('ob-spotlight');
-      var app = document.getElementById('app');
-      var BW = 196;
-      var EDGE = 14;
-
-      // Reset
-      bubble.style.top = ''; bubble.style.bottom = '';
-      bubble.style.left = ''; bubble.style.right = '';
-      bubble.style.transform = '';
-      bubble.classList.remove('arr-d', 'arr-u', 'arr-l', 'arr-r');
-      bubble.style.removeProperty('--ax');
-      bubble.style.removeProperty('--ay');
-      dim.classList.remove('dim-circle', 'dim-rect');
-      dim.style.removeProperty('--sx'); dim.style.removeProperty('--sy'); dim.style.removeProperty('--sr');
-      dim.style.removeProperty('--hx'); dim.style.removeProperty('--hy'); dim.style.removeProperty('--hw'); dim.style.removeProperty('--hh');
-      if (spot) spot.style.display = 'none';
-
-      var ar = app ? app.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
-
-      if (s.screen === 'home' && !s.target && map && typeof map.project === 'function') {
-        // Positionen räknas när kartan står still — mitt i inzoomningen pekade bubblan dit nålen var, inte dit den hamnade.
-        if (!map.loaded() || map.isMoving()) {
-          map.once('idle', function() { if (OB[obStep] === s) obSetupStep(s); });
-          return;
-        }
-        // Visa ett ställe som faktiskt har data: "Bäst nu", annars senast rapporterade, annars Spy Bar.
-        var best = computeBestNow();
-        var latest = allReports.filter(isQueueReport).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
-        var venue = best ? best.venue : getVenueById(latest ? latest.venue_id : 'spy-bar');
-        if (venue) {
-          var px = map.project([venue.lng, venue.lat]);
-          var cr = map.getContainer().getBoundingClientRect();
-          var x = Math.round(cr.left + px.x);
-          var y = Math.round(cr.top + px.y);
-          if (px.x >= -20 && px.x <= cr.width + 20 && px.y >= -20 && px.y <= cr.height + 20) {
-            dim.classList.add('dim-circle');
-            dim.style.setProperty('--sx', x + 'px');
-            dim.style.setProperty('--sy', y + 'px');
-            dim.style.setProperty('--sr', '22px');
-            var bLeft = Math.max(ar.left + EDGE, Math.min(ar.right - BW - EDGE, x - BW / 2));
-            var ax = Math.max(14, Math.min(BW - 14, x - bLeft));
-            bubble.style.left = bLeft + 'px';
-            bubble.style.setProperty('--ax', ax + 'px');
-            if (y > (ar.top + ar.height * 0.38)) {
-              bubble.classList.add('arr-d');
-              bubble.style.top = (y - 20 - 100) + 'px';
-              setTimeout(function() {
-                var bh = bubble.getBoundingClientRect().height;
-                if (bh > 0) bubble.style.top = (y - 20 - bh) + 'px';
-                obPlaceSpotRing(bubble);
-              }, 30);
-            } else {
-              bubble.classList.add('arr-u');
-              bubble.style.top = (y + 20) + 'px';
-              obPlaceSpotRing(bubble);
-            }
-            return;
-          }
-        }
-      }
-
-      // Steps 2-4: spotlight the target widget, bubble adjacent to it
-      var _dim = dim; var _spot = spot; var _bubble = bubble; var _ar = ar;
-      setTimeout(function() {
-        var target = obGetTarget(s.screen, s);
-        if (target) {
-          obApplyWidgetSpot(_dim, _spot, _bubble, target, _ar, BW, EDGE);
-        } else {
-          // Inget att peka på (kartan laddades inte, inget ställe i bild): bubblan mitt på skärmen, inte i ett hörn.
-          _bubble.style.left = '50%';
-          _bubble.style.top = '40%';
-          _bubble.style.transform = 'translateX(-50%)';
-        }
-      }, 80);
-    }
-
-    function showOnboarding() {
-      var overlay = document.getElementById('onboarding-overlay');
-      if (!overlay) return;
-      obStep = 0;
-      obRenderScreen();
-      obRenderContent();
-      overlay.classList.add('active');
-      obSetupStep(OB[obStep]);
-      setTimeout(function() {
-        var bubble = document.getElementById('ob-bubble');
-        bubble.classList.remove('ob-hiding');
-        bubble.classList.add('ob-visible');
-        document.getElementById('ob-next').focus({ preventScroll: true });
-      }, 60);
-    }
-
-    // Via showScreen, så att fliken och currentScreen följer med det som visas.
-    function obRenderScreen() {
-      showScreen(OB[obStep].screen);
-    }
-
-    function obRenderContent() {
-      var s = OB[obStep];
-      document.getElementById('ob-counter').textContent = '0' + (obStep + 1) + ' — 0' + OB.length;
-      document.getElementById('ob-title').textContent = s.title;
-      document.getElementById('ob-subtitle').textContent = s.subtitle;
-      document.getElementById('ob-next').textContent = obStep === OB.length - 1 ? 'Kom igång' : 'Nästa →';
-    }
-
-    function obNext() {
-      if (obStep < OB.length - 1) {
-        var bubble = document.getElementById('ob-bubble');
-        bubble.classList.remove('ob-visible');
-        bubble.classList.add('ob-hiding');
-        setTimeout(function() {
-          obStep++;
-          obRenderScreen();
-          obRenderContent();
-          obSetupStep(OB[obStep]);
-          bubble.classList.remove('ob-hiding');
-          bubble.classList.add('ob-visible');
-        }, 180);
-      } else {
-        obSkip();
-      }
-    }
-
-    function obSkip() {
-      localStorage.setItem('qb_onboarding_done', 'true');
-      var overlay = document.getElementById('onboarding-overlay');
-      if (!overlay) return;
-      var bubble = document.getElementById('ob-bubble');
-      bubble.classList.remove('ob-visible');
-      bubble.classList.add('ob-hiding');
-      setTimeout(function() {
-        overlay.style.transition = 'opacity 200ms ease';
-        overlay.style.opacity = '0';
-        setTimeout(function() {
-          overlay.classList.remove('active');
-          overlay.style.opacity = '';
-          overlay.style.transition = '';
-          bubble.classList.remove('ob-hiding', 'ob-visible');
-          var dim = document.getElementById('ob-dim');
-          dim.classList.remove('dim-circle', 'dim-rect');
-          dim.style.removeProperty('--sx'); dim.style.removeProperty('--sy'); dim.style.removeProperty('--sr');
-          dim.style.removeProperty('--hx'); dim.style.removeProperty('--hy'); dim.style.removeProperty('--hw'); dim.style.removeProperty('--hh');
-          var spot = document.getElementById('ob-spotlight');
-          if (spot) spot.style.display = 'none';
-          showScreen('home');
-        }, 210);
-      }, 160);
     }
 
     // ── Dataradering ─────────────────────────────────────────────────────────
@@ -2592,7 +2365,7 @@ import './style.css';
         if (failed.length) throw new Error('kvar i ' + failed.join(', '));
       } catch (err) {
         console.error('[QueueBar] deleteAllUserData misslyckades:', err);
-        showToast('Kunde inte radera all data — försök igen');
+        showToast('Kunde inte radera all data. Försök igen.');
         return;
       }
       localStorage.clear();
@@ -2750,7 +2523,7 @@ import './style.css';
           : 'Ingen kontakt med servern';
       }
       if (state === 'loading') return 'Hämtar rapporter…';
-      if (d.total === 0) return 'Inga rapporter än — bli först att rapportera';
+      if (d.total === 0) return 'Inga rapporter än. Bli först att rapportera.';
       var since = exsumTimeSince(d.lastTs);
       return d.fresh + ' av ' + d.venueTotal + (d.closed ? ' öppna' : '') + ' ställen har färsk rapport' + (since ? ' · senast ' + since : '');
     }
@@ -2792,23 +2565,20 @@ import './style.css';
       var latestReport = venueReports[0] || null;
       var status = computeStatus(venue.id, allReports);
       var est = estimateWait(venue.id, allReports);
-      var color = getStatusColor(getStatusClass(status));
       var closed = isClosed(venue);
       var hasData = !closed && venueReports.length > 0;
       var minsOld = hasData ? (nowMs - new Date(latestReport.created_at)) / 60000 : Infinity;
       var isAging = hasData && minsOld >= 15;
 
-      // Visual level (4 tiers)
+      // Nivå för siffrans färg och den röda pulsen
       var level; // 'long' | 'medium' | 'free' | 'empty'
       if (!hasData) level = 'empty';
       else if (status === 'long') level = 'long';
       else if (status === 'none') level = 'free';
       else level = 'medium'; // short or medium
 
-      var levelBg = { long: 'rgba(255,77,94,0.06)', medium: 'rgba(255,138,61,0.04)', free: 'rgba(52,224,127,0.05)', empty: 'rgba(255,255,255,0.02)' }[level];
       // Stängt: tonad som en rad utan data, och hjälten krymper — stängda ställen ska inte dra blicken klockan 01:30.
       var stateClass = !hasData ? ' erow--empty' + (closed ? ' erow--closed' : '') : (isAging ? ' erow--stale' : '');
-      var barColor = hasData ? color : 'rgba(255,255,255,0.08)';
 
       // Hero number. "Fri" är den korta formen av "Ingen kö" — samma ord som pillen på kartan.
       var heroText, heroColor;
@@ -2816,7 +2586,7 @@ import './style.css';
         heroText = closed ? 'Stängt' : '–'; heroColor = '#85858A';
       } else {
         heroText = (est ? est.ahead === 0 : status === 'none') ? 'Fri' : venueWaitText(venue.id);
-        // Nivån "medium" täcker kort+medel för bakgrunden — siffran får exakt statusfärg
+        // Kort och medel får exakt statusfärg; fri och lång har fasta färger
         var heroColors = { free: '#34E07F', medium: getStatusColor(status), long: '#FF4D5E' };
         heroColor = heroColors[level] || '#85858A';
       }
@@ -2863,15 +2633,16 @@ import './style.css';
           '</div>'
         : '<div class="erow-tertiary">' +
             (closed ? '<span class="erow-empty-cta">Stängde ' + venue.closing + '</span>'
-              : patHtml || '<span class="erow-empty-cta">Ingen rapport senaste 45 min — rapportera</span>') +
+              : patHtml || '<span class="erow-empty-cta">Ingen rapport senaste 45 min</span>') +
             closingSoonHtml +
           '</div>';
 
-      return '<div class="erow' + stateClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" role="button" tabindex="0" style="--row-delay:' + delay + ';background-color:' + levelBg + ';" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')">' +
-        '<div class="erow-left-bar" style="background:' + barColor + '"></div>' +
+      // Raden är neutral: statusen står i den färgade siffran till höger. Färgad kant och tonad bakgrund sa samma sak två
+      // gånger till.
+      return '<div class="erow' + stateClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" role="button" tabindex="0" style="--row-delay:' + delay + ';" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')">' +
         '<div class="erow-inner">' +
           '<div class="erow-body">' +
-            (isBest ? '<div class="bast-chip"><span class="bast-chip-dot"></span>Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</div>' : '') +
+            (isBest ? '<div class="bast-chip">Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</div>' : '') +
             '<div class="erow-name-row">' +
               pulseHtml +
               '<div class="erow-name">' + venue.name + '</div>' +
@@ -2955,7 +2726,7 @@ import './style.css';
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
           emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
-          emptySub = 'Färsk data saknas eller ingen matchar — kolla igen om en stund';
+          emptySub = 'Färsk data saknas eller ingen matchar. Kolla igen om en stund.';
         } else {
           var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
@@ -3023,8 +2794,8 @@ import './style.css';
         }
       }
 
-      // Sektionsrubriker: de med färsk rapport först, resten (inga eller inaktuella rapporter) samlade sist.
-      // Färskheten kommer från venueFreshStatus, så rubrikerna aldrig motsäger färskhetsraden.
+      // De med färsk rapport först, resten (inga eller inaktuella rapporter) samlade sist under en enda rubrik. Den färska
+      // gruppen har ingen rubrik: färskhetsraden ovanför säger redan "17 av 28 ställen har färsk rapport".
       function hasFreshReport(v) { return venueFreshStatus(v.id) !== 'unknown'; }
       var freshList = [], staleList = [];
       list.forEach(function(v) { (hasFreshReport(v) ? freshList : staleList).push(v); });
@@ -3033,14 +2804,11 @@ import './style.css';
           return renderExploreVenueRow(v, list.indexOf(v), v.id === bestVenueId ? best : null);
         }).join('');
       }
-      function sectionHtml(title, items) {
-        return '<div class="list-section">' + title + '<span class="list-section-n">' + items.length + '</span></div>' +
-          '<div class="venue-group">' + rowsHtml(items) + '</div>';
-      }
-      // Rubriker behövs bara när båda grupperna finns och listan inte är filtrerad eller sökt — annars är en rubrik brus.
+      // Rubrik bara när båda grupperna finns och listan inte är filtrerad eller sökt; annars är en rubrik brus.
       var showSections = freshList.length && staleList.length && _exploreFilter === 'all' && !activeQuery.trim();
       el.innerHTML = showSections
-        ? sectionHtml('Färska rapporter', freshList) + sectionHtml('Utan färsk rapport', staleList)
+        ? '<div class="venue-group">' + rowsHtml(freshList) + '</div>' +
+          '<div class="list-section">Utan färsk rapport</div><div class="venue-group">' + rowsHtml(staleList) + '</div>'
         : '<div class="venue-group">' + rowsHtml(list) + '</div>';
 
       // Intro förbrukas när listan har ritats färdigt, alltså så fort laddningen inte längre pågår. Det gäller även en
@@ -3115,7 +2883,6 @@ import './style.css';
           '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>';
       }
       return '<div class="lv-row" role="button" tabindex="0" onclick="openVenueCard(getVenueById(\'' + r.venue_id + '\'), \'live\')">' +
-        '<span class="lv-bar" style="background:' + color + '"></span>' +
         '<div class="lv-inner"><div class="lv-body">' +
           '<div class="lv-name">' + name + '</div>' +
           (area ? '<div class="lv-meta">' + area + '</div>' : '') +
@@ -3283,7 +3050,7 @@ import './style.css';
       if (supabase && !testDataEnabled()) supabase.rpc('start_on_my_way', { p_user_id: getUserId(), p_venue_id: venueId, p_minutes: walkMins })
         .then(function(res) { if (res.error) console.warn('[QueueBar] start_on_my_way:', res.error.message); });
 
-      showToast('På väg till ' + venue.name + ' — ca ' + walkMins + ' min');
+      showToast('På väg till ' + venue.name + ', ca ' + walkMins + ' min');
       updateOnMyWayUI();
       closeVenueCard();
     }
@@ -3445,13 +3212,16 @@ import './style.css';
       }).join('');
     }
 
-    // Visar ett av de tre stegen och håller stegräknaren i synk.
+    // Visar ett av de tre stegen. Kommentaren börjar hopfälld i varje ny rapport: frågan och svarsknapparna först.
     function rsStep(n) {
       document.getElementById('rs1').style.display = n === 1 ? 'block' : 'none';
       document.getElementById('rs2').style.display = n === 2 ? 'flex' : 'none';
       document.getElementById('rs3').style.display = n === 3 ? 'flex' : 'none';
-      var c = document.getElementById('rp-step-counter');
-      if (c) { c.textContent = n + ' / 3'; c.style.display = ''; }
+      var comment = document.getElementById('rs-comment');
+      if (n === 2 && comment && !comment.value) {
+        comment.hidden = true;
+        document.getElementById('rs-add-comment').hidden = false;
+      }
       // Bekräftelsen ritas om varje gång steg 3 visas: klassen tas bort, layouten tvingas, och sätts på igen
       var icon = document.getElementById('rs-success-icon');
       if (icon) {
@@ -3476,6 +3246,13 @@ import './style.css';
 
     function backToRs1() {
       rsStep(1);
+    }
+
+    function showCommentField() {
+      document.getElementById('rs-add-comment').hidden = true;
+      var input = document.getElementById('rs-comment');
+      input.hidden = false;
+      input.focus();
     }
 
     // Raden för ett ställe lyser till en kort stund efter att användaren rapporterat: "din rapport landade här".
@@ -3563,7 +3340,7 @@ import './style.css';
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
         flashVenueRow(v.id);
-        showToast('Rapport skickad — tack!');
+        showToast('Rapport skickad. Tack!');
       } catch(e) {
         showToast(reportErrorText(e));
       } finally { _reportSending = false; }
@@ -3638,10 +3415,8 @@ Object.assign(window, {
   filterReportList,
   getVenueById,
   loadReports,
-  obNext,
   onMyWayArrived,
   onMyWayReport,
-  obSkip,
   onMapSearchBlur,
   onMapSearchFocus,
   onMapSearchInput,
@@ -3657,6 +3432,7 @@ Object.assign(window, {
   selectMapSearchVenue,
   setExploreFilter,
   shareVenue,
+  showCommentField,
   showPrivacyPolicy,
   showScreen,
   toggleLiveVenue,
