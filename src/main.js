@@ -1147,6 +1147,8 @@ import './style.css';
         clearMapSearch();
         document.getElementById('map-search-input').blur();
       } else if (e.key === 'Enter') {
+        // Ett område först i listan (renderMapSearchResults satte _mapAreaHits) vinner: Enter på "söder" visar Södermalm.
+        if (_mapAreaHits.length) { selectMapSearchArea(0); return; }
         var first = venueSearch(e.target.value.trim(), VENUES)[0];
         if (first) selectMapSearchVenue(first.id);
       }
@@ -1171,17 +1173,24 @@ import './style.css';
         return;
       }
 
-      var hits = venueSearch(query, VENUES).slice(0, 6);
+      var areas = _mapAreaHits = areaHits(query, VENUES).slice(0, 2);
+      var hits = venueSearch(query, VENUES).slice(0, 6 - areas.length);
 
       floatEl.style.borderRadius = '12px 12px 10px 10px';
       resultsEl.style.display = 'block';
 
-      if (!hits.length) {
+      if (!hits.length && !areas.length) {
         resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + escapeHtml(query) + '"</div>';
         return;
       }
 
-      resultsEl.innerHTML = hits.map(function(v) {
+      resultsEl.innerHTML = areas.map(function(a, i) {
+        return '<div class="msearch-row" onmousedown="selectMapSearchArea(' + i + ')">' +
+          '<div class="msearch-dot msearch-dot--area"></div>' +
+          '<div class="msearch-name">' + escapeHtml(a.area) + '</div>' +
+          '<div class="msearch-meta">Område · ' + a.count + ' ställen</div>' +
+          '</div>';
+      }).join('') + hits.map(function(v) {
         var status = computeStatus(v.id, allReports);
         var dotColor = getStatusColor(status);
         var typeLabel = venueTypeLabel(v.type);
@@ -1206,6 +1215,34 @@ import './style.css';
 
       // openVenueCard centrerar kartan själv — en egen flyTo här gav två rörelser efter varandra (zoom 15, sedan 14).
       openVenueCard(v, 'sök');
+    }
+
+    // Ett område ur kartans sök: kartan ramar in områdets ställen (de som syns med Barer/Klubbar-valet) i den del av kartan
+    // som syns. Inget kort öppnas — man ville se området, inte ett ställe.
+    var _mapAreaHits = [];
+    function selectMapSearchArea(i) {
+      var hit = _mapAreaHits[i];
+      _mapSearchActive = false;
+      var inp = document.getElementById('map-search-input');
+      if (inp) inp.blur();
+      document.getElementById('map-search-results').style.display = 'none';
+      document.getElementById('map-search-float').style.borderRadius = '12px';
+      if (!hit || !map) return;
+      var inArea = VENUES.filter(function(v) { return v.area === hit.area; });
+      var shown = inArea.filter(venueTypeMatches);
+      var bounds = new mapboxgl.LngLatBounds();
+      (shown.length ? shown : inArea).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
+      map.fitBounds(bounds, { padding: mapViewPadding(), maxZoom: 15.5, duration: _reduceMotion ? 0 : 700 });
+    }
+
+    // Den del av kartan som syns: under raden med Alla · Barer · Klubbar och ovanför "Bäst nu"-kortet.
+    function mapViewPadding() {
+      var m = document.getElementById('map').getBoundingClientRect();
+      var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar');
+      var card = document.getElementById('best-now-card');
+      var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
+      var bottom = card && card.offsetHeight ? m.bottom - card.getBoundingClientRect().top : 0;
+      return { top: top + 24, bottom: bottom + 24, left: 28, right: 28 };
     }
 
     // ── Karta ────────────────────────────────────────────────────────────────
@@ -1773,12 +1810,7 @@ import './style.css';
           var bounds = new mapboxgl.LngLatBounds();
           var live = VENUES.filter(function(v) { return computeStatus(v.id, allReports) !== 'unknown'; });
           (live.length >= 2 ? live : VENUES).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
-          var m = document.getElementById('map').getBoundingClientRect();
-          // Överkanten är raden med Alla · Barer · Klubbar, som ligger under sökfältet.
-          var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar'), card = document.getElementById('best-now-card');
-          var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
-          var bottom = card && card.offsetHeight ? m.bottom - card.getBoundingClientRect().top : 0;
-          var cam = map.cameraForBounds(bounds, { pitch: 28, padding: { top: top + 24, bottom: bottom + 24, left: 28, right: 28 } });
+          var cam = map.cameraForBounds(bounds, { pitch: 28, padding: mapViewPadding() });
           return cam ? { center: cam.center, zoom: Math.min(14, Math.max(12.4, cam.zoom)) } : { center: map.getCenter(), zoom: 12.6 };
         }
         var _userMovedMap = false;
@@ -2774,6 +2806,19 @@ import './style.css';
         .filter(function(x) { return x.s >= 0; })
         .sort(function(a, b) { return b.s - a.s; })
         .map(function(x) { return x.v; });
+    }
+
+    // Områden vars namn börjar med det man skrivit ("söder" → Södermalm), med antal ställen. Minst 3 tecken: "so" ska
+    // inte flytta kartan. Används av kartans sök, som flyger till området i stället för att lista 111 ställen.
+    function areaHits(query, venues) {
+      var q = _searchNorm(query || '');
+      if (q.length < 3) return [];
+      var count = {};
+      venues.forEach(function(v) { count[v.area] = (count[v.area] || 0) + 1; });
+      return Object.keys(count)
+        .filter(function(a) { return _searchNorm(a).indexOf(q) === 0; })
+        .sort(function(a, b) { return count[b] - count[a]; })
+        .map(function(a) { return { area: a, count: count[a] }; });
     }
 
     // ── Utforska ─────────────────────────────────────────────────────────────
@@ -3776,6 +3821,7 @@ Object.assign(window, {
   queueSessionUpdate,
   quickPickAhead,
   retrySupabase,
+  selectMapSearchArea,
   selectMapSearchVenue,
   setExploreFilter,
   setVenueType,

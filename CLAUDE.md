@@ -337,6 +337,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - **Barer/Klubbar är ett val för hela appen** (`_venueType`, `setVenueType`, `venueTypeMatches`): knapparna under kartans
   sökfält och listans Barer/Klubbar är samma val. Det gäller kartan, listan, filterräknarna, färskhetsraden och "Bäst nu";
   Live-flödet och sökningen filtreras inte. Ett tryck på den valda typen igen tar bort valet
+- **Områden i kartans sök** (`areaHits`, `selectMapSearchArea`): från 3 tecken visas stadsdelar vars namn börjar så
+  ("söder" → Södermalm · Område · 104 ställen) först bland träffarna. Tryck eller Enter ramar in områdets ställen
+  (`mapViewPadding`, samma ram som startvyn) utan att öppna ett kort. Inga områdesknappar: kartan är redan geografin
 - Grundkartan (`MAP_THEME`) är dämpad: grå vägar, dov park, mörkt vatten. Statusfärgerna ska vara det enda som lyser;
   röd ska ha ≥3,5:1 mot allt den kan ligga på
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14

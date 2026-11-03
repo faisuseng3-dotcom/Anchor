@@ -2,7 +2,7 @@
 // Tio poängnivåer med längdgrindar. Nivåerna är dokumenterade i koden ovanför venueScore.
 
 import { describe, it, expect } from 'vitest';
-import { venueScore, venueSearch, getVenueById, VENUES, _searchNorm } from './harness.js';
+import { venueScore, venueSearch, getVenueById, VENUES, _searchNorm, areaHits } from './harness.js';
 
 const spy = getVenueById('spy-bar');
 const sturehof = getVenueById('sturehof');
@@ -106,5 +106,28 @@ describe('venueSearch — sortering och filtrering', () => {
   it('sökningen hittar stavning utan svenska tecken', () => {
     // Någon som skriver "sodra bar" i en kö ska hitta Södra Bar
     expect(names('sodra bar')).toContain('sodra-bar');
+  });
+});
+
+describe('areaHits — kartans sök flyger till ett område', () => {
+  const areas = (q) => areaHits(q, VENUES).map((h) => h.area);
+
+  it('början av namnet räcker, utan svenska tecken och skiftläge', () => {
+    expect(areas('söder')).toEqual(['Södermalm']);
+    expect(areas('SODER')).toEqual(['Södermalm']);
+    expect(areas('gamla stan')).toEqual(['Gamla Stan']);
+  });
+
+  it('färre än tre tecken flyttar inte kartan', () => {
+    expect(areas('sö')).toEqual([]);
+  });
+
+  it('matchar bara från början — "malm" är inte Södermalm', () => {
+    expect(areas('malm')).toEqual([]);
+  });
+
+  it('räknar ställena i området', () => {
+    const [hit] = areaHits('kungsholmen', VENUES);
+    expect(hit.count).toBe(VENUES.filter((v) => v.area === 'Kungsholmen').length);
   });
 });
