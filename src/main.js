@@ -1227,7 +1227,7 @@ import './style.css';
       if (inp) inp.blur();
       document.getElementById('map-search-results').style.display = 'none';
       document.getElementById('map-search-float').style.borderRadius = '12px';
-      if (hit) flyToArea(hit.area);
+      if (hit) selectArea(hit.area);
     }
 
     // Kartan ramar in ett områdes ställen (de som syns med Barer/Klubbar-valet) i den del av kartan som syns. Flyttar bara
@@ -1253,10 +1253,22 @@ import './style.css';
       _areaChips = Object.keys(count).filter(function(a) { return count[a] >= 10; })
         .sort(function(a, b) { return count[b] - count[a]; });
       row.insertAdjacentHTML('beforeend', '<span class="chip-sep" aria-hidden="true"></span>' + _areaChips.map(function(a, i) {
-        return '<button class="fbtn" onclick="flyToAreaChip(' + i + ')">' + escapeHtml(a) + '</button>';
+        return '<button class="fbtn" data-area="' + i + '" aria-pressed="false" onclick="flyToAreaChip(' + i + ')">' + escapeHtml(a) + '</button>';
       }).join(''));
     })();
-    function flyToAreaChip(i) { if (_areaChips[i]) flyToArea(_areaChips[i]); }
+    // Valt område: vit knapp som Alla · Barer · Klubbar, och båda valen gäller samtidigt (typen avgör vilka ställen i
+    // området som ramas in). Ett tryck på det valda området igen tar bort valet; kartan står kvar där den är.
+    var _selectedArea = null;
+    function selectArea(area) {
+      _selectedArea = area;
+      document.querySelectorAll('.fbtn[data-area]').forEach(function(b) {
+        var on = _areaChips[b.dataset.area] === area;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (area) flyToArea(area);
+    }
+    function flyToAreaChip(i) { if (_areaChips[i]) selectArea(_areaChips[i] === _selectedArea ? null : _areaChips[i]); }
 
     // Den del av kartan som syns: under raden med Alla · Barer · Klubbar och ovanför "Bäst nu"-kortet.
     function mapViewPadding() {
@@ -2885,6 +2897,7 @@ import './style.css';
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
       renderReports();
+      if (_selectedArea) flyToArea(_selectedArea); // samma område, inramat för den nya typen
     }
 
     function debouncedFilterExplore() {

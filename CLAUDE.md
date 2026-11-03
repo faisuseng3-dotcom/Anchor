@@ -341,6 +341,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   ≥10 ställen, störst först (`renderAreaChips`, räknas ur `VENUES`). Kartans sök visar också områden från 3 tecken
   (`areaHits`: "söder" → Södermalm · Område · 104 ställen). Båda **flyttar bara kartan** (`mapViewPadding`, samma ram
   som startvyn) och filtrerar inget, så en kortare kö i grannområdet syns fortfarande. Inget kort öppnas
+  Valt område (`_selectedArea`, `selectArea`) är vitt som typknapparna och gäller samtidigt med Alla/Barer/Klubbar:
+  byts typen ramas samma område in för den nya typen. Ett nytt tryck på området tar bort valet
 - Grundkartan (`MAP_THEME`) är dämpad: grå vägar, dov park, mörkt vatten. Statusfärgerna ska vara det enda som lyser;
   röd ska ha ≥3,5:1 mot allt den kan ligga på
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
