@@ -213,13 +213,17 @@
       display: flex; align-items: flex-start; gap: 8px;
       transition: top var(--dur-slow) var(--ease-out);
     }
-    /* Barer/Klubbar under sökfältet. Egen rad: topbaren är en flexrad (sök + profil), och sökresultaten (z 5) ska ligga över. */
+    /* Alla · Barer · Klubbar | områden, under sökfältet. Egen rad: topbaren är en flexrad (sök + profil), och sökresultaten
+       (z 5) ska ligga över. Raden rullar i sidled; den sista knappen skärs av vid kanten, så man ser att det finns fler. */
     .map-type-chips {
       position: absolute; z-index: 4;
       top: calc(12px + 48px + 8px + env(safe-area-inset-top) + var(--banner-h, 0px));
-      left: 12px; display: flex; gap: 6px;
+      left: 0; right: 0; padding: 0 12px; display: flex; gap: 6px;
+      overflow-x: auto; scrollbar-width: none;
       transition: top var(--dur-slow) var(--ease-out);
     }
+    .map-type-chips::-webkit-scrollbar { display: none; }
+    .chip-sep { flex: 0 0 1px; margin: 8px 4px; background: var(--border-hover); }
     .map-type-chips .fbtn:not(.active) { background: var(--overlay-surface); border-color: var(--border-hover); color: var(--text-primary); }
     .avatar-btn {
       flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;

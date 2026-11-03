@@ -1227,13 +1227,36 @@ import './style.css';
       if (inp) inp.blur();
       document.getElementById('map-search-results').style.display = 'none';
       document.getElementById('map-search-float').style.borderRadius = '12px';
-      if (!hit || !map) return;
-      var inArea = VENUES.filter(function(v) { return v.area === hit.area; });
+      if (hit) flyToArea(hit.area);
+    }
+
+    // Kartan ramar in ett områdes ställen (de som syns med Barer/Klubbar-valet) i den del av kartan som syns. Flyttar bara
+    // kartan, filtrerar inget: en kortare kö fem minuter bort, i grannområdet, ska fortfarande synas.
+    function flyToArea(area) {
+      if (!map) return;
+      var inArea = VENUES.filter(function(v) { return v.area === area; });
       var shown = inArea.filter(venueTypeMatches);
+      if (!inArea.length) return;
       var bounds = new mapboxgl.LngLatBounds();
       (shown.length ? shown : inArea).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
       map.fitBounds(bounds, { padding: mapViewPadding(), maxZoom: 15.5, duration: _reduceMotion ? 0 : 700 });
     }
+
+    // Områdesknappar efter Alla · Barer · Klubbar, i samma rad (den rullar i sidled). Bara områden med minst 10 ställen —
+    // en knapp för Västra skogen (1 ställe) är brus. Störst först. Räknas ur VENUES, så nya ställen tar sig in av sig själva.
+    var _areaChips = [];
+    (function renderAreaChips() {
+      var row = document.querySelector('.map-type-chips');
+      if (!row) return;
+      var count = {};
+      VENUES.forEach(function(v) { count[v.area] = (count[v.area] || 0) + 1; });
+      _areaChips = Object.keys(count).filter(function(a) { return count[a] >= 10; })
+        .sort(function(a, b) { return count[b] - count[a]; });
+      row.insertAdjacentHTML('beforeend', '<span class="chip-sep" aria-hidden="true"></span>' + _areaChips.map(function(a, i) {
+        return '<button class="fbtn" onclick="flyToAreaChip(' + i + ')">' + escapeHtml(a) + '</button>';
+      }).join(''));
+    })();
+    function flyToAreaChip(i) { if (_areaChips[i]) flyToArea(_areaChips[i]); }
 
     // Den del av kartan som syns: under raden med Alla · Barer · Klubbar och ovanför "Bäst nu"-kortet.
     function mapViewPadding() {
@@ -3805,6 +3828,7 @@ Object.assign(window, {
   dismissInstall,
   dismissQueueSession,
   filterReportList,
+  flyToAreaChip,
   getVenueById,
   loadReports,
   onMyWayArrived,
