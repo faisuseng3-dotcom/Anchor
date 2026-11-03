@@ -802,6 +802,11 @@ import './style.css';
       return left !== null && left <= 0;
     }
 
+    // Barer/Klubbar: ett val för hela appen (setVenueType). Kartan, listan och "Bäst nu" visar samma ställen, annars såg man
+    // 30 klubbar på kartan och 292 rader i listan. Live-flödet filtreras inte: det är vad som händer just nu, överallt.
+    var _venueType = 'all'; // 'all' | 'bar' | 'klubb'
+    function venueTypeMatches(v) { return _venueType === 'all' || (!!v && v.type === _venueType); }
+
     // A — vad som hänt. Den senaste mätningen med antal jämförs med den senaste som är minst 10 min äldre, i det som
     // faktiskt rapporterades (antal framför), med klockslag: "23:02 → 23:14 · 10–25 → 25–50". Två personer som rapporterar
     // samma minut men olika är oenighet, inte en trend. Samma regel i kortet och i listans pil — här, en gång.
@@ -1769,7 +1774,8 @@ import './style.css';
           var live = VENUES.filter(function(v) { return computeStatus(v.id, allReports) !== 'unknown'; });
           (live.length >= 2 ? live : VENUES).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
           var m = document.getElementById('map').getBoundingClientRect();
-          var bar = document.querySelector('.map-topbar'), card = document.getElementById('best-now-card');
+          // Överkanten är raden med Alla · Barer · Klubbar, som ligger under sökfältet.
+          var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar'), card = document.getElementById('best-now-card');
           var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
           var bottom = card && card.offsetHeight ? m.bottom - card.getBoundingClientRect().top : 0;
           var cam = map.cameraForBounds(bounds, { pitch: 28, padding: { top: top + 24, bottom: bottom + 24, left: 28, right: 28 } });
@@ -1947,7 +1953,7 @@ import './style.css';
       if (!map.getSource('venues') || !map.getSource('venues-empty')) return;
       _hasUrgent = false;
       var best = computeBestNow(), bestId = best ? best.venue.id : null;
-      var updated = venueGeoJSON.features.map(function(f) {
+      var updated = venueGeoJSON.features.filter(function(f) { return venueTypeMatches(f.properties); }).map(function(f) {
         var id = f.properties.id;
         var status = computeStatus(id, allReports);
         var text = pillText(id);
@@ -2801,6 +2807,18 @@ import './style.css';
       renderExploreVenues();
     }
 
+    // Samma knappar på kartan (Alla · Barer · Klubbar) och i listan (Barer, Klubbar bredvid statusknapparna). Ett tryck på
+    // den valda typen igen tar bort valet — listan har ingen egen "Alla" för typ. Allt ritas om: karta, lista, "Bäst nu".
+    function setVenueType(t) {
+      _venueType = t !== 'all' && t === _venueType ? 'all' : t;
+      document.querySelectorAll('.fbtn[data-type]').forEach(function(b) {
+        var on = b.dataset.type === _venueType;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      renderReports();
+    }
+
     function debouncedFilterExplore() {
       // ~300 venues — fuzzy sort is synchronous; 60 ms debounce only coalesces keystrokes
       clearTimeout(exploreDebounceTimer);
@@ -2821,11 +2839,12 @@ import './style.css';
     function computeExploreSummary() {
       // Bara öppna ställen: klockan 01:30 är nio barer stängda, och "0 av 28 · senast 3 min sedan" (rapporten kom från
       // ett ställe som just stängt) sa emot sig själv.
-      var open = VENUES.filter(function(v) { return !isClosed(v); });
+      var open = VENUES.filter(function(v) { return !isClosed(v) && venueTypeMatches(v); });
       var fresh = open.filter(function(v) { return venueFreshStatus(v.id) !== 'unknown'; }).length;
       var lastTs = null;
       allReports.forEach(function(r) {
-        if (!isQueueReport(r) || isClosed(getVenueById(r.venue_id))) return;
+        var rv = getVenueById(r.venue_id);
+        if (!isQueueReport(r) || isClosed(rv) || !venueTypeMatches(rv)) return;
         var t = new Date(r.created_at).getTime();
         if (!lastTs || t > lastTs) lastTs = t;
       });
@@ -2997,6 +3016,7 @@ import './style.css';
       var now = Date.now();
       var best = null;
       VENUES.forEach(function(v) {
+        if (!venueTypeMatches(v)) return;
         var status = computeStatus(v.id, allReports);
         if (status !== 'none' && status !== 'short') return;
         var latest = 0;
@@ -3043,16 +3063,13 @@ import './style.css';
         list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'short'; });
       } else if (_exploreFilter === 'long') {
         list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'long'; });
-      } else if (_exploreFilter === 'bar') {
-        list = list.filter(function(v) { return v.type === 'bar'; });
-      } else if (_exploreFilter === 'klubb') {
-        list = list.filter(function(v) { return v.type === 'klubb'; });
       }
+      list = list.filter(venueTypeMatches);
       // 'all' — no additional filter
 
       if (!list.length) {
         var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
-        var filterLabels = { free: 'ingen kö', short: 'kort kö', long: 'lång kö', bar: 'typ bar', klubb: 'typ klubb' };
+        var filterLabels = { free: 'ingen kö', short: 'kort kö', long: 'lång kö' };
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
           emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
@@ -3150,7 +3167,7 @@ import './style.css';
 
     function updateFilterCounts() {
       var counts = { all: 0, free: 0, short: 0, long: 0 };
-      VENUES.forEach(function(v) {
+      VENUES.filter(venueTypeMatches).forEach(function(v) {
         var s = computeStatus(v.id, allReports);
         counts.all++;
         if (s === 'none') counts.free++;
@@ -3761,6 +3778,7 @@ Object.assign(window, {
   retrySupabase,
   selectMapSearchVenue,
   setExploreFilter,
+  setVenueType,
   shareVenue,
   showCommentField,
   showPrivacyPolicy,

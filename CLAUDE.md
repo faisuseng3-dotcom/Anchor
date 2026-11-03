@@ -334,6 +334,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   `declutterPills`: valt ställe → "Bäst nu" → längst kö (Fullt före intervall, färskt före 15–45 min) syns och får "+N"
   (`venues-more`, tryck zoomar in); övriga döljs (`hidden`) tills de får plats. Körs efter data, val och `moveend`.
   Glöden är liten (22–64 px, 0,3) — den stora gjorde kartan suddig. Den enda vägen till en väntetid är `venueWaitText()`
+- **Barer/Klubbar är ett val för hela appen** (`_venueType`, `setVenueType`, `venueTypeMatches`): knapparna under kartans
+  sökfält och listans Barer/Klubbar är samma val. Det gäller kartan, listan, filterräknarna, färskhetsraden och "Bäst nu";
+  Live-flödet och sökningen filtreras inte. Ett tryck på den valda typen igen tar bort valet
 - Grundkartan (`MAP_THEME`) är dämpad: grå vägar, dov park, mörkt vatten. Statusfärgerna ska vara det enda som lyser;
   röd ska ha ≥3,5:1 mot allt den kan ligga på
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14

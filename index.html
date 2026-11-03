@@ -79,6 +79,12 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
       </button>
       </div>
+      <!-- Barer/Klubbar: samma val som i listan (setVenueType). Gäller kartan, listan och "Bäst nu". -->
+      <div class="map-type-chips" role="group" aria-label="Visa">
+        <button class="fbtn active" data-type="all" aria-pressed="true" onclick="setVenueType('all')">Alla</button>
+        <button class="fbtn" data-type="bar" aria-pressed="false" onclick="setVenueType('bar')">Barer</button>
+        <button class="fbtn" data-type="klubb" aria-pressed="false" onclick="setVenueType('klubb')">Klubbar</button>
+      </div>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
         <span class="err-toast-msg">Ingen kontakt med servern</span>
@@ -105,8 +111,8 @@
             <button class="fbtn" data-filter="free" onclick="setExploreFilter('free')"><span class="fdot fdot--free"></span>Ingen kö <span class="fcount" id="fc-free"></span></button>
             <button class="fbtn" data-filter="short" onclick="setExploreFilter('short')"><span class="fdot fdot--short"></span>Kort <span class="fcount" id="fc-short"></span></button>
             <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')"><span class="fdot fdot--long"></span>Lång <span class="fcount" id="fc-long"></span></button>
-            <button class="fbtn" data-filter="bar" onclick="setExploreFilter('bar')">Barer</button>
-            <button class="fbtn" data-filter="klubb" onclick="setExploreFilter('klubb')">Klubbar</button>
+            <button class="fbtn" data-type="bar" aria-pressed="false" onclick="setVenueType('bar')">Barer</button>
+            <button class="fbtn" data-type="klubb" aria-pressed="false" onclick="setVenueType('klubb')">Klubbar</button>
           </div>
         </div>
       </div>
