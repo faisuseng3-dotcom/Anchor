@@ -328,18 +328,21 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   åldras även utan ny data
 - Pulsanimation: ta bort klassen → tvinga reflow (`void el.offsetWidth`) → lägg tillbaka
 - Väntetid är aldrig en fast sträng per status — alltid `venueWaitText()`
-- **Två kartkällor:** `venues` = ställen med en pill (färsk väntetid), **aldrig klustrade**; `venues-empty` = ställen
-  utan data, klustrade. `updateMapStatuses` flyttar ett ställe mellan dem. Klustren är därför alltid grå med vit siffra
-  (antal ställen, inte minuter) — en väntetid göms aldrig i en bubbla. Den enda vägen till en väntetid är `venueWaitText()`
+- **Två kartkällor, inga kluster:** `venues` = ställen med en pill (färsk väntetid); `venues-empty` = ställen utan data,
+  små svaga prickar (`venues-empty-dots`) under zoom 14 och tomma ringar därifrån. `updateMapStatuses` fördelar dem.
+  Siffror i bubblor ("21") är borta: de såg ut som data men sa bara "här vet vi inget". Krockande pillar löser
+  `declutterPills`: valt ställe → "Bäst nu" → längst kö (Fullt före intervall, färskt före 15–45 min) syns och får "+N"
+  (`venues-more`, tryck zoomar in); övriga döljs (`hidden`) tills de får plats. Körs efter data, val och `moveend`.
+  Glöden är liten (22–64 px, 0,3) — den stora gjorde kartan suddig. Den enda vägen till en väntetid är `venueWaitText()`
 - Grundkartan (`MAP_THEME`) är dämpad: grå vägar, dov park, mörkt vatten. Statusfärgerna ska vara det enda som lyser;
   röd ska ha ≥3,5:1 mot allt den kan ligga på
-- Kartans lager uppifrån: pillar (`venues-pins`) → tomma ringar (`venues-empty-pins`) → namn (från zoom 13,8, döljs vid
-  krock — aldrig pillen) → kluster → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`, under
-  baskartans etiketter, bara färsk data). Ett tryck på en pill vinner över en ring under den (en lyssnare, `features[0]`).
+- Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
+  för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
+  under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.
   Startvyn ramar in ställena med färsk data (annars alla) mellan sökfältet och "Bäst nu"-kortet (`startCamera`)
 - Kartans fokus (`applyMapFocus`) är enda stället som sätter pillarnas opacitet och sorteringsordning: blå ram
   (`venues-focus`) runt "Bäst nu" och runt valt ställe när venue-kortet är öppet. "Bäst nu" har alltid data, så det
-  ligger aldrig i ett kluster. Valt ställe ritas överst med sitt namn (`venues-name-focus`, eller
+  döljs aldrig av en annan pill. Valt ställe ritas överst med sitt namn (`venues-name-focus`, eller
   `venues-empty-name-focus` för ett ställe utan data) och övriga tonas till
   0,3. Data 15–45 min gammal (`aging`) är blekare (0,6), samma gräns som `.erow--stale` i listan
 - Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat och
@@ -359,8 +362,7 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   promenad räknas inte, och stället måste ha ≥45 min kvar när du är framme
 - Avstånd och gångtid: `distanceKmTo` / `walkMinutesTo` (5 km/h fågelvägen) / `formatDistance` — samma siffror i
   kortet, "Bäst nu" och "På väg"
-- Kluster bara för tätt liggande ställen utan data (`clusterRadius` 20, t.o.m. zoom 13,99). Startvyn (`startCamera`) ramar
-  in ställena med färsk data och håller zoomen ≥12,4
+- Startvyn (`startCamera`) ramar in ställena med färsk data och håller zoomen ≥12,4
 - Kartans rörelse (`trackMapChanges` + `stepMapMotion`, driven av kartans rAF-slinga): pillarna tonar fram längst kö
   först när introt är borta (`afterSplash`, eventet `qb:splashdone` från `index.html`); en pill som byter värde tonar in
   på nytt; en ny kö-rapport skickar ut en våg (`venues-ripple`). Opacitet via feature-state `appear` (källan har
@@ -391,8 +393,8 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
 2. *(åtgärdad, se nedan)*
 3. *(åtgärdad, se nedan)*
-4. Täta kvarter (Stureplan, Gamla stan) har ställen några meter isär. Pillar klustras aldrig, så två färska ställen
-   vid Stureplan kan ligga ovanpå varandra tills man zoomar in. Ingen exakt samma koordinat (test i `tests/venues.test.js`)
+4. Täta kvarter (Stureplan, Gamla stan) har ställen några meter isär. Utzoomat visar Stureplan en pill med "+N"; Hell's
+   Kitchen och Sturecompagniet (3 m) skiljs inte ens vid zoom 18. Ingen exakt samma koordinat (test i `tests/venues.test.js`)
 5. *(åtgärdad, se nedan)*
 6. *(åtgärdad, se nedan)*
 7. **Ingen linter.** Medvetet uppskjutet — se motiveringen under Kommandon
