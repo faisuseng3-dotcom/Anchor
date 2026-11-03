@@ -10,7 +10,8 @@ const DAY = 24 * 3600 * 1000;
  * Testernas klocka: fredag 23:00 lokal tid, i både webbläsaren (openApp) och testdatan (report). Appen räknar med
  * stängningstider, så med verklig klocka berodde utfallet på när testerna kördes — klockan 01:30 var Tjoget stängt.
  */
-export const E2E_NOW = new Date(2026, 9, 16, 23, 0).getTime();
+// Med uttrycklig zon: CI kör Node i UTC, och new Date(2026, 9, 16, 23, 0) blev där 01:00 i webbläsarens Stockholmstid.
+export const E2E_NOW = new Date('2026-10-16T23:00:00+02:00').getTime();
 
 /** En rapport i samma form som tabellen `reports` levererar. */
 export function report(venueId, minsAgo, peopleAhead, opts = {}) {
