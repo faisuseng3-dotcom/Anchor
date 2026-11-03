@@ -34,7 +34,7 @@ deploy**, inte en databasuppdatering.
 | `area` | string | `'Östermalm'` | Visas, sökbart (poäng 30–40), gruppering. |
 | `type` | `'bar'` \| `'klubb'` | `'klubb'` | Filter i Utforska, väljer kartikon (glas/not). |
 | `lat`, `lng` | number | `59.3360, 18.0730` | Kartnål, avstånd och gångtid (`distanceKmTo`), "Bäst nu". |
-| `closing` | string `HH:MM` | `'05:00'` | `closingHour()` / `minutesToClose()` → "Bäst nu", "hinner du". |
+| `closing` | string `HH:MM` \| `null` | `'05:00'` | `minutesToClose()` / `isClosed()` → "Stängt", "Stänger 01:00", "Bäst nu", "hinner du". `null` = okänd: aldrig "Stängt", ingen stängningsrad. |
 | `pace` | `'slow'` \| `'normal'` \| `'fast'` | `'slow'` | **Startgissning för dörrtakt** innan mätningar finns. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md). |
 
 Alla 308 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av dem är dolda, se nedan.
@@ -47,8 +47,8 @@ Alla 308 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av de
   - `type`: `nightclub` → `'klubb'`, `bar`/`pub` → `'bar'`. `pace`: `'normal'` för klubb, `'fast'` för bar.
   - `address`: OSM:s egna `addr:*`-taggar, annars närmaste OSM-adress inom 40 m, annars gatan.
   - `area`: stadsdel från Nominatim.
-  - `closing`: senaste stängning fredag/lördag ur OSM:s `opening_hours`. Saknas den (82 ställen) är den en
-    gissning: `'01:00'` för bar, `'03:00'` för klubb.
+  - `closing`: senaste stängning fredag/lördag ur OSM:s `opening_hours`. Saknas den, eller går den inte att tolka
+    ("17:00+"), är den `null` (77 ställen). Ingen gissning: en gissad tid visade öppna ställen som stängda.
   - Kedjor med samma namn (The Bishops Arms, O'Learys) får gatan efter namnet: "The Bishops Arms, Vasagatan".
 
 ### Stängda ställen

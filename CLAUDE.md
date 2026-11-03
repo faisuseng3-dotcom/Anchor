@@ -313,7 +313,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   `short` och "<5 min". Låst fast av `tests/wait.test.js` och `tests/status.test.js`
 - **Stängt** (`isClosed`: från stängningstid till lunch): ingen väntetid (`venueWaitText` ''), status `unknown`, ingen
   pill, sist i listan med "Stängt", kortet utan knappar, kan inte rapporteras. Stänger stället innan du hinner fram säger
-  kortet det i stället för att visa en prognos
+  kortet det i stället för att visa en prognos. `closing: null` = okänd tid: aldrig "Stängt", ingen stängningsrad
+  (77 OSM-ställen saknar öppettider). Fyll i när en riktig tid är känd, gissa aldrig
 - **Stängt för gott** → raden raderas ur `VENUES`. **Stängt för säsong, ombyggnad eller oklart** → id + skäl i
   `HIDDEN_VENUES` (direkt efter `VENUES`); raden tas bort ur arrayen vid start, så stället finns inte i karta, lista, sök
   eller rapport. Öppnar det igen: ta bort raden i `HIDDEN_VENUES`. Testdatan får inte använda ett dolt ställe (`check.js`)

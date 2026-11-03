@@ -63,8 +63,9 @@ describe('VENUES — fältvärden', () => {
     }
   });
 
-  it('closing är HH:MM', () => {
-    for (const v of VENUES) expect(v.closing, v.id).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+  it('closing är HH:MM, eller null när stängningstiden är okänd', () => {
+    // null: OSM saknar öppettider. Hellre ingen "Stängt" än en gissad som visar ett öppet ställe som stängt.
+    for (const v of VENUES) if (v.closing !== null) expect(v.closing, v.id).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
   });
 
   it('koordinaterna ligger i Stockholms innerstad', () => {
