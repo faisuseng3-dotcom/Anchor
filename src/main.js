@@ -1520,35 +1520,28 @@ import './style.css';
           themeMap(map);
           registerTypePins(map);
 
+          // Två källor. "venues": ställen med en pill (färsk väntetid), aldrig klustrade — en väntetid ska aldrig gömmas i
+          // en bubbla. "venues-empty": ställen utan data, klustrade där de ligger tätt (radie 20 px, t.o.m. zoom 13,99).
+          // updateMapStatuses flyttar ett ställe mellan dem när det får eller tappar en pill.
           map.addSource('venues', {
+            type: 'geojson', data: { type: 'FeatureCollection', features: [] },
+            promoteId: 'id' // feature-state per ställe (pillarnas intro och intoning, se stepMapMotion)
+          });
+          map.addSource('venues-empty', {
             type: 'geojson', data: venueGeoJSON,
-            // Kluster bara för ställen som ligger tätt (radie 20 px, var 40) och bara t.o.m. zoom 13,99. Vid startvyn
-            // (~12,6, ~13 m/px) slås bara de som annars skulle bli en hög ihop (Stureplan); övriga visar sin väntetid.
-            cluster: true, clusterMaxZoom: 13, clusterRadius: 20,
-            promoteId: 'id', // feature-state per ställe (pillarnas intro och intoning, se stepMapMotion)
-            // Värsta kön i gruppen (0 = ingen kö … 3 = lång), hur många som har data och hur många av dem som är färska
-            // (< 15 min). Klustret får färg efter värsta status, för det är det man frågar sig på kartan: "går det att ta
-            // sig in där?". Ställen utan data räknas inte. Är inget i gruppen färskt tonas ringen och glöden som en
-            // gammal pill — annars såg en 40 min gammal kö vid Stureplan färsk ut just där flest ställen ligger.
-            clusterProperties: {
-              worst: ['max', ['match', ['get', 'status'], 'long', 3, 'medium', 2, 'short', 1, 'none', 0, -1]],
-              n_known: ['+', ['case', ['==', ['get', 'status'], 'unknown'], 0, 1]],
-              n_fresh: ['+', ['case', ['all', ['!=', ['get', 'status'], 'unknown'], ['!=', ['get', 'aging'], 1]], 1, 0]],
-              has_best: ['max', ['get', 'best']] // 1 om "Bäst nu" ligger i klustret (applyMapFocus)
-            }
+            cluster: true, clusterMaxZoom: 13, clusterRadius: 20
           });
 
-          // Statusglöd: ett mjukt sken i statusfärgen under varje ställe och kluster med färsk data. Kartan lyser där
+          // Statusglöd: ett mjukt sken i statusfärgen under varje ställe med färsk data. Kartan lyser där
           // kvällen händer och är mörk där den inte gör det — det som fångar blicken är data, inte dekoration. Ligger under
           // baskartans etiketter så att gatunamn förblir skarpa, och plant mot marken när kartan lutar.
           var firstLabel = (map.getStyle().layers.filter(function(l) { return l.type === 'symbol'; })[0] || {}).id;
           map.addLayer({
             id: 'venues-glow', type: 'circle', source: 'venues',
-            filter: ['case', ['has', 'point_count'], ['>', ['get', 'n_known'], 0], ['!=', ['get', 'status'], 'unknown']],
+            filter: ['!=', ['get', 'status'], 'unknown'],
             paint: {
-              'circle-color': ['match',
-                ['case', ['has', 'point_count'], ['get', 'worst'], ['match', ['get', 'status'], 'long', 3, 'medium', 2, 'short', 1, 0]],
-                3, getStatusColor('long'), 2, getStatusColor('medium'), 1, getStatusColor('short'), getStatusColor('free')],
+              'circle-color': ['match', ['get', 'status'],
+                'long', getStatusColor('long'), 'medium', getStatusColor('medium'), 'short', getStatusColor('short'), getStatusColor('free')],
               // Mycket större än klustret/pillen (18–24 px), annars döljer de skenet; blur 1 = tonar ut ända från mitten.
               'circle-radius': ['interpolate', ['exponential', 1.6], ['zoom'], 11, 42, 13, 62, 16, 120],
               'circle-blur': 1,
@@ -1575,55 +1568,46 @@ import './style.css';
               'circle-stroke-opacity': ['*', 0.9, ['-', 1, ['get', 'k']]]
             } });
 
-          // Blå ram runt klustret som innehåller "Bäst nu" (filtret sätts av applyMapFocus), så kortet och kartan hör ihop
-          // även utzoomat. Ligger under klustret, 6 px utanför dess ring.
+          // Ställen utan data, klustrade. Grå ring och vit siffra: siffran är antal ställen, inte minuter, och ingen i
+          // gruppen har en väntetid (de med väntetid ligger i "venues" och klustras aldrig).
           map.addLayer({
-            id: 'clusters-focus', type: 'circle', source: 'venues', filter: ['has', '__ingen__'],
-            paint: {
-              'circle-color': 'rgba(0,0,0,0)',
-              'circle-radius': ['step', ['get', 'point_count'], 24, 6, 27, 16, 30],
-              'circle-stroke-width': 2.5,
-              'circle-stroke-color': '#5B9BFF'
-            }
-          });
-
-          map.addLayer({
-            id: 'clusters', type: 'circle', source: 'venues',
+            id: 'clusters', type: 'circle', source: 'venues-empty',
             filter: ['has', 'point_count'],
             paint: {
-              // Mörk fyllning och färgad ring: siffran är antal ställen, och i en färgad boll lästes "15" som 15 min kö.
-              // Ringen = värsta status i gruppen; grå när ingen i gruppen har färsk data (vi vet inget).
               'circle-color': '#151517',
               'circle-radius': ['step', ['get', 'point_count'], 18, 6, 21, 16, 24],
               'circle-stroke-width': 3.5,
-              'circle-stroke-color': ['case',
-                ['==', ['get', 'n_known'], 0], getStatusColor('unknown'),
-                ['==', ['get', 'worst'], 3], getStatusColor('long'),
-                ['==', ['get', 'worst'], 2], getStatusColor('medium'),
-                ['==', ['get', 'worst'], 1], getStatusColor('short'),
-                getStatusColor('free')],
-              'circle-stroke-opacity': ['case', ['==', ['get', 'n_fresh'], 0], 0.5, 1]
+              'circle-stroke-color': getStatusColor('unknown'),
+              'circle-stroke-opacity': 0.5
             }
           });
 
           map.addLayer({
-            id: 'cluster-count', type: 'symbol', source: 'venues',
+            id: 'cluster-count', type: 'symbol', source: 'venues-empty',
             filter: ['has', 'point_count'],
             layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 14, 'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'], 'text-allow-overlap': true },
             paint: { 'text-color': '#F5F5F4' }
           });
 
-          // Ställen med färsk data: pill med väntetid. Ställen utan data: den tomma ringen (pin-*-unknown), så att
-          // "vi vet inget" aldrig ser ut som en status. Samma namn skapas i pill_image nedan.
+          // Ställen utan data utanför ett kluster: den tomma ringen (pin-*-unknown), så att "vi vet inget" aldrig ser ut som
+          // en status. Under pillarna, så en pill vinner alltid när de krockar.
           map.addLayer({
-            id: 'venues-pins', type: 'symbol', source: 'venues',
+            id: 'venues-empty-pins', type: 'symbol', source: 'venues-empty',
             filter: ['!', ['has', 'point_count']],
             layout: {
-              'icon-image': ['case',
-                ['==', ['get', 'status'], 'unknown'],
-                  ['concat', ['match', ['get', 'type'], 'bar', 'pin-bar-', 'pin-club-'], 'unknown'],
-                ['get', 'pill_image']
-              ],
+              'icon-image': ['concat', ['match', ['get', 'type'], 'bar', 'pin-bar-', 'pin-club-'], 'unknown'],
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.05],
+              'icon-anchor': 'center',
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': false
+            }
+          });
+
+          // Ställen med färsk data: pill med väntetid. Samma namn skapas i pill_image nedan.
+          map.addLayer({
+            id: 'venues-pins', type: 'symbol', source: 'venues',
+            layout: {
+              'icon-image': ['get', 'pill_image'],
               'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.05],
               'icon-anchor': 'center',
               'icon-allow-overlap': true,
@@ -1652,7 +1636,6 @@ import './style.css';
           };
           map.addLayer({
             id: 'venues-names', type: 'symbol', source: 'venues', minzoom: 13.8,
-            filter: ['!', ['has', 'point_count']],
             layout: nameLayout, paint: namePaint
           }, 'venues-pins');
 
@@ -1675,6 +1658,17 @@ import './style.css';
             layout: Object.assign({}, nameLayout, { 'text-allow-overlap': true, 'text-ignore-placement': true }),
             paint: namePaint
           });
+          // Namn under de tomma ringarna, och det valda namnet när kortet gäller ett ställe utan data (applyMapFocus).
+          map.addLayer({
+            id: 'venues-empty-names', type: 'symbol', source: 'venues-empty', minzoom: 13.8,
+            filter: ['!', ['has', 'point_count']],
+            layout: nameLayout, paint: namePaint
+          }, 'venues-empty-pins');
+          map.addLayer({
+            id: 'venues-empty-name-focus', type: 'symbol', source: 'venues-empty', filter: ['has', '__ingen__'],
+            layout: Object.assign({}, nameLayout, { 'text-allow-overlap': true, 'text-ignore-placement': true }),
+            paint: namePaint
+          });
 
           // Liv på kartan kommer från data. En ring runt pillen andas bara när kön är lång OCH färsk (< 20 min) — samma regel
           // som den pulserande pricken i listan. Ställen med fri ingång pulserar inte längre: de är inte brådskande, och
@@ -1682,7 +1676,7 @@ import './style.css';
           // Ringen är en pill-formad bild (pill-ring) under pillen, så den följer pillens bredd i stället för att vara en cirkel.
           map.addLayer({
             id: 'venues-urgent', type: 'symbol', source: 'venues',
-            filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'urgent'], 1]],
+            filter: ['==', ['get', 'urgent'], 1],
             layout: {
               'icon-image': ['get', 'ring_image'],
               'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.05],
@@ -1724,18 +1718,19 @@ import './style.css';
           map.on('click', 'clusters', function(e) {
             var id = e.features[0].properties.cluster_id;
             var coords = e.features[0].geometry.coordinates;
-            map.getSource('venues').getClusterExpansionZoom(id, function(err, zoom) {
+            map.getSource('venues-empty').getClusterExpansionZoom(id, function(err, zoom) {
               if (!err) map.easeTo({ center: coords, zoom: Math.min(zoom + 1, 15), duration: 500 });
             });
           });
 
-          map.on('click', 'venues-pins', function(e) {
+          // En lyssnare för båda: features[0] är den översta, så en pill vinner över en tom ring under den.
+          map.on('click', ['venues-pins', 'venues-empty-pins'], function(e) {
             var venue = getVenueById(e.features[0].properties.id);
             console.log('[QueueBar] Kartmarkörsklick:', e.features[0].properties.id);
             if (venue) openVenueCard(venue, 'karta');
           });
 
-          ['venues-pins', 'clusters'].forEach(function(l) {
+          ['venues-pins', 'venues-empty-pins', 'clusters'].forEach(function(l) {
             map.on('mouseenter', l, function() { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', l, function() { map.getCanvas().style.cursor = ''; });
           });
@@ -1950,7 +1945,7 @@ import './style.css';
 
     function updateMapStatuses() {
       if (!map || !venueGeoJSON) return;
-      if (!map.getSource('venues')) return;
+      if (!map.getSource('venues') || !map.getSource('venues-empty')) return;
       _hasUrgent = false;
       var best = computeBestNow(), bestId = best ? best.venue.id : null;
       var updated = venueGeoJSON.features.map(function(f) {
@@ -1974,7 +1969,8 @@ import './style.css';
           })
         });
       });
-      map.getSource('venues').setData({ type: 'FeatureCollection', features: updated });
+      map.getSource('venues').setData({ type: 'FeatureCollection', features: updated.filter(function(f) { return f.properties.pill_image; }) });
+      map.getSource('venues-empty').setData({ type: 'FeatureCollection', features: updated.filter(function(f) { return !f.properties.pill_image; }) });
       trackMapChanges(updated);
       applyMapFocus();
     }
@@ -1998,23 +1994,24 @@ import './style.css';
       var isSel = sel ? ['==', ['get', 'id'], sel] : false;
       var dim = sel ? ['!=', ['get', 'id'], sel] : false;
       var none = ['has', '__ingen__']; // alltid falskt; ['==', 1, 0] tolkas som gammalt filter och kraschar kartan
-      map.setFilter('venues-focus', ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'focus_image'], ''],
+      map.setFilter('venues-focus', ['all', ['!=', ['get', 'focus_image'], ''],
         sel ? isSel : ['==', ['get', 'best'], 1]]);
-      map.setFilter('clusters-focus', sel ? none : ['all', ['has', 'point_count'], ['==', ['get', 'has_best'], 1]]);
-      map.setFilter('venues-name-focus', sel ? ['all', ['!', ['has', 'point_count']], isSel] : none);
+      map.setFilter('venues-name-focus', sel ? isSel : none);
+      map.setFilter('venues-empty-name-focus', sel ? ['all', ['!', ['has', 'point_count']], isSel] : none);
       // Sorteringsnyckeln är en layoutegenskap: att sätta den tvingar Mapbox att placera om alla symboler. Bara när valet
       // ändras.
       if (sel !== _lastFocusSel) { map.setLayoutProperty('venues-pins', 'symbol-sort-key', ['case', isSel, 10, PIN_SORT_KEY]); _lastFocusSel = sel; }
       map.setPaintProperty('venues-pins', 'icon-opacity',
-        // Stängt tonas mer än "ingen rapport än" — annars såg en stängd bar ut som en inbjudan att gå dit och rapportera.
-        ['*', APPEAR, ['case', dim, 0.3, ['==', ['get', 'closed'], 1], 0.3, ['==', ['get', 'status'], 'unknown'], 0.7, ['==', ['get', 'aging'], 1], 0.6, 1]]);
+        ['*', APPEAR, ['case', dim, 0.3, ['==', ['get', 'aging'], 1], 0.6, 1]]);
+      // Stängt tonas mer än "ingen rapport än" — annars såg en stängd bar ut som en inbjudan att gå dit och rapportera.
+      map.setPaintProperty('venues-empty-pins', 'icon-opacity', ['case', dim, 0.3, ['==', ['get', 'closed'], 1], 0.3, 0.7]);
       map.setPaintProperty('venues-focus', 'icon-opacity', APPEAR);
       // Med öppet kort visas bara det valda namnet (eget lager); grannarnas namn skulle krocka med det.
       map.setPaintProperty('venues-names', 'text-opacity', sel ? 0 : ['*', APPEAR, ['case', ['==', ['get', 'aging'], 1], 0.6, 1]]);
-      // Gammal data glöder svagare — för en pill (aging) och för ett kluster där inget ställe är färskt (n_fresh 0).
-      var stale = ['case', ['has', 'point_count'], ['==', ['get', 'n_fresh'], 0], ['==', ['get', 'aging'], 1]];
+      map.setPaintProperty('venues-empty-names', 'text-opacity', sel ? 0 : 1);
+      // Gammal data (15–45 min) glöder svagare.
       map.setPaintProperty('venues-glow', 'circle-opacity',
-        ['*', APPEAR, ['case', dim, 0.12, stale, 0.22, 0.45]]);
+        ['*', APPEAR, ['case', dim, 0.12, ['==', ['get', 'aging'], 1], 0.22, 0.45]]);
     }
 
     // ── Kartans rörelse ──────────────────────────────────────────────────

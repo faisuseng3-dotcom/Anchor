@@ -60,8 +60,8 @@ Alla 308 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av de
 
 ### Verifierade problem i venue-datan
 
-- **Täta kvarter**: runt Stureplan och i Gamla stan ligger ställen några meter isär. Kartan klustrar dem till och
-  med zoom 13; längre in ritas nålarna ovanpå varandra.
+- **Täta kvarter**: runt Stureplan och i Gamla stan ligger ställen några meter isär. Ställen utan data klustras till och
+  med zoom 13; pillar (färsk väntetid) klustras aldrig och kan ligga ovanpå varandra tills man zoomar in.
 - *(rättat 2026-11-03)* Nio av de 28 ursprungliga låg 79–398 m fel. Nu har de OSM:s position, kontrollerad mot adressen
   med Nominatim (inom 27 m). Café Opera (81 m) är orättad eftersom den är dold.
 - OSM vet inte om ett ställe har stängt för gott. Ett nedlagt ställe syns tills någon tar bort det ur `VENUES`.
