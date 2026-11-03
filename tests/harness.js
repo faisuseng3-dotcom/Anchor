@@ -27,8 +27,8 @@ function between(startAnchor, endAnchor) {
   return src.slice(a, b);
 }
 
-// VENUES-arrayen, inklusive den avslutande klammern.
-const venuesBlock = between('const VENUES = [', '\n    ];') + '\n    ];';
+// VENUES-arrayen plus HIDDEN_VENUES och raden som tar bort de dolda — samma lista som appen visar.
+const venuesBlock = between('const VENUES = [', '// ── Väntetid = kölängd');
 
 // Väntetidsmodellen: allt mellan takt-konstanterna och den första DOM-beroende funktionen.
 const modelBlock = between('var PACE_RATE', 'function getStatusLabel');
@@ -57,7 +57,7 @@ const shims = `
 `;
 
 const exported = [
-  'VENUES', 'PACE_RATE', 'AHEAD_BUCKETS',
+  'VENUES', 'HIDDEN_VENUES', 'PACE_RATE', 'AHEAD_BUCKETS',
   'estimateWait', 'setWaitRange', 'formatWait', 'waitToStatus',
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
@@ -76,7 +76,7 @@ for (const name of exported) {
 }
 
 export const {
-  VENUES, PACE_RATE, AHEAD_BUCKETS,
+  VENUES, HIDDEN_VENUES, PACE_RATE, AHEAD_BUCKETS,
   estimateWait, setWaitRange, formatWait, waitToStatus,
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,

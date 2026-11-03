@@ -22,7 +22,7 @@ anon-nyckeln ligger i klartext i `src/main.js`; se säkerhetsavsnittet längst n
 
 ## 1. `VENUES` — ställena
 
-**Ställena ligger inte i databasen.** De är en hårdkodad array på 28 objekt i
+**Ställena ligger inte i databasen.** De är en hårdkodad array på 308 objekt i
 `src/main.js`. Att lägga till, ta bort eller flytta ett ställe är en **kodändring och en
 deploy**, inte en databasuppdatering.
 
@@ -37,22 +37,37 @@ deploy**, inte en databasuppdatering.
 | `closing` | string `HH:MM` | `'05:00'` | `closingHour()` / `minutesToClose()` → "Bäst nu", "hinner du". |
 | `pace` | `'slow'` \| `'normal'` \| `'fast'` | `'slow'` | **Startgissning för dörrtakt** innan mätningar finns. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md). |
 
-Alla 28 objekt har samtliga nio fält (verifierat). `pace` fördelar sig `fast: 14`, `normal: 9`,
-`slow: 5`.
+Alla 308 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av dem är dolda, se nedan.
+
+### Var ställena kommer från
+
+- **De 28 ursprungliga** (id som `spy-bar`, `kristall`) är handskrivna. Deras `pace` och `closing` är bedömningar.
+- **280 från OpenStreetMap** (`amenity=bar|pub|nightclub` inom bboxen i `scripts/fetch-osm-venues.mjs`,
+  körd 2026-11-03), utom de som redan fanns under samma namn (även "The Soap Bar" = Soap Bar). © OpenStreetMap-bidragsgivare, ODbL.
+  - `type`: `nightclub` → `'klubb'`, `bar`/`pub` → `'bar'`. `pace`: `'normal'` för klubb, `'fast'` för bar.
+  - `address`: OSM:s egna `addr:*`-taggar, annars närmaste OSM-adress inom 40 m, annars gatan.
+  - `area`: stadsdel från Nominatim.
+  - `closing`: senaste stängning fredag/lördag ur OSM:s `opening_hours`. Saknas den (82 ställen) är den en
+    gissning: `'01:00'` för bar, `'03:00'` för klubb.
+  - Kedjor med samma namn (The Bishops Arms, O'Learys) får gatan efter namnet: "The Bishops Arms, Vasagatan".
+
+### Stängda ställen
+
+- **Permanent stängda** raderas ur `VENUES`: Gro, Gemla Vinbar, El Clasico, Ben's Bar, Jacqueline's, Proseccobaren (2026-11-03).
+- **Tillfälligt stängda eller oklara** står i `HIDDEN_VENUES` med skäl och tas bort ur `VENUES` när appen startar, så
+  de syns inte någonstans. Rapporter med deras `venue_id` filtreras bort av `loadReports` som alla okända id.
+  Öppnar stället igen: ta bort raden i `HIDDEN_VENUES`.
 
 ### Verifierade problem i venue-datan
 
-- **`sturecompagniet` och `hells-kitchen` ligger 3 m från varandra** och delar adressen
-  "Sturegatan 4". På kartan ritas de ovanpå varandra; en av dem går inte att träffa med fingret.
-- **Tio par ligger närmare än 60 m** från varandra: fem av dem runt Stureplan
-  (`sturehof`, `spy-bar`, `sturecompagniet`, `drama`, `hells-kitchen`).
-- `akkurat` (Hornsgatan 18) och `patricia` (Stadsgårdskajen 152) beräknas ligga 57 m från varandra,
-  vilket inte stämmer med adresserna — minst en av koordinaterna är fel.
-- `data/venues_candidates.json` innehåller resultatet från en OpenStreetMap-körning som pekar ut
-  13 avvikande koordinater och 3 ställen som inte kunde hittas. **Den datan används inte av appen.**
+- **Täta kvarter**: runt Stureplan och i Gamla stan ligger ställen några meter isär. Kartan klustrar dem till och
+  med zoom 13; längre in ritas nålarna ovanpå varandra.
+- OSM-körningen 2026-11-03 visade att tio av de 28 ursprungliga ligger 79–398 m från sin OSM-position (Fasching,
+  The Lounge Bar, TAK, Golden Hits, Akkurat, Nalen, Pelikan, Morfar Ginko, Café Opera, Spy Bar). **Inte rättat.**
+- OSM vet inte om ett ställe har stängt för gott. Ett nedlagt ställe syns tills någon tar bort det ur `VENUES`.
 
-Det finns **ingen validering** av `VENUES` — inget schema, ingen dubblettkontroll, inget test.
-`scripts/check.js` kontrollerar bara att 17 testdata-id:n finns och att varje objekt har `pace`.
+`tests/venues.test.js` kontrollerar fält, unika id/namn/koordinater och att allt ligger i Stockholm.
+`scripts/check.js` kontrollerar att 17 testdata-id:n finns och att varje objekt har `pace`.
 
 ---
 
@@ -244,7 +259,7 @@ Stängd för databastext, men beroendet är indirekt och värt att skydda:
 |---|---|
 | `comment` | `escapeHtml()`  |
 | `venue_name` | `escapeHtml()` |
-| `venue_id` | **Inget escapande.** Säkert bara därför att `loadReports` filtrerar bort okända venue_id, så värdet alltid är ett av 28 kända. Tas filtret bort öppnas en injektionsväg via `onclick`-attributet. |
+| `venue_id` | **Inget escapande.** Säkert bara därför att `loadReports` filtrerar bort okända venue_id, så värdet alltid är ett av de kända i `VENUES` (bara `[a-z0-9-]`, låst av test). Tas filtret bort öppnas en injektionsväg via `onclick`-attributet. |
 | `user_id` | Renderas aldrig |
 
 ### Vad som inte kunnat verifieras

@@ -317,7 +317,7 @@ Under arbete med modellen: `npm run test:watch` kör om testerna vid varje sparn
 Testdata måste vara på, annars syns inga väntetider alls utan riktiga rapporter.
 
 - [ ] **Karta** — nålar har rätt färg, kluster visas vid utzoomning, en nål går att trycka på
-- [ ] **Utforska** — färskhetsraden stämmer ("N av 28 ställen"), rader sorterade, tomma ställen sist
+- [ ] **Utforska** — färskhetsraden stämmer ("N av M ställen", M = öppna nu), rader sorterade, tomma ställen sist
 - [ ] **Väntetider** — intervall visas (`25–50 min`), aldrig en naken siffra
 - [ ] **Live** — flödet har rapporter, grupperade per ställe, klockslag stämmer
 - [ ] **Rapportera** — alla tre stegen, bekräftelsen visas, listan återställs

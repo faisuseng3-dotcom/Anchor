@@ -2,8 +2,8 @@
 
 ## Vad projektet är
 
-Mobil webbapp som visar köstatus och uppskattad väntetid för **28 barer och nattklubbar** i
-Stockholms innerstad. All data kommer från användarnas egna rapporter — det finns ingen extern
+Mobil webbapp som visar köstatus och uppskattad väntetid för **292 barer, pubar och nattklubbar** i
+Stockholm (alla som finns i OpenStreetMap, se `VENUES`). All data kommer från användarnas egna rapporter — det finns ingen extern
 datakälla för kölängder.
 
 Den svåraste uppgiften i projektet är att omvandla enstaka opålitliga människorapporter till en
@@ -48,7 +48,7 @@ Allt ligger i **en fil**: `src/main.js`. Dela inte upp den utan att fråga förs
 ```
 index.html  →  <script type="module" src="/src/main.js">
                ↓
-VENUES (28 hårdkodade objekt)  +  allReports (från Supabase)
+VENUES (308 hårdkodade objekt, 292 synliga)  +  allReports (från Supabase)
                ↓
 estimateWait()  →  formatWait()  →  venueWaitText()
                ↓
@@ -72,7 +72,7 @@ blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
 | Vad | Funktioner |
 |---|---|
 | **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
-| Venue-data | `VENUES` — 28 objekt. **Inte i databasen** — ändring = deploy |
+| Venue-data | `VENUES` — 308 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`); 16 dolda via `HIDDEN_VENUES`. **Inte i databasen** — ändring = deploy |
 | Supabase-läsning | `loadReports` — alla icke-utgångna rapporter (≤45 min, tak 1000) |
 | Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
 | Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
@@ -168,10 +168,10 @@ kväll. Verifierat i webbläsare:
 
 | Läge | Färskhetsraden | Live-flödets underrad | Rader |
 |---|---|---|---|
-| Tom databas | "Inga rapporter än. Bli först att rapportera." | "Inga rapporter senaste 45 min" | 28 |
+| Tom databas | "Inga rapporter än. Bli först att rapportera." | "Inga rapporter senaste 45 min" | alla |
 | **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge |
-| **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | 28 **behållna** |
-| Normalt | "17 av 28 ställen har färsk rapport · senast 3 min sedan" | "17 ställen · 45 min" | 28 |
+| **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | alla **behållna** |
+| Normalt | "17 av 256 öppna ställen har färsk rapport · senast 3 min sedan" (nämnaren = öppna nu) | "17 ställen · 45 min" | alla |
 
 Två regler som följer av det:
 
@@ -235,7 +235,7 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 - `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--stale` — 15–45 min · `.erow--closed` — stängt.
   Raden är neutral: statusen syns bara i den färgade siffran till höger. Ingen färgad kant, ingen tonad bakgrund
 - `.erow-pulse-dot` — blinkande röd punkt vid lång kö
-- `.exsum-line` — färskhetsraden i Utforska ("17 av 28 ställen har färsk rapport · senast 3 min sedan")
+- `.exsum-line` — färskhetsraden i Utforska ("17 av 256 öppna ställen har färsk rapport · senast 3 min sedan")
 - `.venue-group` — grupperad container med `1px solid rgba(255,255,255,0.09)`
 - `.qs-*` — kö-sessionsbanner · `.tl-*` — Live-flödets rader
 - `.toast` — texten **måste** vara `var(--bg-primary)`, bakgrunden är `--text-primary`
@@ -314,6 +314,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - **Stängt** (`isClosed`: från stängningstid till lunch): ingen väntetid (`venueWaitText` ''), status `unknown`, ingen
   pill, sist i listan med "Stängt", kortet utan knappar, kan inte rapporteras. Stänger stället innan du hinner fram säger
   kortet det i stället för att visa en prognos
+- **Stängt för gott** → raden raderas ur `VENUES`. **Stängt för säsong, ombyggnad eller oklart** → id + skäl i
+  `HIDDEN_VENUES` (direkt efter `VENUES`); raden tas bort ur arrayen vid start, så stället finns inte i karta, lista, sök
+  eller rapport. Öppnar det igen: ta bort raden i `HIDDEN_VENUES`. Testdatan får inte använda ett dolt ställe (`check.js`)
 - **Ingen data äldre än 45 min** någonstans — inte heller `computeStatus` reservväg för rapporter utan antal
 - Färskhetsraden ersatte den gamla "Stockholm just nu"-widgeten med räknare per status. Antalen
   finns redan i filterchipsen, så raden visar bara det chipsen inte säger — hur färsk datan är.
@@ -330,7 +333,7 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   röd ska ha ≥3,5:1 mot allt den kan ligga på
 - Kartans lager uppifrån: nålar → namn (`venues-names`, från zoom 13,8, döljs vid krock — aldrig pillen) → kluster →
   du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`, under baskartans etiketter, bara färsk data).
-  Startvyn ramar in alla 28 ställen mellan sökfältet och "Bäst nu"-kortet (`startCamera`)
+  Startvyn ramar in ställena med färsk data (annars alla) mellan sökfältet och "Bäst nu"-kortet (`startCamera`)
 - Kartans fokus (`applyMapFocus`) är enda stället som sätter pillarnas opacitet och sorteringsordning: blå ram
   (`venues-focus`) runt "Bäst nu" — eller runt klustret det ligger i (`clusters-focus`, `has_best`) — och runt valt
   ställe när venue-kortet är öppet. Då ritas det valda överst med sitt namn (`venues-name-focus`) och övriga tonas till
@@ -384,8 +387,8 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
 2. *(åtgärdad, se nedan)*
 3. *(åtgärdad, se nedan)*
-4. Tio venue-par ligger under 60 m från varandra, ett par på 3 m — kartnålar överlappar.
-   Låst fast av `KÄNT PROBLEM`-tester i `tests/venues.test.js`
+4. Täta kvarter (Stureplan, Gamla stan) har ställen några meter isär — kartnålar överlappar från zoom 14,
+   där klustren slutar. Ingen exakt samma koordinat (test i `tests/venues.test.js`)
 5. *(åtgärdad, se nedan)*
 6. *(åtgärdad, se nedan)*
 7. **Ingen linter.** Medvetet uppskjutet — se motiveringen under Kommandon

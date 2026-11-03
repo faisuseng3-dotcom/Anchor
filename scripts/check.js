@@ -127,11 +127,12 @@ check('background-color transition 300ms', css.includes('background-color 300ms 
 
 // ── Venues array ──────────────────────────────────────────────────────────────
 const testVenueIds = ['spy-bar', 'sturehof', 'soap-bar', 'tjoget', 'pelikan', 'morfar-ginko',
-  'akkurat', 'berns', 'sturecompagniet', 'tradgarden', 'under-bron', 'cafe-opera',
-  'solidaritet', 'gro', 'pharmarium', 'tak', 'drama'];
-const missingVenues = testVenueIds.filter(id => !js.includes("id: '" + id + "'"));
-check('All 17 testdata venues present in VENUES array', missingVenues.length === 0);
-if (missingVenues.length > 0) console.error('   Missing: ' + missingVenues.join(', '));
+  'akkurat', 'berns', 'sturecompagniet', 'neu', 'under-bron', 'kristall',
+  'solidaritet', 'nalen', 'pharmarium', 'tak', 'drama'];
+// Ett dolt ställe (HIDDEN_VENUES) finns kvar som rad men inte i appen; testdatan kraschar på det (getVenueById).
+const missingVenues = testVenueIds.filter(id => !js.includes("id: '" + id + "'") || js.includes("\n      '" + id + "': '"));
+check('All 17 testdata venues present and visible in VENUES', missingVenues.length === 0);
+if (missingVenues.length > 0) console.error('   Missing or hidden: ' + missingVenues.join(', '));
 
 // ── XSS ───────────────────────────────────────────────────────────────────────
 check('XSS: report comments escaped before HTML', js.includes('escapeHtml(recentWithComment.comment)') && !js.includes("'\"' + recentWithComment.comment"));

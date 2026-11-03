@@ -68,13 +68,13 @@ describe('venueScore — längdgrindarna', () => {
 
 describe('venueSearch — sortering och filtrering', () => {
   it('tom sökning ger alla ställen', () => {
-    expect(venueSearch('', VENUES)).toHaveLength(28);
+    expect(venueSearch('', VENUES)).toHaveLength(VENUES.length);
   });
 
   it('bästa träffen kommer först', () => {
     expect(names('spy')[0]).toBe('spy-bar');
     expect(names('berns')[0]).toBe('berns');
-    expect(names('trädgården')[0]).toBe('tradgarden');
+    expect(names('södra bar')[0]).toBe('sodra-bar');
   });
 
   it('utesluter ställen utan träff', () => {
@@ -104,7 +104,7 @@ describe('venueSearch — sortering och filtrering', () => {
   });
 
   it('sökningen hittar stavning utan svenska tecken', () => {
-    // Någon som skriver "tradgarden" i en kö ska hitta Trädgården
-    expect(names('tradgarden')).toContain('tradgarden');
+    // Någon som skriver "sodra bar" i en kö ska hitta Södra Bar
+    expect(names('sodra bar')).toContain('sodra-bar');
   });
 });

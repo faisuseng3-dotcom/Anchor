@@ -1,6 +1,6 @@
 {
   "report": {
-    "generated_at": "2026-10-15T19:41:40.160Z",
+    "generated_at": "2026-11-03T13:13:47.237Z",
     "source": "OpenStreetMap via Overpass API — © OpenStreetMap contributors, ODbL",
     "bbox": {
       "south": 59.28,
@@ -9,15 +9,15 @@
       "east": 18.12
     },
     "stats": {
-      "raw": 2356,
+      "raw": 2355,
       "byType": {
-        "pub": 118,
+        "pub": 119,
         "bar": 161,
         "nightclub": 25
       },
       "noName": 13,
-      "noAddress": 275,
-      "noHours": 82,
+      "noAddress": 276,
+      "noHours": 84,
       "outsideBbox": 0,
       "duplicates": 12,
       "flaggedClosed": 0
@@ -30,10 +30,10 @@
         "total": 37
       },
       "Norrmalm": {
-        "bar": 29,
-        "pub": 12,
+        "bar": 30,
+        "pub": 13,
         "nightclub": 7,
-        "total": 48
+        "total": 50
       },
       "Södermalm": {
         "bar": 51,
@@ -48,10 +48,10 @@
         "total": 42
       },
       "oklart": {
-        "bar": 21,
+        "bar": 20,
         "pub": 17,
         "nightclub": 7,
-        "total": 45
+        "total": 44
       },
       "Kungsholmen": {
         "bar": 9,
@@ -72,11 +72,11 @@
         "total": 4
       }
     },
-    "fetched_count": 2331,
-    "candidate_count": 299,
+    "fetched_count": 2330,
+    "candidate_count": 300,
     "comparison": {
       "existing_count": 28,
-      "new_in_osm": 290,
+      "new_in_osm": 291,
       "coordinate_drift_over_75m": [
         {
           "id": "akkurat",
@@ -807,7 +807,7 @@
       "street": null,
       "housenumber": null,
       "postcode": null,
-      "opening_hours": "Mo-Th 16:00-23:00; Fr,Sa 14:00-23:00; Su off",
+      "opening_hours": "Mo-Th 16:00-23:00; Fr 15:00-23:00; Sa 14:00-23:00; Su off",
       "website": null,
       "area": "Norrmalm",
       "area_source": "närmaste punkt",
@@ -1231,6 +1231,24 @@
       "tag_count": 7
     },
     {
+      "osm_id": "node/11249147134",
+      "name": "Cachette",
+      "type": "bar",
+      "lat": 59.3405342,
+      "lon": 18.0653648,
+      "address": null,
+      "street": null,
+      "housenumber": null,
+      "postcode": null,
+      "opening_hours": null,
+      "website": null,
+      "area": "Norrmalm",
+      "area_source": "närmaste punkt",
+      "is_candidate": true,
+      "possibly_closed": null,
+      "tag_count": 2
+    },
+    {
       "osm_id": "node/4049067960",
       "name": "Cadierbaren",
       "type": "bar",
@@ -1300,7 +1318,7 @@
       "area_source": "närmaste punkt",
       "is_candidate": true,
       "possibly_closed": null,
-      "tag_count": 8
+      "tag_count": 9
     },
     {
       "osm_id": "node/9215045909",
@@ -2457,6 +2475,24 @@
       "is_candidate": true,
       "possibly_closed": null,
       "tag_count": 11
+    },
+    {
+      "osm_id": "node/1429311382",
+      "name": "International",
+      "type": "pub",
+      "lat": 59.3377934,
+      "lon": 18.0573628,
+      "address": null,
+      "street": null,
+      "housenumber": null,
+      "postcode": null,
+      "opening_hours": null,
+      "website": null,
+      "area": "Norrmalm",
+      "area_source": "närmaste punkt",
+      "is_candidate": true,
+      "possibly_closed": null,
+      "tag_count": 2
     },
     {
       "osm_id": "node/318591316",
@@ -3742,24 +3778,6 @@
       "tag_count": 15
     },
     {
-      "osm_id": "node/9956343955",
-      "name": "Plåtparken",
-      "type": "bar",
-      "lat": 59.3098837,
-      "lon": 18.0310407,
-      "address": null,
-      "street": null,
-      "housenumber": null,
-      "postcode": null,
-      "opening_hours": "Mo-Su 12:00-24:00",
-      "website": "https://www.platparken.se/",
-      "area": "oklart",
-      "area_source": "ingen",
-      "is_candidate": true,
-      "possibly_closed": null,
-      "tag_count": 12
-    },
-    {
       "osm_id": "node/1600236865",
       "name": "Polhem",
       "type": "pub",
@@ -4709,7 +4727,7 @@
       "street": null,
       "housenumber": null,
       "postcode": null,
-      "opening_hours": "Su-Th 11:00-23:00, Fr,Sa 11:00-01:00",
+      "opening_hours": "Mo-Su 11:00-18:00",
       "website": null,
       "area": "Södermalm",
       "area_source": "närmaste punkt",

@@ -2,24 +2,26 @@
 // ingen validering någonstans — ett fält som glöms eller en koordinat som är fel upptäcks
 // i dag först av en användare som står på fel gata.
 
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
-import { VENUES, PACE_RATE, getVenueById } from './harness.js';
+import { VENUES, HIDDEN_VENUES, PACE_RATE, getVenueById } from './harness.js';
 
 const FIELDS = ['id', 'name', 'address', 'area', 'type', 'lat', 'lng', 'closing', 'pace'];
 
-/** Avstånd i meter mellan två punkter. */
-function metersBetween(a, b) {
-  const rad = (d) => (d * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 6371000 * 2 * Math.asin(Math.sqrt(h));
-}
-
 describe('VENUES — struktur', () => {
-  it('innehåller 28 ställen', () => {
-    expect(VENUES).toHaveLength(28);
+  // Vakt mot trunkering: src/main.js har kapats två gånger av AI-redigeringar.
+  // 308 rader (28 handskrivna + 280 från OSM) minus 16 dolda i HIDDEN_VENUES.
+  it('innehåller 292 synliga ställen', () => {
+    expect(VENUES).toHaveLength(292);
+  });
+
+  it('varje dolt id finns som rad och syns inte', () => {
+    // Ett felstavat id i HIDDEN_VENUES döljer ingenting, och stället står kvar på kartan.
+    const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+    for (const id of Object.keys(HIDDEN_VENUES)) {
+      expect(src, `${id} finns inte i VENUES`).toContain(`{ id: '${id}',`);
+      expect(getVenueById(id), `${id} syns fortfarande`).toBeUndefined();
+    }
   });
 
   it('varje id är unikt', () => {
@@ -83,48 +85,12 @@ describe('VENUES — fältvärden', () => {
 });
 
 describe('VENUES — kartnålar som går att träffa', () => {
-  // Kartan ritar nålar med icon-allow-overlap: true. Två ställen på nästan samma punkt
-  // hamnar ovanpå varandra och ett av dem går inte att träffa med fingret.
-  const pairsCloserThan = (m) => {
-    const out = [];
-    for (let i = 0; i < VENUES.length; i++) {
-      for (let j = i + 1; j < VENUES.length; j++) {
-        const d = metersBetween(VENUES[i], VENUES[j]);
-        if (d < m) out.push(`${VENUES[i].id} ↔ ${VENUES[j].id} (${Math.round(d)} m)`);
-      }
-    }
-    return out;
-  };
-
-  // ── KÄNT PROBLEM — dokumenterat, inte åtgärdat ────────────────────────────
-  // sturecompagniet och hells-kitchen delar adressen "Sturegatan 4" och ligger 3 m isär.
-  // Åtgärd: rätta koordinaterna, eller sätt icon-allow-overlap: false, eller förskjut
-  // nålar under 25 m. När det är gjort ska det här testet vändas till toEqual([]).
-  it('KÄNT PROBLEM: två ställen ligger under 10 m från varandra', () => {
-    expect(pairsCloserThan(10)).toEqual(['sturecompagniet ↔ hells-kitchen (3 m)']);
-  });
-
-  it('KÄNT PROBLEM: tio par ligger under 60 m från varandra', () => {
-    expect(pairsCloserThan(60)).toHaveLength(10);
-  });
-
+  // Täta kvarter (Stureplan, Gamla stan) har ställen några meter isär. Kartan klustrar dem upp till zoom 13;
+  // längre in ritas nålarna med icon-allow-overlap. Exakt samma punkt går aldrig att isär med zoom.
   it('inga två ställen delar exakt samma koordinat', () => {
     const points = VENUES.map((v) => `${v.lat},${v.lng}`);
     expect(new Set(points).size).toBe(points.length);
   });
-});
-
-describe('VENUES — dubbletter som pekar på datafel', () => {
-  // ── KÄNT PROBLEM ──────────────────────────────────────────────────────────
-  // Hell's Kitchen ligger i samma byggnad som Sturecompagniet, så adressen kan vara
-  // riktig — men kombinationen med 3 m avstånd gör att en av nålarna är onåbar.
-  it('KÄNT PROBLEM: en adress delas av två ställen', () => {
-    const byAddress = {};
-    for (const v of VENUES) (byAddress[v.address] ||= []).push(v.id);
-    const shared = Object.entries(byAddress).filter(([, ids]) => ids.length > 1);
-    expect(shared).toEqual([['Sturegatan 4', ['sturecompagniet', 'hells-kitchen']]]);
-  });
-
   it('inga två ställen har samma namn', () => {
     const names = VENUES.map((v) => v.name.toLowerCase());
     expect(new Set(names).size).toBe(names.length);

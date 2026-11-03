@@ -3,6 +3,8 @@
 
 import { test, expect } from '@playwright/test';
 import { report, mockSupabase, skipOnboarding, openApp, goToScreen } from './support.js';
+// Synliga ställen i VENUES (låst i tests/venues.test.js). Harnessen går inte att importera här: Playwright laddar den som CJS.
+const ALLA = 292;
 
 // En kväll med tre ställen som har rapporter.
 const KVALL = [
@@ -12,16 +14,17 @@ const KVALL = [
 ];
 
 test.describe('1. Appen startar och Utforska renderar', () => {
-  test('alla 28 ställen listas, de med data visar en väntetid', async ({ page }) => {
+  test('alla ställen listas, de med data visar en väntetid', async ({ page }) => {
     await skipOnboarding(page);
     await mockSupabase(page, KVALL);
     const errors = await openApp(page);
     await goToScreen(page, 'explore');
 
-    await expect(page.locator('.erow')).toHaveCount(28);
+    await expect(page.locator('.erow')).toHaveCount(ALLA);
 
     // Färskhetsraden ska redovisa hur mycket som faktiskt är färskt.
-    await expect(page.locator('#exsum-line')).toContainText('av 28 ställen har färsk rapport');
+    // Tre ställen har rapporter; nämnaren är de öppna klockan 23 (E2E_NOW), och då har några barer stängt.
+    await expect(page.locator('#exsum-line')).toContainText(/^3 av \d+ öppna ställen har färsk rapport/);
 
     // Ett ställe med rapport visar ett intervall, aldrig en naken siffra.
     const kristall = page.locator('.erow', { hasText: 'Kristall' }).first();
@@ -103,7 +106,7 @@ test.describe('2. Serverfel visas som fel, inte som en tyst kväll', () => {
 
     await expect(page.locator('#exsum-line')).toContainText('siffrorna kan vara gamla');
     // Datan kastas INTE bort för att en pollning missade.
-    await expect(page.locator('.erow')).toHaveCount(28);
+    await expect(page.locator('.erow')).toHaveCount(ALLA);
     await expect(page.locator('.explore-error-state')).toHaveCount(0);
   });
 });
@@ -116,7 +119,8 @@ test.describe('3. Sök och öppna ett ställe', () => {
     await goToScreen(page, 'explore');
 
     const sok = page.locator('#screen-explore input').first();
-    await sok.fill('spy');
+    // "spy" ensamt matchar också "Tyska Brinken" (luddig sökning), så frågan är hela namnet.
+    await sok.fill('spy bar');
     await page.waitForTimeout(600);
 
     const rader = page.locator('.erow');
@@ -230,6 +234,6 @@ test.describe('Kartan', () => {
     await expect(page.locator('.map-error-inner')).toContainText('Kartan kunde inte laddas');
     // Resten av appen ska fortfarande fungera.
     await goToScreen(page, 'explore');
-    await expect(page.locator('.erow')).toHaveCount(28);
+    await expect(page.locator('.erow')).toHaveCount(ALLA);
   });
 });
