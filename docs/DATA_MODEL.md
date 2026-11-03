@@ -62,8 +62,8 @@ Alla 308 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av de
 
 - **Täta kvarter**: runt Stureplan och i Gamla stan ligger ställen några meter isär. Kartan klustrar dem till och
   med zoom 13; längre in ritas nålarna ovanpå varandra.
-- OSM-körningen 2026-11-03 visade att tio av de 28 ursprungliga ligger 79–398 m från sin OSM-position (Fasching,
-  The Lounge Bar, TAK, Golden Hits, Akkurat, Nalen, Pelikan, Morfar Ginko, Café Opera, Spy Bar). **Inte rättat.**
+- *(rättat 2026-11-03)* Nio av de 28 ursprungliga låg 79–398 m fel. Nu har de OSM:s position, kontrollerad mot adressen
+  med Nominatim (inom 27 m). Café Opera (81 m) är orättad eftersom den är dold.
 - OSM vet inte om ett ställe har stängt för gott. Ett nedlagt ställe syns tills någon tar bort det ur `VENUES`.
 
 `tests/venues.test.js` kontrollerar fält, unika id/namn/koordinater och att allt ligger i Stockholm.
