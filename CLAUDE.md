@@ -383,7 +383,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   ingen session — det finns ingen kö att stå i. En rapport vid stället avslutar "På väg"; en rapport långt ifrån
   (`isFarFrom`, >300 m) tas emot men startar ingen session. Står du redan i kö på samma ställe blir en ny rapport en
   uppföljning. "Jag är inne" >20 min efter senaste punkten frågar "Kom du in nyss?" — "Tidigare" skickar inget
-- Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned
+- Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned. Stängning räknas
+  mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
 - "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
 - Favoriter finns bara i `qb_favorites` på enheten. Tabellen `favorites` skrivs inte längre (lästes aldrig tillbaka)

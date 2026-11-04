@@ -790,10 +790,14 @@ import './style.css';
       var h = parseInt(p[0], 10), m = parseInt(p[1] || 0, 10);
       if (isNaN(h)) return null;
       var total = h < 6 ? (h + 24) * 60 + m : h * 60 + m;
-      var d = new Date(), nowMin = d.getHours() * 60 + d.getMinutes();
+      var d = new Date(), nowMin = _testNightMin !== null ? _testNightMin : d.getHours() * 60 + d.getMinutes();
       if (nowMin < 12 * 60) nowMin += 1440;
       return total - nowMin;
     }
+    // Testläget föreställer en kväll: testdatan är rapporter från "nu", vid barer som stänger 01:00–05:00. Klockan 10 på
+    // förmiddagen var alla stängda och testläget visade ingenting. I testläge räknas stängning därför mot 23:00 (minuter
+    // efter midnatt), satt där testläget slås på. null = verklig klocka.
+    var _testNightMin = null;
 
     // Stängt från stängningstiden fram till lunch (öppettider finns inte i VENUES). Ett stängt ställe har ingen kö att
     // visa: ingen väntetid, ingen pill, ingen "gå hit".
@@ -2221,6 +2225,7 @@ import './style.css';
 
     // Synligt testläge: påhittade köer får aldrig misstas för riktiga (etiketten i style.css, .qb-testdata).
     document.documentElement.classList.toggle('qb-testdata', testDataEnabled());
+    if (testDataEnabled()) _testNightMin = 23 * 60; // testdatan är en kväll, se minutesToClose
 
     // Tangentbord: Escape stänger det som ligger överst (snabbarket, sedan venue-kortet), som en tryckning utanför gör.
     // Enter/mellanslag på en rad med role="button" (Utforska, Live) gör samma sak som ett tryck.
