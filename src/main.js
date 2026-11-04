@@ -890,9 +890,16 @@ import './style.css';
       // Fokus in i kortet (skärmläsare och tangentbord hamnar där det händer) och tillbaka dit det kom ifrån vid stängning.
       if (!card.contains(document.activeElement)) _vcReturnFocus = document.activeElement;
       document.getElementById('vc-close').focus({ preventScroll: true });
-      // Stället centreras i den del av kartan som syns ovanför kortet, inte mitt på skärmen bakom det.
+      // Stället centreras mitt i den del av kartan som syns: mellan raden med knappar under sökfältet och kortets överkant.
+      // Förut räknades bara kortet (en halv korthöjd upp), och pillen hamnade bakom knapparna medan kartan zoomade in mot
+      // vattnet mitt på skärmen. Är man redan närmare än zoom 14 zoomar kortet inte ut.
       if (map && venue.lat && venue.lng) {
-        map.flyTo({ center: [venue.lng, venue.lat], zoom: 14, duration: 800, offset: [0, -card.offsetHeight / 2] });
+        var m = document.getElementById('map').getBoundingClientRect();
+        var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar');
+        var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
+        var bottom = Math.max(top + 60, window.innerHeight - card.offsetHeight - m.top);
+        map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(14, map.getZoom()), duration: 800,
+          offset: [0, (top + bottom) / 2 - m.height / 2] });
       }
     }
 
