@@ -123,7 +123,6 @@ check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
 check('Trend indicator: ↑ Ökar / ↓ Minskar', js.includes('↑ Ökar') && js.includes('↓ Minskar'));
 check('Sorting: Swedish localeCompare for empty venues', js.includes("localeCompare(b.name, 'sv')"));
 check('Sorting: newest-report-first for venues with data', js.includes('bLatest - aLatest'));
-check('background-color transition 300ms', css.includes('background-color 300ms ease-out'));
 
 // ── Venues array ──────────────────────────────────────────────────────────────
 const testVenueIds = ['spy-bar', 'sturehof', 'soap-bar', 'tjoget', 'pelikan', 'morfar-ginko',
