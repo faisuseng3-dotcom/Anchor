@@ -137,7 +137,6 @@
       display: flex; flex-direction: column; align-items: center;
       padding: 48px 24px 32px; text-align: center; gap: 6px;
     }
-    .explore-err-icon { width: 36px; height: 36px; color: rgba(255,255,255,0.2); margin-bottom: 4px; }
     .explore-err-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     .explore-err-sub { font-size: 13px; color: var(--text-muted); }
     .explore-err-btn {
@@ -723,7 +722,6 @@
     .explore-empty-sub   { font-size: 14px; font-weight: 500; color: var(--text-secondary); text-align: center; }
 
     /* ── Empty / Error states ──────────────────────────────────────────── */
-    .empty-icon { width: 32px; height: 32px; color: var(--text-muted); }
     .empty-btn {
       background: transparent; border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 8px 20px;
@@ -815,7 +813,6 @@
     .lv-more:active { color: var(--text-primary); }
 
     .lv-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 56px 24px 0; gap: 6px; }
-    .lv-empty .empty-icon { width: 36px; height: 36px; margin-bottom: 6px; }
     .lv-empty-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
     .lv-empty-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.45; max-width: 280px; }
     .lv-empty .empty-btn { margin-top: 14px; min-height: 44px; padding: 0 22px; border-radius: var(--radius-full); }

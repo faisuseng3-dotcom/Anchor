@@ -1909,9 +1909,8 @@ import './style.css';
       var el = document.getElementById('explore-list');
       if (!el) return;
       el.innerHTML = '<div class="explore-error-state">' +
-        '<svg class="explore-err-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-        '<div class="explore-err-title">Kunde inte ladda data</div>' +
-        '<div class="explore-err-sub">Kontrollera anslutningen</div>' +
+        '<div class="explore-err-title">Ingen kontakt med servern</div>' +
+        '<div class="explore-err-sub">Vi vet inte hur köerna ser ut just nu.</div>' +
         '<button class="explore-err-btn" onclick="loadReports()">Försök igen</button>' +
         '</div>';
     }
@@ -2491,7 +2490,7 @@ import './style.css';
     async function submitQueueFollowup(peopleAhead) {
       try {
         await recordFollowup(peopleAhead);
-        showToast('Tack! Nu vet vi hur snabbt kön rör sig.');
+        showToast('Uppdaterat. Nu syns hur snabbt kön rör sig.');
       } catch(err) { showToast(reportErrorText(err)); }
     }
 
@@ -2515,13 +2514,13 @@ import './style.css';
       _qsAskWhen = false;
       if (when === 'earlier') {
         endQueueSession();
-        showToast('Tack! Utan tidpunkt kan vi inte mäta kön, så inget skickades');
+        showToast('Inget skickades. Utan tidpunkt går kön inte att mäta.');
         return;
       }
       _reportSending = true;
       try {
         var mins = await recordEntered(s);
-        showToast('Inne efter ' + mins + ' min. Tack!');
+        showToast('Inne efter ' + mins + ' min.');
       } catch(err) { showToast(reportErrorText(err)); updateOnMyWayUI(); }
       finally { _reportSending = false; }
     }
@@ -3009,7 +3008,7 @@ import './style.css';
           : 'Ingen kontakt med servern';
       }
       if (state === 'loading') return 'Hämtar rapporter…';
-      if (d.total === 0) return 'Inga rapporter än. Bli först att rapportera.';
+      if (d.total === 0) return 'Inga rapporter än de senaste 45 minuterna.';
       var since = exsumTimeSince(d.lastTs);
       return d.fresh + ' av ' + d.venueTotal + (d.closed ? ' öppna' : '') + ' ställen har färsk rapport' + (since ? ' · senast ' + since : '');
     }
@@ -3219,7 +3218,7 @@ import './style.css';
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
           emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
-          emptySub = 'Färsk data saknas eller ingen matchar. Kolla igen om en stund.';
+          emptySub = 'Ingen har rapporterat en sådan kö de senaste 45 minuterna.';
         } else {
           var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
@@ -3427,9 +3426,10 @@ import './style.css';
       if (headDot) headDot.hidden = !isLive;
       var subText = document.getElementById('live-sub-text');
       if (!supabase) {
-        if (subText) subText.textContent = 'Offline';
-        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>' +
-          '<div class="lv-empty-title">Ingen anslutning</div><p class="lv-empty-sub">Livedata är inte tillgänglig just nu.</p>' +
+        // Samma ord som alla andra fel: "Ingen kontakt med servern". Ingen ikon — rubriken säger det.
+        if (subText) subText.textContent = 'Ingen kontakt';
+        el.innerHTML = '<div class="lv-empty">' +
+          '<div class="lv-empty-title">Ingen kontakt med servern</div><p class="lv-empty-sub">Vi vet inte hur köerna ser ut just nu.</p>' +
           '<button class="empty-btn" onclick="retrySupabase()">Försök igen</button></div>';
         return;
       }
@@ -3440,15 +3440,15 @@ import './style.css';
       // visa samma tomma läge som när Stockholm faktiskt är tyst.
       if (_loadState === 'error' && !recent.length) {
         if (subText) subText.textContent = 'Ingen kontakt';
-        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>' +
+        el.innerHTML = '<div class="lv-empty">' +
           '<div class="lv-empty-title">Ingen kontakt med servern</div><p class="lv-empty-sub">Vi vet inte hur köerna ser ut just nu.</p>' +
           '<button class="empty-btn" onclick="loadReports()">Försök igen</button></div>';
         return;
       }
       if (!recent.length) {
         if (subText) subText.textContent = 'Inga rapporter senaste 45 min';
-        el.innerHTML = '<div class="lv-empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>' +
-          '<div class="lv-empty-title">Inga rapporter ännu</div><p class="lv-empty-sub">Nya köuppdateringar dyker upp här så fort någon rapporterar.</p></div>';
+        // Rubriken ovanför säger redan "Inga rapporter senaste 45 min"; här bara vad som händer sen.
+        el.innerHTML = '<div class="lv-empty"><p class="lv-empty-sub">När någon rapporterar en kö syns den här.</p></div>';
         return;
       }
       // Group by venue, sort each group newest-first
@@ -3838,7 +3838,7 @@ import './style.css';
         await submitReport(v.id, v.name, peopleAhead);
         maybeShowInstallPrompt();
         flashVenueRow(v.id);
-        showToast('Rapport skickad. Tack!');
+        showToast('Rapport skickad.');
       } catch(e) {
         showToast(reportErrorText(e));
       } finally { _reportSending = false; }
