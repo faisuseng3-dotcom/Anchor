@@ -34,7 +34,7 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
-| Enhetstester | **Vitest** 5.x, 132 tester | `vitest.config.js`, `tests/` |
+| Enhetstester | **Vitest** 5.x, 134 tester | `vitest.config.js`, `tests/` |
 | E2E | **Playwright** 1.56, 12 tester | `playwright.config.js`, `e2e/` |
 | Spärr före commit | **husky** 9.x — kör `npm run verify` | `.husky/pre-commit` |
 | CI | GitHub Actions | `.github/workflows/verify.yml` |
@@ -53,12 +53,12 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  291 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
-src/main.js                3442 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1114 rader   Design tokens + alla komponentklasser
+index.html                  297 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
+src/main.js                3885 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1127 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
-tests/*.test.js             132 tester   Vitest: modell, status, sessioner, historik, sök, venues, lägen, Bäst nu
+tests/*.test.js             134 tester   Vitest: modell, status, sessioner, historik, sök, venues, lägen, Bäst nu
 vitest.config.js                        TZ=Europe/Stockholm — nattgränsen hamnar fel i UTC
 e2e/support.js                          Supabase-mock; inget test rör produktionsdatabasen
 e2e/app.spec.js             12 tester   Playwright, 390×844: start, feltillstånd, sök, rapport

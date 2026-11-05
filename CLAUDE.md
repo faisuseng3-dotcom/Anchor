@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 442 rader), `src/style.css` (1 114 rader), `index.html` (291 rader) |
+| Kod | `src/main.js` (3 885 rader), `src/style.css` (1 127 rader), `index.html` (297 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -93,7 +93,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 132 enhetstester (Vitest)
+npm test                   # 134 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 3 187-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 3 885-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -418,7 +418,7 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   byggas. Löst med `&& aheadBucket(first.people_ahead).width > 0`, låst fast av fem tester i
   `tests/sessions.test.js`
 - Serverfel visades som "inga rapporter". Löst med `_loadState` — se avsnittet nedan
-- Modellen hade inga tester. 124 enhetstester + 12 E2E-tester finns nu
+- Modellen hade inga tester. 134 enhetstester + 12 E2E-tester finns nu
 - Ingen spärr före commit och ingen CI. Båda finns nu: `.husky/pre-commit` och
   `.github/workflows/verify.yml`
 - `map.on('error')` nollade kartan vid **vilket** fel som helst, även ett tappat tile-anrop. Nu stänger bara fel före
