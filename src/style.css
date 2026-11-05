@@ -674,7 +674,7 @@
     .erow-trend { font-size: 13px; font-weight: 700; line-height: 1; white-space: nowrap; }
     .erow-trend--up     { color: var(--status-medium); }
     .erow-trend--down   { color: var(--status-free); }
-    .erow-comment { font-size: 13px; color: var(--text-secondary); font-style: italic; padding-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .erow-comment { font-size: 13px; color: var(--text-secondary); padding-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Färskhetsrad (ovanför listan) ──────────────────────────────────── */
     .exsum-line { padding: 4px 2px 0; font-size: 13px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; line-height: 1.4; }
@@ -783,7 +783,7 @@
     }
     .lv-meta { font-size: 13px; font-weight: 500; color: var(--text-secondary); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lv-sub { font-size: 13px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lv-comment { font-size: 13px; color: var(--text-secondary); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lv-comment { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lv-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; flex-shrink: 0; align-self: stretch; }
     .lv-right .lv-more { margin-top: auto; }
     .lv-hero { font-family: var(--font-mono); font-size: 24px; font-weight: 700; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
@@ -801,7 +801,7 @@
     .lv-old + .lv-old { border-top: 1px solid var(--border); }
     .lv-old-time { font-family: var(--font-mono); font-weight: 600; width: 40px; flex-shrink: 0; }
     .lv-old-val { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
-    .lv-old-note { margin-left: auto; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+    .lv-old-note { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
     /* Liten knapp inuti kortet, under värdet — 44px tryckyta via osynlig padding */
     .lv-more {
       position: relative; display: inline-flex; align-items: center; gap: 2px;
@@ -870,7 +870,7 @@
     .q-btn-count { display: flex; align-items: center; gap: 16px; }
     .q-btn-num { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 78px; }
     .q-btn-sub { position: relative; font-size: 15px; font-weight: 500; color: var(--text-secondary); }
-    .erow-est-label { color: rgba(255,255,255,0.45); font-style: italic; }
+    .erow-est-label { color: rgba(255,255,255,0.45); }
 
     /* Topbanner (#omw-banner) — "live activity": ditt läge, accentblå rubrik */
     #omw-banner {
@@ -1010,6 +1010,17 @@
     /* En regel för allt som går att trycka på. Skalan är ett enda värde (0.96), så att alla knappar känns lika.
        Rader i full bredd skalas inte (de går kant i kant) — de byter bakgrund, se .erow/.lv-row/.rs-item/.pf-row.
        Bara transform och opacity, så det går mjukt på en gammal telefon. */
+    /* Hover bara där det finns en pekare (annars fastnar den efter ett tryck på mobil). Kanten eller färgen skiftar, aldrig
+       en skugga eller ett hopp: knappar och rader ska kännas levande med mus utan att något flyttar sig. */
+    @media (hover: hover) {
+      .fbtn:not(.active):hover, .avatar-btn:hover, .bn-card:hover, .qs-btn:hover, .vc-btn:not(.vc-primary):hover {
+        border-color: var(--border-focus); }
+      .fbtn:not(.active):hover, .tab:hover, .vc-tool:hover, .vc-share:hover, .vc-reps-toggle:hover, .lv-more:hover,
+      #map-search-clear:hover, .ip-close:hover, .qs-close:hover, .rs-back:hover { color: var(--text-primary); }
+      .msearch-row:hover, .rs-item:hover, .lv-row:hover { background: var(--surface-raised); }
+      .vc-primary:hover, .ip-accept:hover { opacity: 0.88; }
+    }
+
     :root { --press-scale: 0.96; --press-dur: 90ms; }
     .fbtn, .tab, .avatar-btn, .vc-btn, .vc-tool, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
     .explore-err-btn, .consent-accept, .lv-more, .bn-card {
