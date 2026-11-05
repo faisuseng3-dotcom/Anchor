@@ -1191,7 +1191,10 @@ import './style.css';
       resultsEl.style.display = 'block';
 
       if (!hits.length && !areas.length) {
-        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + escapeHtml(query) + '"</div>';
+        var sug = _mapSuggestion = didYouMean(query, VENUES);
+        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + escapeHtml(query) + '"' +
+          (sug ? '<button class="msearch-suggest" onmousedown="useMapSuggestion()">Menade du ' + escapeHtml(sug.text) + '?</button>' : '') +
+          '</div>';
         return;
       }
 
@@ -1211,6 +1214,14 @@ import './style.css';
           '<div class="msearch-meta">' + v.area + ' · ' + typeLabel + '</div>' +
           '</div>';
       }).join('');
+    }
+    var _mapSuggestion = null;
+    function useMapSuggestion() {
+      var s = _mapSuggestion;
+      if (!s) return;
+      document.getElementById('map-search-input').value = s.text;
+      if (s.area) { _mapAreaHits = [{ area: s.text }]; selectMapSearchArea(0); }
+      else selectMapSearchVenue(s.id);
     }
 
     function selectMapSearchVenue(venueId) {
@@ -2791,22 +2802,27 @@ import './style.css';
     //    10 fuzzy char-sequence in compact name            requires len ≥ 3
     //    -1 no match → excluded
 
-    function _searchNorm(s) {
-      return s.toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/\s+/g, ' ').trim();
+    // Svenska tecken: utan å/ä/ö i sökningen vikas de bort ("tradgarden" hittar Trädgården — alla har inte svenskt
+    // tangentbord). Med å/ä/ö i sökningen gäller de: "öl" ska inte hitta "Old Beefeater".
+    function _searchNorm(s, keepSwedish) {
+      s = s.toLowerCase();
+      if (!keepSwedish) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      return s.replace(/\s+/g, ' ').trim();
     }
-    function _searchCompact(s) { return _searchNorm(s).replace(/\s/g, ''); }
+    function _searchCompact(s, keepSwedish) { return _searchNorm(s, keepSwedish).replace(/\s/g, ''); }
+    // Typord man skriver i en sökning: "nattklubb" ska hitta klubbarna, "berns bar" ska hitta Berns.
+    var TYPE_WORDS = { bar: ['bar', 'barer'], klubb: ['klubb', 'klubbar', 'nattklubb', 'nattklubbar', 'club'] };
 
     function venueScore(query, v) {
-      var q  = _searchNorm(query);
-      var qc = _searchCompact(query);
+      var sw = /[åäö]/i.test(query);
+      var q  = _searchNorm(query, sw);
+      var qc = _searchCompact(query, sw);
       var ql = qc.length;
 
-      var name  = _searchNorm(v.name);
-      var namec = _searchCompact(v.name);
-      var area  = _searchNorm(v.area);
-      var addr  = _searchNorm(v.address);
+      var name  = _searchNorm(v.name, sw).replace(/,/g, '');
+      var namec = _searchCompact(v.name, sw).replace(/,/g, '');
+      var area  = _searchNorm(v.area, sw);
+      var addr  = _searchNorm(v.address, sw);
 
       if (name === q)              return 100;
       if (name.startsWith(q))     return 90;
@@ -2817,19 +2833,25 @@ import './style.css';
       if (ql >= 2 && namec.startsWith(qc))  return 85;
       if (ql >= 3 && namec.includes(qc))    return 60;
       if (ql >= 2 && name.includes(q))      return 50;
+
+      // Flera ord: varje ord ska hitta något — namn, område, gata eller typ ("berns bar", "tjoget hornstull").
+      var qw = q.split(' ').filter(Boolean);
+      if (qw.length > 1) {
+        var hay = words.concat(area.split(' '), addr.split(' '), TYPE_WORDS[v.type] || []);
+        if (qw.every(function(w) { return hay.some(function(h) { return h.startsWith(w); }); })) return 65;
+      }
+
       if (ql >= 2 && area.startsWith(q))    return 40;
       if (ql >= 3 && area.includes(q))      return 30;
+      if (ql >= 3 && (TYPE_WORDS[v.type] || []).indexOf(q) >= 0) return 25;
       if (ql >= 3 && addr.includes(q))      return 20;
 
-      // Fuzzy: every char in query appears in order in compact name (3+ chars only)
-      if (ql >= 3) {
-        var ni = 0;
-        for (var ci = 0; ci < qc.length; ci++) {
-          ni = namec.indexOf(qc[ci], ni);
-          if (ni === -1) return -1;
-          ni++;
-        }
-        return 10;
+      // Felstavning: sökordets tecken i ordning i namnet, men bara om första tecknet inleder ett ord och träffen ligger
+      // samlat. Förut räckte tre lösa bokstäver var som helst: "lol" gav sex ställen och "aaa" 43.
+      if (ql >= 4 && words.some(function(w) { return w[0] === qc[0]; })) {
+        var ni = namec.indexOf(qc[0]), start = ni;
+        for (var ci = 1; ci < qc.length && ni !== -1; ci++) ni = namec.indexOf(qc[ci], ni + 1);
+        if (ni !== -1 && ni - start < ql * 2) return 10;
       }
       return -1;
     }
@@ -2854,6 +2876,34 @@ import './style.css';
         .filter(function(a) { return _searchNorm(a).indexOf(q) === 0; })
         .sort(function(a, b) { return count[b] - count[a]; })
         .map(function(a) { return { area: a, count: count[a] }; });
+    }
+
+    // "Menade du …?" när sökningen inte hittar något: närmaste namn eller område med högst ett fel per fyra tecken
+    // (Levenshtein). Appen gissar inte tyst — den frågar. null när inget ligger tillräckligt nära.
+    function didYouMean(query, venues) {
+      var q = _searchNorm(query || '');
+      if (q.length < 4) return null;
+      function dist(a, b) {
+        var prev = [], cur;
+        for (var j = 0; j <= b.length; j++) prev[j] = j;
+        for (var i = 1; i <= a.length; i++) {
+          cur = [i];
+          for (var k = 1; k <= b.length; k++) cur[k] = Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (a[i - 1] === b[k - 1] ? 0 : 1));
+          prev = cur;
+        }
+        return prev[b.length];
+      }
+      var best = null, max = Math.max(1, Math.floor(q.length / 4));
+      var seen = {};
+      venues.forEach(function(v) {
+        [{ text: v.area, area: true }, { text: v.name, id: v.id }].forEach(function(c) {
+          if (seen[c.text]) return;
+          seen[c.text] = true;
+          var d = dist(q, _searchNorm(c.text));
+          if (d <= max && (!best || d < best.d)) best = { d: d, text: c.text, area: !!c.area, id: c.id };
+        });
+      });
+      return best && { text: best.text, area: best.area, id: best.id };
     }
 
     // ── Utforska ─────────────────────────────────────────────────────────────
@@ -2898,6 +2948,13 @@ import './style.css';
       });
       renderReports();
       if (_selectedArea) flyToArea(_selectedArea); // samma område, inramat för den nya typen
+    }
+
+    function useListSuggestion(text) {
+      var inp = document.getElementById('explore-search');
+      if (!inp || !text) return;
+      inp.value = text;
+      renderExploreVenues();
     }
 
     function debouncedFilterExplore() {
@@ -3166,7 +3223,11 @@ import './style.css';
         } else {
           var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
-          emptySub = 'Prova ett annat namn eller område';
+          var sug = rawQ ? didYouMean(rawQ, VENUES) : null;
+          // Menade du …? som knapp: ett tryck byter sökordet. Annars ett konkret tips i stället för en allmän fras.
+          emptySub = sug
+            ? '<button class="explore-suggest" onclick="useListSuggestion(this.dataset.q)" data-q="' + escapeHtml(sug.text) + '">Menade du ' + escapeHtml(sug.text) + '?</button>'
+            : 'Sök på ett namn, en gata eller ett område';
         }
         el.innerHTML = '<div class="explore-empty">' +
           '<div class="explore-empty-title">' + emptyTitle + '</div>' +
@@ -3877,6 +3938,8 @@ Object.assign(window, {
   showScreen,
   toggleLiveVenue,
   toggleVcReports,
+  useListSuggestion,
+  useMapSuggestion,
   vcShare,
   vcToggleFavorite,
 });

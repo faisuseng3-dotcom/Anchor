@@ -2,7 +2,7 @@
 // Tio poängnivåer med längdgrindar. Nivåerna är dokumenterade i koden ovanför venueScore.
 
 import { describe, it, expect } from 'vitest';
-import { venueScore, venueSearch, getVenueById, VENUES, _searchNorm, areaHits } from './harness.js';
+import { venueScore, venueSearch, getVenueById, VENUES, _searchNorm, areaHits, didYouMean } from './harness.js';
 
 const spy = getVenueById('spy-bar');
 const sturehof = getVenueById('sturehof');
@@ -129,5 +129,56 @@ describe('areaHits — kartans sök flyger till ett område', () => {
   it('räknar ställena i området', () => {
     const [hit] = areaHits('kungsholmen', VENUES);
     expect(hit.count).toBe(VENUES.filter((v) => v.area === 'Kungsholmen').length);
+  });
+});
+
+describe('venueSearch — svarar inte säkert på nonsens', () => {
+  it('tre lösa bokstäver hittar ingenting', () => {
+    // Förut gav "lol" sex ställen och "aaa" 43, eftersom bokstäverna fick ligga var som helst i namnet.
+    expect(names('lol')).toEqual([]);
+    expect(names('aaa')).toEqual([]);
+    expect(names('asdf')).toEqual([]);
+  });
+
+  it('en felstavning nära namnet hittar fortfarande rätt', () => {
+    expect(names('kristll')).toEqual(['kristall']);
+  });
+
+  it('å, ä och ö i sökningen gäller: "öl" hittar inte "Old Beefeater"', () => {
+    const r = venueSearch('öl', VENUES).map((v) => v.name);
+    expect(r.length).toBeGreaterThan(0);
+    expect(r.every((n) => /^öl|\söl/i.test(n))).toBe(true);
+  });
+
+  it('utan svenska tecken vikas de bort: "sodra bar" hittar Södra Bar', () => {
+    expect(names('sodra bar')[0]).toBe('sodra-bar');
+  });
+});
+
+describe('venueSearch — vanliga sökningar som förut gav noll', () => {
+  it('namn plus typ eller område', () => {
+    expect(names('berns bar')).toEqual(['berns']);
+    expect(names('tjoget hornstull')).toEqual(['tjoget']);
+  });
+
+  it('typordet hittar alla av den typen och inga andra', () => {
+    const r = venueSearch('nattklubb', VENUES);
+    expect(r.length).toBe(VENUES.filter((v) => v.type === 'klubb').length);
+    expect(r.every((v) => v.type === 'klubb')).toBe(true);
+  });
+});
+
+describe('didYouMean — frågar i stället för att gissa tyst', () => {
+  it('föreslår området vid en felstavning', () => {
+    expect(didYouMean('gamal stan', VENUES)).toEqual({ text: 'Gamla Stan', area: true, id: undefined });
+  });
+
+  it('föreslår ett ställe vid en felstavning', () => {
+    expect(didYouMean('berms', VENUES)).toMatchObject({ text: 'Berns', area: false, id: 'berns' });
+  });
+
+  it('föreslår inget för nonsens eller korta ord', () => {
+    expect(didYouMean('qqqqzzz', VENUES)).toBeNull();
+    expect(didYouMean('abc', VENUES)).toBeNull();
   });
 });

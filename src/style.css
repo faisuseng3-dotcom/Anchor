@@ -269,6 +269,12 @@
     .msearch-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .msearch-dot--area { background: none; border: 1.5px solid var(--text-muted); } /* område, ingen status */
     .msearch-empty { padding: 16px; font-size: 14px; color: var(--text-secondary); text-align: center; }
+    /* "Menade du …?": en knapp som ser ut som en länk, under "Inga resultat". */
+    .msearch-suggest, .explore-suggest {
+      display: block; margin: 8px auto 0; min-height: 44px; padding: 0 12px; background: none; border: 0; cursor: pointer;
+      font: 600 15px var(--font-base); color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px;
+    }
+    .msearch-suggest:hover, .explore-suggest:hover { color: var(--accent); }
 
     /* ── "Bäst nu" — kartans enda kort ────────────────────────────────── */
     #best-now-card {

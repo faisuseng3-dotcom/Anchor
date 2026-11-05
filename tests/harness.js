@@ -61,7 +61,7 @@ const exported = [
   'estimateWait', 'setWaitRange', 'formatWait', 'waitToStatus',
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
-  'getVenueById', '_searchNorm', 'venueScore', 'venueSearch', 'areaHits',
+  'getVenueById', '_searchNorm', 'venueScore', 'venueSearch', 'areaHits', 'didYouMean',
   'exsumText', 'exsumTimeSince', 'computeBestNow', 'setTestReports'
 ];
 
@@ -80,7 +80,7 @@ export const {
   estimateWait, setWaitRange, formatWait, waitToStatus,
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
-  getVenueById, _searchNorm, venueScore, venueSearch, areaHits,
+  getVenueById, _searchNorm, venueScore, venueSearch, areaHits, didYouMean,
   exsumText, exsumTimeSince, computeBestNow, setTestReports
 } = box;
 
