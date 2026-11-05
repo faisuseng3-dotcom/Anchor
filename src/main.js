@@ -1192,7 +1192,7 @@ import './style.css';
 
       if (!hits.length && !areas.length) {
         var sug = _mapSuggestion = didYouMean(query, VENUES);
-        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för "' + escapeHtml(query) + '"' +
+        resultsEl.innerHTML = '<div class="msearch-empty">Inga resultat för ”' + escapeHtml(query) + '”' +
           (sug ? '<button class="msearch-suggest" onmousedown="useMapSuggestion()">Menade du ' + escapeHtml(sug.text) + '?</button>' : '') +
           '</div>';
         return;

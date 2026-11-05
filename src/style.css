@@ -258,6 +258,8 @@
       display: none; border-top: 1px solid var(--border);
       max-height: 300px; overflow-y: auto;
     }
+    /* Webbläsarens egen ✕ i sökfält syntes bredvid appens egen — två rensa-knappar. Appens räcker. */
+    input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
     .msearch-row {
       display: flex; align-items: center; gap: 12px;
       padding: 13px 16px; cursor: pointer;
