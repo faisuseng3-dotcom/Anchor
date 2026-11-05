@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (3 885 rader), `src/style.css` (1 127 rader), `index.html` (297 rader) |
+| Kod | `src/main.js` (3 945 rader), `src/style.css` (1 145 rader), `index.html` (297 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -93,7 +93,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 134 enhetstester (Vitest)
+npm test                   # 143 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 3 885-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 3 945-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -168,7 +168,7 @@ kväll. Verifierat i webbläsare:
 
 | Läge | Färskhetsraden | Live-flödets underrad | Rader |
 |---|---|---|---|
-| Tom databas | "Inga rapporter än. Bli först att rapportera." | "Inga rapporter senaste 45 min" | alla |
+| Tom databas | "Inga rapporter än de senaste 45 minuterna." | "Inga rapporter senaste 45 min" | alla |
 | **Fel, ingen data** | "Ingen kontakt med servern" + röd prick | "Ingen kontakt" | 0, felläge |
 | **Fel, data kvar** | "Ingen kontakt med servern · siffrorna kan vara gamla" + prick | "Ingen kontakt · kan vara gammalt" | alla **behållna** |
 | Normalt | "17 av 256 öppna ställen har färsk rapport · senast 3 min sedan" (nämnaren = öppna nu) | "17 ställen · 45 min" | alla |

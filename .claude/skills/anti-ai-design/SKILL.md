@@ -164,6 +164,32 @@ grep -n "text-transform: uppercase" src/style.css
 A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining. The screens must explain themselves. Qbar
 removed its tour on 2026-11-02; do not add one back.
 
+### Loading that claims "empty"
+
+Rows that say "Ingen rapport senaste 45 min" while the first fetch is still running. Until `_loadState` leaves
+`'loading'`, show skeletons; never assert a fact the app does not know yet.
+
+### Search that answers nonsense
+
+Loose letters anywhere in a name ("lol" → six venues) look magic and wrong. Fuzzy matching needs ≥4 characters, a
+word-initial first letter and a compact match. When nothing matches, ask "Menade du …?" (`didYouMean`) instead of
+guessing silently.
+
+### Empty-state template and repeated thanks
+
+Icon + title + subtitle + button on every empty screen, a decorative icon (wifi on Live), and "Tack!" in every toast.
+One sentence that says what happens next; one thank-you, at the report confirmation.
+
+### Scale drift
+
+Spacing off the 4 px grid, ten radii, sixteen font sizes, a dozen easing curves. Use the tokens: `--space-*`,
+`--radius-sm/md/lg/full`, the type scale 12 · 13 · 15 · 17 · 20 · 24 · 28 (16 only for inputs), `--ease-out`,
+`--ease-spring`, `--dur-fast/mid/slow`.
+
+```bash
+node -e "const c=require('fs').readFileSync('src/style.css','utf8').split('/* ── Intro')[0];const o=[...c.matchAll(/(?:padding|margin|gap)[^:]*:([^;]+);/g)].flatMap(m=>[...m[1].matchAll(/(\d+)px/g)].map(x=>+x[1])).filter(n=>n>2&&n%4);console.log('off-grid:',o.length)"
+```
+
 ---
 
 ## Output format
