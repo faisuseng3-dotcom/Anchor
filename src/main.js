@@ -1894,17 +1894,6 @@ import './style.css';
       return id;
     }
 
-    function showSkeletons() {
-      var exploreList = document.getElementById('explore-list');
-      // Bara vid första laddningen. Efter ett fel ska felläget och "Försök igen" stå kvar — förut byttes de mot
-      // skelettrader vid varje pollning, och listan såg ut att ladda medan raden ovanför sa "Ingen kontakt".
-      if (exploreList && _loadState === 'loading' && !exploreList.querySelector('.erow')) {
-        exploreList.innerHTML = '<div class="venue-group">' + [1,2,3,4,5].map(function() {
-          return '<div class="skeleton-erow"></div>';
-        }).join('') + '</div>';
-      }
-    }
-
     function showExploreError() {
       var el = document.getElementById('explore-list');
       if (!el) return;
@@ -1955,7 +1944,6 @@ import './style.css';
         return;
       }
       var seq = ++_loadSeq;
-      showSkeletons();
       console.log('[QueueBar] loadReports startar');
       var now = new Date().toISOString();
       try {
@@ -3074,8 +3062,9 @@ import './style.css';
             closingSoonHtml +
           '</div>'
         : '<div class="erow-tertiary">' +
-            (closed ? '<span class="erow-empty-cta">Stängde ' + venue.closing + '</span>'
-              : patHtml || '<span class="erow-empty-cta">Ingen rapport senaste 45 min</span>') +
+            // Utan data: strecket till höger och rubriken "Utan färsk rapport" säger det. "Ingen rapport senaste 45 min"
+            // på varje rad blev en vägg av samma mening. Ett historiskt mönster ("Brukar vara …") får stå kvar.
+            (closed ? '<span class="erow-empty-cta">Stängde ' + venue.closing + '</span>' : patHtml) +
             closingSoonHtml +
           '</div>';
 
@@ -3145,6 +3134,13 @@ import './style.css';
       // Serverfel utan data: felläget står kvar. Annars skrev varje omritning (skärmbyte, sökning, filter) över det med
       // 28 tomma rader, och felet såg ut som en lugn kväll (e2e "Serverfel … utan data").
       if (_loadState === 'error' && !allReports.length) { showExploreError(); return; }
+      // Första laddningen pågår: skelettrader. Förut ritades 292 rader med "Ingen rapport senaste 45 min" innan svaret
+      // kommit — appen påstod att det var tomt innan den visste.
+      if (_loadState === 'loading') {
+        el.innerHTML = '<div class="venue-group">' + [1,2,3,4,5].map(function() { return '<div class="skeleton-erow"></div>'; }).join('') + '</div>';
+        updateFilterCounts();
+        return;
+      }
 
       // Base list: fuzzy search, preserves relevance order when query present
       var list = q ? venueSearch(q, VENUES) : VENUES.slice();
@@ -3644,7 +3640,8 @@ import './style.css';
         var km = distanceKmTo(v);
         var metaParts = [v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '')];
         if (km !== null) metaParts.push(formatDistance(km));
-        var ago = closed ? 'stängt' : fresh ? timeAgo(new Date(latestTs[v.id]).toISOString()) : 'ingen rapport senaste 45 min';
+        // Utan rapport: ingen text. Den ihåliga pricken säger det redan, och samma mening på 292 rader var en textvägg.
+        var ago = closed ? 'stängt' : fresh ? timeAgo(new Date(latestTs[v.id]).toISOString()) : '';
         return '<button class="rs-item' + (closed ? ' rs-item--closed' : '') + '" onclick="pickRV(\'' + v.id + '\')">' +
           '<span class="rs-dot' + (fresh ? '' : ' rs-dot--none') + '" style="background:' + dotColor + '"></span>' +
           '<span class="rs-text"><span class="rs-name">' + v.name + '</span><span class="rs-area">' + metaParts.join(' · ') + '</span></span>' +

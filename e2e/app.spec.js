@@ -39,8 +39,12 @@ test.describe('1. Appen startar och Utforska renderar', () => {
     await openApp(page);
     await goToScreen(page, 'explore');
 
+    // Saknad data sägs av rubriken över gruppen och av strecket i stället för en väntetid, inte av samma mening på
+    // varje rad.
+    await expect(page.locator('.list-section')).toHaveText('Utan färsk rapport');
     const utanData = page.locator('.erow', { hasText: 'Tjoget' }).first();
-    await expect(utanData).toContainText(/Ingen rapport senaste 45 min/i);
+    await expect(utanData.locator('.erow-hero')).toHaveText('–');
+    await expect(utanData).not.toContainText(/min/);
   });
 });
 
