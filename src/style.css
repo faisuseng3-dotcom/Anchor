@@ -342,7 +342,7 @@
       display: none; position: fixed; z-index: 30;
       bottom: 0; left: 50%;
       /* Y-förskjutningen kommer från --vc-drag så att kortet kan följa fingret utan att tappa centreringen (-50%). */
-      transform: translateX(-50%) translateY(var(--vc-drag, 0px));
+      transform: translateX(-50%) translateY(var(--vc-drag, 0px)); transform-origin: 0 0; /* 0 0: vcMorph skalar från pillens hörn */
       width: min(430px, 100vw);
       background: var(--surface);
       /* Skarpare hörn (6 px) i stället för 22: kortet ska se ut som ett verktyg, inte en bubbla. Ingen skugga — kanten

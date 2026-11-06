@@ -898,14 +898,26 @@ import './style.css';
       }
       return r.width && r.height && r.bottom > 0 && r.top < window.innerHeight ? r : null;
     }
-    // Kortet flyttas till ursprungets höjd och klipps till dess storlek, sedan till sin egen plats och full storlek.
-    // Innehållet skalas inte: namnet ligger kvar där radens namn låg medan resten av kortet rullas fram under det.
+    // Kortet skalas från ursprungets ruta (pillen, raden) till full storlek. Bara transform och opacity: de körs utanför
+    // huvudtråden, så kortet växer jämnt även när kartan samtidigt flyger och placerar om 292 nålar. Förut klipptes kortet
+    // med clip-path, som räknas om på huvudtråden varje bild och hackade med kartan. Innehållet tonar in efter halva vägen,
+    // så den hoptryckta texten aldrig syns. Kräver transform-origin 0 0 på #venue-card.
     function vcMorph(card, r, reverse, dur) {
       var c = card.getBoundingClientRect();
-      var L = Math.max(0, r.left - c.left), R = Math.max(0, c.right - (r.left + r.width)), B = Math.max(0, c.height - r.height);
-      var at = { transform: 'translateX(-50%) translateY(' + (r.top - c.top) + 'px)', clipPath: 'inset(0px ' + R + 'px ' + B + 'px ' + L + 'px round 12px)' };
-      var full = { transform: 'translateX(-50%) translateY(0px)', clipPath: 'inset(0px 0px 0px 0px round 6px 6px 0px 0px)' };
-      return card.animate(reverse ? [full, at] : [at, full], { duration: dur, easing: VC_EASE, fill: reverse ? 'forwards' : 'none' });
+      var at = 'translateX(-50%) translate(' + (r.left - c.left) + 'px, ' + (r.top - c.top) + 'px) scale(' + (r.width / c.width) + ', ' + (r.height / c.height) + ')';
+      var full = 'translateX(-50%) translate(0px, 0px) scale(1, 1)';
+      var opts = { duration: dur, easing: VC_EASE, fill: reverse ? 'forwards' : 'none' };
+      function dir(frames) {
+        return reverse ? frames.slice().reverse().map(function(f) {
+          var g = Object.assign({}, f);
+          if (f.offset !== undefined) g.offset = 1 - f.offset;
+          return g;
+        }) : frames;
+      }
+      Array.prototype.forEach.call(card.children, function(el) {
+        el.animate(dir([{ opacity: 0 }, { opacity: 0, offset: 0.4 }, { opacity: 1 }]), opts);
+      });
+      return card.animate(dir([{ transform: at, opacity: 0 }, { opacity: 1, offset: 0.12 }, { transform: full, opacity: 1 }]), opts);
     }
 
     // Öppnar kortet: fokus på kartan, glider upp, centrerar stället. Innehållet ritas av renderVenueCard, som också körs
@@ -919,7 +931,7 @@ import './style.css';
       var card = document.getElementById('venue-card');
       // Ett kort som öppnas medan förra stänger: stängningen får inte dölja det nya kortet när den blir klar.
       clearTimeout(_vcCloseTimer);
-      card.getAnimations().concat(document.getElementById('vc-overlay').getAnimations()).forEach(function(a) { a.cancel(); });
+      card.getAnimations({ subtree: true }).concat(document.getElementById('vc-overlay').getAnimations()).forEach(function(a) { a.cancel(); });
       document.getElementById('vc-overlay').style.display = 'block';
       card.style.removeProperty('--vc-drag');
       document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
@@ -930,9 +942,10 @@ import './style.css';
       _vcOrigin = null;
       _vcOpenOrigin = origin;
       var from = !_reduceMotion && vcOriginRect(origin);
+      var grow = null;
       if (from) {
         card.style.animation = 'none';
-        vcMorph(card, from, false, 420);
+        grow = vcMorph(card, from, false, 420);
         overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: VC_EASE });
       } else {
         card.style.animation = _reduceMotion ? 'none' : 'slideUp 0.32s ' + VC_EASE;
@@ -942,15 +955,17 @@ import './style.css';
       document.getElementById('vc-close').focus({ preventScroll: true });
       // Stället centreras mitt i den del av kartan som syns: mellan raden med knappar under sökfältet och kortets överkant.
       // Förut räknades bara kortet (en halv korthöjd upp), och pillen hamnade bakom knapparna medan kartan zoomade in mot
-      // vattnet mitt på skärmen. Är man redan närmare än zoom 14 zoomar kortet inte ut.
-      if (map && venue.lat && venue.lng) {
+      // vattnet mitt på skärmen. Är man redan närmare än zoom 14 zoomar kortet inte ut. Flygningen startar först när kortets
+      // animation har börjat: kartans första bild (nya tiles, omplacering) blockerade annars kortets första bilder.
+      if (map && venue.lat && venue.lng) (grow ? grow.ready : Promise.resolve()).then(function() {
+        if (activeVenue !== venue) return;
         var m = document.getElementById('map').getBoundingClientRect();
         var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar');
         var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
         var bottom = Math.max(top + 60, window.innerHeight - card.offsetHeight - m.top);
         map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(14, map.getZoom()), duration: 800,
           offset: [0, (top + bottom) / 2 - m.height / 2] });
-      }
+      }, function() {}); // avbruten animation: ett nytt kort öppnades och flyger själv
     }
 
     // Ritar om ett öppet kort med aktuell data. Inget om kortet är stängt.
@@ -1070,7 +1085,7 @@ import './style.css';
       _vcCloseTimer = setTimeout(function() {
         card.style.display = 'none';
         card.style.animation = '';
-        card.getAnimations().forEach(function(a) { a.cancel(); });
+        card.getAnimations({ subtree: true }).forEach(function(a) { a.cancel(); });
         overlay.getAnimations().forEach(function(a) { a.cancel(); });
         overlay.style.display = 'none';
         card.style.removeProperty('--vc-drag');

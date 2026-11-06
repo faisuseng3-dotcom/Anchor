@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 011 rader), `src/style.css` (1 146 rader), `index.html` (297 rader) |
+| Kod | `src/main.js` (4 026 rader), `src/style.css` (1 146 rader), `index.html` (297 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 011-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 026-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -363,6 +363,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Venue-kortet växer ur det man tryckte på (rad i Lista/Live, "Bäst nu", sökträff eller pill: `_vcOrigin`, `vcMorph`)
   och krymper tillbaka in i det vid stängning, om det fortfarande syns. Neddraget kort stänger nedåt; utan ursprung
   (Enter, "Menade du") glider det upp som förut. Bakgrunden är bara lätt tonad (0,3), så man ser var kortet kom ifrån
+  Animationen är bara `transform` och `opacity` (körs utanför huvudtråden); `clip-path` hackade medan kartan flög, och
+  kartans `flyTo` startar först vid `animation.ready`
 - Huvudknappen följer läget (`renderVenueCard`): vid stället (`isAtVenue`: ≤150 m med GPS-osäkerheten, högst 100 m, till
   din fördel) → "Rapportera kön"; annars "Gå hit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
   eller om stället stänger innan du är framme → bara "Vägbeskrivning · 7,8 km"
