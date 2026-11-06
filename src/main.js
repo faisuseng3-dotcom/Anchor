@@ -872,6 +872,42 @@ import './style.css';
       btn.setAttribute('aria-expanded', String(_vcListOpen));
     }
 
+    // Var kortet kommer ifrån: raden, "Bäst nu"-kortet eller pillen man tryckte på. Kortet växer ur den och krymper
+    // tillbaka in i den, i stället för att glida upp från skärmkanten likadant varje gång — det var ett bibliotekskort.
+    // Rader fångas här (före deras onclick), pillar sätts i kartans klick. Gäller i 600 ms: ett kort som öppnas av något
+    // annat (Enter i sökningen, "Menade du") glider upp som förut.
+    var _vcOrigin = null, _vcOpenOrigin = null, _vcCloseTimer = null;
+    var VC_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'; // arkens kurva i iOS: snabb start, mjuk landning
+    document.addEventListener('click', function(e) {
+      var el = e.target && e.target.closest && e.target.closest('.erow, .lv-row, .bn-card, .msearch-row');
+      if (el) _vcOrigin = { el: el, at: Date.now() };
+    }, true);
+    // Rutan i fönstret som kortet växer ur. null om den inte finns eller inte syns (raden ritades om, rullades bort).
+    function vcOriginRect(o) {
+      if (!o) return null;
+      var r;
+      if (o.lngLat) {
+        if (!map) return null;
+        var m = document.getElementById('map').getBoundingClientRect(), p = map.project(o.lngLat);
+        r = { left: m.left + p.x - 45, top: m.top + p.y - 17, bottom: m.top + p.y + 17, width: 90, height: 34 };
+      } else {
+        var el = o.el && document.contains(o.el) ? o.el
+          : activeVenue && document.querySelector('#screen-' + currentScreen + ' .erow[data-venue="' + activeVenue.id + '"]');
+        if (!el) return null;
+        r = el.getBoundingClientRect();
+      }
+      return r.width && r.height && r.bottom > 0 && r.top < window.innerHeight ? r : null;
+    }
+    // Kortet flyttas till ursprungets höjd och klipps till dess storlek, sedan till sin egen plats och full storlek.
+    // Innehållet skalas inte: namnet ligger kvar där radens namn låg medan resten av kortet rullas fram under det.
+    function vcMorph(card, r, reverse, dur) {
+      var c = card.getBoundingClientRect();
+      var L = Math.max(0, r.left - c.left), R = Math.max(0, c.right - (r.left + r.width)), B = Math.max(0, c.height - r.height);
+      var at = { transform: 'translateX(-50%) translateY(' + (r.top - c.top) + 'px)', clipPath: 'inset(0px ' + R + 'px ' + B + 'px ' + L + 'px round 12px)' };
+      var full = { transform: 'translateX(-50%) translateY(0px)', clipPath: 'inset(0px 0px 0px 0px round 6px 6px 0px 0px)' };
+      return card.animate(reverse ? [full, at] : [at, full], { duration: dur, easing: VC_EASE, fill: reverse ? 'forwards' : 'none' });
+    }
+
     // Öppnar kortet: fokus på kartan, glider upp, centrerar stället. Innehållet ritas av renderVenueCard, som också körs
     // när data eller position ändras medan kortet är öppet — annars stod "10–20 min" kvar medan pillen bakom bytte värde.
     function openVenueCard(venue, source) {
@@ -881,12 +917,26 @@ import './style.css';
       _vcListOpen = false; // varje kort börjar hopfällt
       renderVenueCard(venue);
       var card = document.getElementById('venue-card');
+      // Ett kort som öppnas medan förra stänger: stängningen får inte dölja det nya kortet när den blir klar.
+      clearTimeout(_vcCloseTimer);
+      card.getAnimations().concat(document.getElementById('vc-overlay').getAnimations()).forEach(function(a) { a.cancel(); });
       document.getElementById('vc-overlay').style.display = 'block';
       card.style.removeProperty('--vc-drag');
       document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
       card.classList.remove('vc-dragging', 'vc-settling');
       card.style.display = 'block';
-      card.style.animation = 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)';
+      var overlay = document.getElementById('vc-overlay');
+      var origin = _vcOrigin && Date.now() - _vcOrigin.at < 600 ? _vcOrigin : null;
+      _vcOrigin = null;
+      _vcOpenOrigin = origin;
+      var from = !_reduceMotion && vcOriginRect(origin);
+      if (from) {
+        card.style.animation = 'none';
+        vcMorph(card, from, false, 420);
+        overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: VC_EASE });
+      } else {
+        card.style.animation = _reduceMotion ? 'none' : 'slideUp 0.32s ' + VC_EASE;
+      }
       // Fokus in i kortet (skärmläsare och tangentbord hamnar där det händer) och tillbaka dit det kom ifrån vid stängning.
       if (!card.contains(document.activeElement)) _vcReturnFocus = document.activeElement;
       document.getElementById('vc-close').focus({ preventScroll: true });
@@ -1000,20 +1050,36 @@ import './style.css';
 
     function closeVenueCard() {
       var card = document.getElementById('venue-card');
-      // Stänger från där fingret släppte (--vc-drag), så kortet inte hoppar upp innan det glider ut
+      var overlay = document.getElementById('vc-overlay');
+      // Neddraget kort stänger nedåt, i fingrets riktning, från där det släpptes (--vc-drag). Annars krymper kortet
+      // tillbaka in i raden eller pillen det kom från, om den fortfarande syns.
+      var dragged = parseFloat(card.style.getPropertyValue('--vc-drag')) > 0;
       card.classList.remove('vc-dragging', 'vc-settling');
-      card.style.animation = 'slideDown 0.2s cubic-bezier(0.36,0,0.66,0) forwards';
-      document.getElementById('vc-overlay').style.display = 'none';
-      setTimeout(function() {
+      var to = !dragged && !_reduceMotion && card.style.display === 'block' && vcOriginRect(_vcOpenOrigin);
+      var dur = 200;
+      if (to) {
+        dur = 300;
+        card.style.animation = 'none';
+        vcMorph(card, to, true, dur);
+        overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: VC_EASE, fill: 'forwards' });
+      } else {
+        card.style.animation = 'slideDown 0.2s cubic-bezier(0.36,0,0.66,0) forwards';
+        overlay.style.display = 'none';
+      }
+      _vcOpenOrigin = null;
+      _vcCloseTimer = setTimeout(function() {
         card.style.display = 'none';
         card.style.animation = '';
+        card.getAnimations().forEach(function(a) { a.cancel(); });
+        overlay.getAnimations().forEach(function(a) { a.cancel(); });
+        overlay.style.display = 'none';
         card.style.removeProperty('--vc-drag');
-        document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
+        overlay.style.removeProperty('--vc-overlay');
         if (_vcReturnFocus && document.contains(_vcReturnFocus)) _vcReturnFocus.focus({ preventScroll: true });
         _vcReturnFocus = null;
         activeVenue = null;
         applyMapFocus();
-      }, 200);
+      }, dur);
     }
 
     // Dra kortet nedåt för att stänga. Följer fingret 1:1, stänger vid >120 px eller en snabb sänkning (>0.5 px/ms),
@@ -1823,7 +1889,7 @@ import './style.css';
             }
             var venue = getVenueById(f.properties.id);
             console.log('[QueueBar] Kartmarkörsklick:', f.properties.id);
-            if (venue) openVenueCard(venue, 'karta');
+            if (venue) { _vcOrigin = { lngLat: [venue.lng, venue.lat], at: Date.now() }; openVenueCard(venue, 'karta'); }
           });
 
           ['venues-more', 'venues-pins', 'venues-empty-pins', 'venues-empty-dots'].forEach(function(l) {

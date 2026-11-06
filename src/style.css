@@ -335,7 +335,8 @@
     @keyframes heartBounce { 0%{transform:scale(1)} 30%{transform:scale(1.35)} 60%{transform:scale(0.9)} 100%{transform:scale(1)} }
 
     /* ── Bottom Sheet (Venue Card) ─────────────────────────────────────── */
-    #vc-overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.45); }
+    /* Lätt tonad: listan eller kartan bakom ska synas, så att man ser var kortet kom ifrån. */
+    #vc-overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.3); }
 
     #venue-card {
       display: none; position: fixed; z-index: 30;
