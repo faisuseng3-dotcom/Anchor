@@ -892,7 +892,10 @@ import './style.css';
       if (!map || !venue) return null;
       var m = document.getElementById('map').getBoundingClientRect(), p = map.project([venue.lng, venue.lat]);
       if (p.x < 0 || p.y < 0 || p.x > m.width || p.y > m.height) return null;
-      return { left: m.left + p.x - VC_PILL.w / 2, top: m.top + p.y - VC_PILL.h / 2, width: VC_PILL.w, height: VC_PILL.h };
+      // Utzoomat är nålen en rund ikon (venues-icons), inte en pill: kapseln växer ur ikonen i stället.
+      var w = VC_PILL.w, h = VC_PILL.h, z = map.getZoom();
+      if (z < (PILL_MIN + PILL_FULL) / 2) w = h = 36 * iconScale(z);
+      return { left: m.left + p.x - w / 2, top: m.top + p.y - h / 2, width: w, height: h };
     }
 
     // Kortet skalas från ruta r till sin egen plats och storlek (eller tillbaka). Bara transform och opacity: de körs
@@ -1788,9 +1791,34 @@ import './style.css';
             }
           });
 
+          // Utzoomat (under PILL_MIN–PILL_FULL): en rund ikon i statusfärgen, glas eller not, utan siffra. Över hela stan
+          // visar färgen var kvällen händer; siffrorna kommer när man zoomar in på ett område. Ikoner och pillar tonar över i
+          // varandra på grafikkortet (pillsIn/iconsOut i applyMapFocus), utan JavaScript per bildruta. Alla ställen syns,
+          // även de som en pill skulle dölja (hidden): ikonerna är små nog att ligga omlott, längst kö överst.
+          map.addLayer({
+            id: 'venues-icon-focus', type: 'circle', source: 'venues', maxzoom: PILL_FULL, filter: ['==', ['get', 'best'], 1],
+            paint: {
+              'circle-color': 'rgba(0,0,0,0)',
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 17 * ICON_SIZE_MIN + 4, PILL_FULL, 17 * ICON_SIZE_MAX + 4],
+              'circle-stroke-width': 2.5,
+              'circle-stroke-color': '#5B9BFF'
+            }
+          });
+          map.addLayer({
+            id: 'venues-icons', type: 'symbol', source: 'venues', maxzoom: PILL_FULL,
+            layout: {
+              'icon-image': ['concat', ['match', ['get', 'type'], 'bar', 'pin-bar-', 'pin-club-'], ['get', 'status']],
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, ICON_SIZE_MIN, PILL_FULL, ICON_SIZE_MAX],
+              'icon-anchor': 'center',
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': false,
+              'symbol-sort-key': PIN_SORT_KEY
+            }
+          });
+
           // Ställen med färsk data: pill med väntetid. Samma namn skapas i pill_image nedan.
           map.addLayer({
-            id: 'venues-pins', type: 'symbol', source: 'venues', filter: ['!=', ['get', 'hidden'], 1],
+            id: 'venues-pins', type: 'symbol', source: 'venues', filter: ['!=', ['get', 'hidden'], 1], minzoom: PILL_MIN,
             layout: {
               'icon-image': ['get', 'pill_image'],
               'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 15, 1.05],
@@ -1806,7 +1834,7 @@ import './style.css';
 
           // "+3" ovanför en pill som skymmer tre andra (declutterPills). Tryck zoomar in så att de syns.
           map.addLayer({
-            id: 'venues-more', type: 'symbol', source: 'venues',
+            id: 'venues-more', type: 'symbol', source: 'venues', minzoom: PILL_MIN,
             filter: ['all', ['!=', ['get', 'hidden'], 1], ['>', ['get', 'more'], 0]],
             layout: {
               'text-field': ['concat', '+', ['to-string', ['get', 'more']]],
@@ -1839,7 +1867,7 @@ import './style.css';
 
           // Blå ram runt stället i "Bäst nu", eller runt det valda stället när ett venue-kort är öppet (applyMapFocus).
           map.addLayer({
-            id: 'venues-focus', type: 'symbol', source: 'venues',
+            id: 'venues-focus', type: 'symbol', source: 'venues', minzoom: PILL_MIN,
             filter: ['==', ['get', 'best'], 1],
             layout: {
               'icon-image': ['get', 'focus_image'],
@@ -1872,7 +1900,7 @@ import './style.css';
           // en rörelse som inte betyder något tar bort värdet av den som gör det.
           // Ringen är en pill-formad bild (pill-ring) under pillen, så den följer pillens bredd i stället för att vara en cirkel.
           map.addLayer({
-            id: 'venues-urgent', type: 'symbol', source: 'venues',
+            id: 'venues-urgent', type: 'symbol', source: 'venues', minzoom: PILL_MIN,
             filter: ['all', ['==', ['get', 'urgent'], 1], ['!=', ['get', 'hidden'], 1]],
             layout: {
               'icon-image': ['get', 'ring_image'],
@@ -1894,7 +1922,7 @@ import './style.css';
               if (_hasUrgent && map.getLayer('venues-urgent')) {
                 var t = (now % 2200) / 2200;
                 map.setPaintProperty('venues-urgent', 'icon-opacity',
-                  ['*', APPEAR, 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2))]);
+                  pillsIn(['*', APPEAR, 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2))]));
               }
               if (window._userPos && map.getLayer('me-halo')) {
                 var k = (now % 2400) / 2400;
@@ -1909,12 +1937,12 @@ import './style.css';
             requestAnimationFrame(animateMapPulse);
           } else {
             // Stillbild i stället för rörelse: ringen syns, den andas inte
-            map.setPaintProperty('venues-urgent', 'icon-opacity', 0.55);
+            map.setPaintProperty('venues-urgent', 'icon-opacity', pillsIn(0.55));
           }
 
           // En lyssnare för alla: features[0] är den översta. "+N" zoomar in mot pillen; en pill vinner över en tom ring
           // under den. Prickarna (utzoomat) går också att trycka på, de är bara små.
-          map.on('click', ['venues-more', 'venues-pins', 'venues-empty-pins', 'venues-empty-dots'], function(e) {
+          map.on('click', ['venues-more', 'venues-pins', 'venues-icons', 'venues-empty-pins', 'venues-empty-dots'], function(e) {
             var f = e.features[0];
             if (f.layer.id === 'venues-more') {
               map.easeTo({ center: f.geometry.coordinates, zoom: Math.min(map.getZoom() + 1.5, 18), duration: 500 });
@@ -1925,7 +1953,7 @@ import './style.css';
             if (venue) openVenueCard(venue, 'karta');
           });
 
-          ['venues-more', 'venues-pins', 'venues-empty-pins', 'venues-empty-dots'].forEach(function(l) {
+          ['venues-more', 'venues-pins', 'venues-icons', 'venues-empty-pins', 'venues-empty-dots'].forEach(function(l) {
             map.on('mouseenter', l, function() { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', l, function() { map.getCanvas().style.cursor = ''; });
           });
@@ -1934,7 +1962,7 @@ import './style.css';
           map.on('move', vcPlace);
           map.on('click', function(e) {
             if (_vcMode !== 'map') return;
-            if (map.queryRenderedFeatures(e.point, { layers: ['venues-more', 'venues-pins', 'venues-empty-pins', 'venues-empty-dots'] }).length) return;
+            if (map.queryRenderedFeatures(e.point, { layers: ['venues-more', 'venues-pins', 'venues-icons', 'venues-empty-pins', 'venues-empty-dots'] }).length) return;
             closeVenueCard();
           });
           // Avstånden på skärmen ändras med zoom och lutning: räkna om vilka pillar som krockar när kartan står still.
@@ -2167,17 +2195,22 @@ import './style.css';
     // Pillar som krockar på skärmen: den viktigaste syns (valt ställe, "Bäst nu", sedan längst kö) och får "+N" för dem den
     // skymmer; de andra döljs tills man zoomat in så långt att de får plats. Räknas här i stället för av Mapbox kollision,
     // så att "+N" och det som döljs alltid är samma sak. Körs efter ny data, nytt val och varje kartrörelse (moveend).
-    var _livePills = [];
+    var _livePills = [], _declutterDone = null, _declutterSel;
     var DECLUTTER_RANK = { long: 4, medium: 3, short: 2, none: 1 };
     function declutterPills() {
       if (!map || !map.getSource('venues')) return;
-      var sel = activeVenue ? activeVenue.id : null, z = map.getZoom();
-      var scale = 0.85 + 0.05 * Math.max(0, Math.min(4, z - 11)); // samma som pillarnas icon-size
+      var sel = activeVenue ? activeVenue.id : null, z = map.getZoom(), low = z < PILL_MIN;
+      // Utzoomat syns bara ikonerna. Pillarna sorteras då som de skulle stå vid PILL_MIN (avstånden skalas ned), så att
+      // rätt pillar tonar fram när man zoomar in, och bara när datan eller valet har ändrats. Förut skrevs hela källan om
+      // efter varje kartrörelse, även när inget kunde krocka annorlunda.
+      if (low && _declutterDone === _livePills && _declutterSel === sel) return;
+      var k = low ? Math.pow(2, PILL_MIN - z) : 1, zz = low ? PILL_MIN : z;
+      var scale = 0.85 + 0.05 * Math.max(0, Math.min(4, zz - 11)); // samma som pillarnas icon-size
       var items = _livePills.map(function(f) {
         var p = map.project(f.geometry.coordinates), text = f.properties.pill_image.split('|').slice(3).join('|');
         // Bredden som drawPill ritar: kant och marginaler ~40 px, ~8 px per tecken och "min" ~20 px.
         var w = (40 + text.length * 8 + (/\d/.test(text) ? 20 : 0)) * scale;
-        return { f: f, x: p.x, y: p.y, w: w, h: 32 * scale, more: 0, hidden: 0,
+        return { f: f, x: p.x * k, y: p.y * k, w: w, h: 32 * scale, more: 0, hidden: 0,
           // Samma status: "Fullt" före ett intervall, färsk data före 15–45 min gammal.
           rank: f.properties.id === sel ? 10 : f.properties.best ? 9 : (DECLUTTER_RANK[f.properties.status] || 0) +
             (text === 'Fullt' ? 0.5 : 0) + (f.properties.aging ? 0 : 0.25) };
@@ -2190,6 +2223,8 @@ import './style.css';
       map.getSource('venues').setData({ type: 'FeatureCollection', features: items.map(function(it) {
         return Object.assign({}, it.f, { properties: Object.assign({}, it.f.properties, { hidden: it.hidden, more: it.more }) });
       }) });
+      _declutterDone = low ? _livePills : null;
+      _declutterSel = sel;
     }
 
     // Minuter sedan senaste kömätningen, som i listan (isAging: 15–45 min). Infinity om ingen finns.
@@ -2211,20 +2246,29 @@ import './style.css';
       var isSel = sel ? ['==', ['get', 'id'], sel] : false;
       var dim = sel ? ['!=', ['get', 'id'], sel] : false;
       var none = ['has', '__ingen__']; // alltid falskt; ['==', 1, 0] tolkas som gammalt filter och kraschar kartan
-      map.setFilter('venues-focus', ['all', ['!=', ['get', 'focus_image'], ''],
-        sel ? isSel : ['==', ['get', 'best'], 1]]);
+      var focusFilter = ['all', ['!=', ['get', 'focus_image'], ''], sel ? isSel : ['==', ['get', 'best'], 1]];
+      map.setFilter('venues-focus', focusFilter);
+      map.setFilter('venues-icon-focus', focusFilter);
       map.setFilter('venues-name-focus', sel ? isSel : none);
       map.setFilter('venues-empty-name-focus', sel ? isSel : none);
       // Sorteringsnyckeln är en layoutegenskap: att sätta den tvingar Mapbox att placera om alla symboler. Bara när valet
       // ändras.
-      if (sel !== _lastFocusSel) { map.setLayoutProperty('venues-pins', 'symbol-sort-key', ['case', isSel, 10, PIN_SORT_KEY]); _lastFocusSel = sel; }
-      map.setPaintProperty('venues-pins', 'icon-opacity',
-        ['*', APPEAR, ['case', dim, 0.3, ['==', ['get', 'aging'], 1], 0.6, 1]]);
+      if (sel !== _lastFocusSel) {
+        var sortKey = ['case', isSel, 10, PIN_SORT_KEY];
+        map.setLayoutProperty('venues-pins', 'symbol-sort-key', sortKey);
+        map.setLayoutProperty('venues-icons', 'symbol-sort-key', sortKey);
+        _lastFocusSel = sel;
+      }
+      // Pillar och ikoner tonar över i varandra mellan PILL_MIN och PILL_FULL, med samma tonade val och gamla data.
+      var pinOpacity = ['*', APPEAR, ['case', dim, 0.3, ['==', ['get', 'aging'], 1], 0.6, 1]];
+      map.setPaintProperty('venues-pins', 'icon-opacity', pillsIn(pinOpacity));
+      map.setPaintProperty('venues-icons', 'icon-opacity', iconsOut(pinOpacity));
       // Stängt tonas mer än "ingen rapport än" — annars såg en stängd bar ut som en inbjudan att gå dit och rapportera.
       map.setPaintProperty('venues-empty-pins', 'icon-opacity', ['case', dim, 0.3, ['==', ['get', 'closed'], 1], 0.3, 0.7]);
       map.setPaintProperty('venues-empty-dots', 'circle-opacity', ['case', dim, 0.2, ['==', ['get', 'closed'], 1], 0.25, 0.5]);
-      map.setPaintProperty('venues-focus', 'icon-opacity', APPEAR);
-      map.setPaintProperty('venues-more', 'text-opacity', ['*', APPEAR, ['case', dim, 0.3, 1]]);
+      map.setPaintProperty('venues-focus', 'icon-opacity', pillsIn(APPEAR));
+      map.setPaintProperty('venues-icon-focus', 'circle-stroke-opacity', iconsOut(APPEAR));
+      map.setPaintProperty('venues-more', 'text-opacity', pillsIn(['*', APPEAR, ['case', dim, 0.3, 1]]));
       // Med öppet kort visas bara det valda namnet (eget lager); grannarnas namn skulle krocka med det.
       map.setPaintProperty('venues-names', 'text-opacity', sel ? 0 : ['*', APPEAR, ['case', ['==', ['get', 'aging'], 1], 0.6, 1]]);
       map.setPaintProperty('venues-empty-names', 'text-opacity', sel ? 0 : 1);
@@ -2238,6 +2282,13 @@ import './style.css';
     // Allt som rör sig betyder något: pillarna kommer fram i ordning (längst kö först) när kartan visas, en pill som byter
     // värde tonar in på nytt, och en ny rapport skickar ut en våg från stället. Inget av det vid reducerad rörelse.
     var APPEAR = ['coalesce', ['feature-state', 'appear'], 1]; // 0 → 1 medan en pill tonar in, annars saknas (= 1)
+    // Siffror från zoom PILL_MIN, helt framme vid PILL_FULL; utzoomat runda ikoner (venues-icons) som tonar ut i samma
+    // intervall. Över hela stan visar färgen var kvällen händer, inzoomat på ett område jämför man siffrorna.
+    var PILL_MIN = 13.25, PILL_FULL = 13.75;
+    var ICON_SIZE_MIN = 0.55, ICON_SIZE_MAX = 0.75; // ikonens icon-size vid zoom 11 och vid PILL_FULL
+    function iconScale(z) { return ICON_SIZE_MIN + (ICON_SIZE_MAX - ICON_SIZE_MIN) * Math.max(0, Math.min(1, (z - 11) / (PILL_FULL - 11))); }
+    function pillsIn(v) { return ['interpolate', ['linear'], ['zoom'], PILL_MIN, 0, PILL_FULL, v]; }
+    function iconsOut(v) { return ['interpolate', ['linear'], ['zoom'], PILL_MIN, v, PILL_FULL, 0]; }
     var _reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var _appear = {};         // venueId → { start, dur, from } medan pillen tonar in; start Infinity = väntar dold
     var _ripples = [];        // { lng, lat, color, start }

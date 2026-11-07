@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 054 rader), `src/style.css` (1 134 rader), `index.html` (292 rader) |
+| Kod | `src/main.js` (4 105 rader), `src/style.css` (1 134 rader), `index.html` (292 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 054-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 105-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -334,6 +334,12 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   `declutterPills`: valt ställe → "Bäst nu" → längst kö (Fullt före intervall, färskt före 15–45 min) syns och får "+N"
   (`venues-more`, tryck zoomar in); övriga döljs (`hidden`) tills de får plats. Körs efter data, val och `moveend`.
   Glöden är liten (22–64 px, 0,3) — den stora gjorde kartan suddig. Den enda vägen till en väntetid är `venueWaitText()`
+- **Ikoner utzoomat, siffror inzoomat:** under zoom 13,25 visar ställen med data bara en rund ikon i statusfärgen
+  (`venues-icons`, bilderna `pin-bar-*`/`pin-club-*`), med blå ring runt "Bäst nu" (`venues-icon-focus`). Mellan
+  `PILL_MIN` (13,25) och `PILL_FULL` (13,75) tonar ikonerna ut och pillarna med väntetiden in; uttrycken `pillsIn`/
+  `iconsOut` räknas av Mapbox på grafikkortet, ingen JavaScript per bildruta. Över hela stan visar färgen var kvällen
+  händer, på ett område jämför man siffrorna. Utzoomat räknar `declutterPills` om bara när data eller val ändras (och
+  som vid `PILL_MIN`), i stället för att skriva om källan vid varje kartrörelse. Kapseln växer ur ikonen utzoomat
 - **Barer/Klubbar är ett val för hela appen** (`_venueType`, `setVenueType`, `venueTypeMatches`): knapparna under kartans
   sökfält och listans Barer/Klubbar är samma val. Det gäller kartan, listan, filterräknarna, färskhetsraden och "Bäst nu";
   Live-flödet och sökningen filtreras inte. Ett tryck på den valda typen igen tar bort valet
