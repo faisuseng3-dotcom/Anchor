@@ -262,6 +262,8 @@
         <button id="vc-fav" class="vc-link vc-fav" onclick="vcToggleFavorite(event)" aria-label="Favorit">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z"/></svg>
         </button>
+        <!-- Synlig bara i den utfällda kapseln: den är stor nog att se ut som ett kort, och då letar man efter stäng -->
+        <button class="vc-link vc-link--close" onclick="closeVenueCard()">Stäng</button>
       </div>
       <div id="vc-timeline"></div>
     </div>

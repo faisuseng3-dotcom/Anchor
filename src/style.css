@@ -396,6 +396,10 @@
       font: 600 13px var(--font-base); color: var(--text-secondary);
     }
     .vc-link[hidden] { display: none; }
+    /* "Stäng" längst till höger, bara i den utfällda kapseln. I listan fälls raden ihop med ett tryck på raden. Den dolda
+       tangentbordsknappen (.vc-close) behövs inte när den här syns. */
+    .vc-link--close { margin-left: auto; }
+    .vc--inline .vc-link--close, .vc--open .vc-close { display: none; }
     .vc-link:active { color: var(--text-primary); }
     .vc-fav svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: miter; }
     .vc-fav.fav { color: var(--text-primary); }

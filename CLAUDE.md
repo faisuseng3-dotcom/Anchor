@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 054 rader), `src/style.css` (1 130 rader), `index.html` (290 rader) |
+| Kod | `src/main.js` (4 054 rader), `src/style.css` (1 134 rader), `index.html` (292 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -360,9 +360,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   (`vcMorph`) och sitter kvar på stället när kartan rör sig (`vcPlace` på `move`): namn, väntetid, huvudknappen. Ett
   tryck på kapseln fäller ut resten (`vc--open`), ett tryck på kartan stänger och kapseln krymper in i pillen. **I Lista
   och Live** (`vc--inline`) läggs samma element direkt efter raden (`row.after`), raden får `is-open`/`aria-expanded`,
-  och ett tryck till fäller ihop den. Ingen mörk bakgrund, inget handtag, inget kryss (Escape och en dold
-  `#vc-close` för tangentbord). Skärmbyte stänger direkt (`vcHideNow`). Ett rektangulärt ark nertill kändes genererat
-  och dolde det man tryckt på
+  och ett tryck till fäller ihop den. Ingen mörk bakgrund, inget handtag, inget kryss. Den utfällda kapseln har
+  "Stäng" som text längst till höger i länkraden (`.vc-link--close`), för den är stor nog att se ut som ett kort;
+  annars Escape och en dold `#vc-close` för tangentbord. Skärmbyte stänger direkt (`vcHideNow`). Ett rektangulärt ark
+  nertill kändes genererat och dolde det man tryckt på
 - Listorna ritas om med `innerHTML`; `vcPark` flyttar ett utfällt kort undan och lägger tillbaka det under samma
   ställes nya rad (eller stänger, om raden är bortfiltrerad). Kapselns `left`/`top` nollas vid stängning, annars
   följde de med in i listan. Den utfällda raden rullas fram ovanför menyn (`vcRevealInline`)
