@@ -53,9 +53,9 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  297 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
-src/main.js                4026 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1146 rader   Design tokens + alla komponentklasser
+index.html                  290 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
+src/main.js                4054 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1130 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
 tests/*.test.js             143 tester   Vitest: modell, status, sessioner, historik, sök, venues, lägen, Bäst nu
@@ -104,7 +104,7 @@ Det finns ingen router. `showScreen(name)` (`src/main.js`) växlar klassen `.act
 
 | Skärm | Element | Ansvar |
 |---|---|---|
-| Hem | `#screen-home` | Mapbox-karta, bottom sheet med venue-lista, sök |
+| Hem | `#screen-home` | Mapbox-karta, sök, "Bäst nu"; valt ställe som kapsel vid pillen |
 | Utforska | `#screen-explore` | "Stockholm just nu"-widget + sorterad lista med alla ställen |
 | Live | `#screen-live` | Kronologiskt rapportflöde grupperat per ställe |
 | Rapportera | `#screen-report` | Tre steg: välj ställe → välj antal framför → bekräftelse |

@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 026 rader), `src/style.css` (1 146 rader), `index.html` (297 rader) |
+| Kod | `src/main.js` (4 054 rader), `src/style.css` (1 130 rader), `index.html` (290 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 026-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 054-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -356,15 +356,19 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   0,3. Data 15–45 min gammal (`aging`) är blekare (0,6), samma gräns som `.erow--stale` i listan
 - Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat och
   ger ett Mapbox-fel; under kartans start (innan `load`) stänger det av kartan
-- Venue-kortet är en kolumn i viktighetsordning: väntetiden, vad den bygger på i vardagsspråk (`#vc-sub`: "25–50
-  personer i kö · 2 rapporter senaste 20 min" — siffran är medianen, `estimateWait`), resten på en lugn rad
-  (`#vc-meta`), prognosrutan (`#vc-go`, bara när `forecastWait` ger en), rapporterna hopfällda. Satoshi, inga versaler
-  i monospace, inget visat två gånger
-- Venue-kortet växer ur det man tryckte på (rad i Lista/Live, "Bäst nu", sökträff eller pill: `_vcOrigin`, `vcMorph`)
-  och krymper tillbaka in i det vid stängning, om det fortfarande syns. Neddraget kort stänger nedåt; utan ursprung
-  (Enter, "Menade du") glider det upp som förut. Bakgrunden är bara lätt tonad (0,3), så man ser var kortet kom ifrån
-  Animationen är bara `transform` och `opacity` (körs utanför huvudtråden); `clip-path` hackade medan kartan flög, och
-  kartans `flyTo` startar först vid `animation.ready`
+- Venue-kortet är inget ark. **På kartan** (`vc--map`) är det en kapsel i pillens form och statusfärg som växer ur pillen
+  (`vcMorph`) och sitter kvar på stället när kartan rör sig (`vcPlace` på `move`): namn, väntetid, huvudknappen. Ett
+  tryck på kapseln fäller ut resten (`vc--open`), ett tryck på kartan stänger och kapseln krymper in i pillen. **I Lista
+  och Live** (`vc--inline`) läggs samma element direkt efter raden (`row.after`), raden får `is-open`/`aria-expanded`,
+  och ett tryck till fäller ihop den. Ingen mörk bakgrund, inget handtag, inget kryss (Escape och en dold
+  `#vc-close` för tangentbord). Skärmbyte stänger direkt (`vcHideNow`). Ett rektangulärt ark nertill kändes genererat
+  och dolde det man tryckt på
+- Listorna ritas om med `innerHTML`; `vcPark` flyttar ett utfällt kort undan och lägger tillbaka det under samma
+  ställes nya rad (eller stänger, om raden är bortfiltrerad). Kapselns `left`/`top` nollas vid stängning, annars
+  följde de med in i listan. Den utfällda raden rullas fram ovanför menyn (`vcRevealInline`)
+- Innehållet i viktighetsordning: väntetiden, vad den bygger på (`#vc-sub`: "25–50 personer i kö · 2 rapporter
+  senaste 20 min", siffran är medianen), `#vc-meta`, prognosrutan (`#vc-go`), Rapportera · Dela · ☆, rapporterna
+  hopfällda. Animationerna är bara `transform`/`opacity`/`height`; kartans `flyTo` startar vid `animation.ready`
 - Huvudknappen följer läget (`renderVenueCard`): vid stället (`isAtVenue`: ≤150 m med GPS-osäkerheten, högst 100 m, till
   din fördel) → "Rapportera kön"; annars "Gå hit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
   eller om stället stänger innan du är framme → bara "Vägbeskrivning · 7,8 km"

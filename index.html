@@ -239,41 +239,34 @@
     </nav>
   </div>
 
-  <div id="vc-overlay" onclick="closeVenueCard()"></div>
-  <div id="venue-card" role="dialog" aria-modal="true" aria-labelledby="vc-name">
-    <div class="vc-grab" id="vc-grab"><div class="vc-handle"></div></div>
-    <div class="vc-header">
+  <!-- Venue-kortet har inget eget ställe på skärmen. På kartan är det en kapsel som växer ur pillen och följer stället;
+       i Lista och Live fälls det ut under raden man tryckte på (vcMount i src/main.js). Inget ark, ingen mörk bakgrund. -->
+  <div id="venue-card" role="dialog" aria-labelledby="vc-name" tabindex="-1">
+    <!-- Överst det man vill veta: namn, väntetid och huvudknappen. Det är hela kapseln tills man trycker på den. -->
+    <div class="vc-head">
       <div class="vc-title">
         <span id="vc-name"></span>
-        <span id="vc-area" class="vc-area"></span>
+        <div id="vc-status"></div>
       </div>
-      <div class="vc-tools">
-        <!-- Egna kantiga ikoner: 2 px linje, fyrkantiga ändar och skarpa hörn, utan hjärta, pil eller kryss från ikonbibliotek -->
-        <button id="vc-fav" class="vc-tool" onclick="vcToggleFavorite(event)" aria-label="Favorit">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z"/></svg>
-        </button>
-        <button id="vc-close" class="vc-tool" onclick="closeVenueCard()" aria-label="Stäng">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
-        </button>
-      </div>
+      <!-- Text och handling sätts i renderVenueCard: vid stället är huvudknappen att rapportera, annars att gå dit -->
+      <button id="vc-act-primary" class="vc-btn vc-primary"></button>
     </div>
-
-    <!-- En kolumn i viktighetsordning: väntetiden, vad den bygger på, resten på en lugn rad (openVenueCard) -->
-    <div class="vc-hero">
-      <div id="vc-status"></div>
+    <div class="vc-more">
       <div id="vc-sub"></div>
       <div id="vc-meta"></div>
+      <div id="vc-area"></div>
+      <div id="vc-go"></div>
+      <div class="vc-links">
+        <button id="vc-act-secondary" class="vc-link"></button>
+        <button class="vc-link" onclick="vcShare()">Dela</button>
+        <button id="vc-fav" class="vc-link vc-fav" onclick="vcToggleFavorite(event)" aria-label="Favorit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z"/></svg>
+        </button>
+      </div>
+      <div id="vc-timeline"></div>
     </div>
-    <div id="vc-go"></div>
-
-    <div id="vc-timeline"></div>
-
-    <!-- Text och handling sätts i openVenueCard: vid stället är huvudknappen att rapportera, annars att gå dit -->
-    <div class="vc-actions-main">
-      <button id="vc-act-primary" class="vc-btn vc-primary"></button>
-      <button id="vc-act-secondary" class="vc-btn"></button>
-    </div>
-    <button class="vc-share" onclick="vcShare()">Dela ställe</button>
+    <!-- Stängs genom att trycka på kartan eller raden igen. Knappen syns bara när den har tangentbordsfokus. -->
+    <button id="vc-close" class="vc-close" onclick="closeVenueCard()">Stäng</button>
   </div>
 
   <div id="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">

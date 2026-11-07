@@ -131,11 +131,17 @@ test.describe('3. Sök och öppna ett ställe', () => {
     await expect(rader).toHaveCount(1);
     await expect(rader.first()).toContainText('Spy Bar');
 
+    // Raden fälls ut på plats: kortet ligger direkt under raden, med vad väntetiden bygger på och huvudknappen.
+    // Ingen ruta ovanpå listan. Ett tryck till fäller ihop raden.
     await rader.first().click();
-    await page.waitForTimeout(600);
-    // Venue-kortet ska visa stället. Vilket element som bär namnet kan variera,
-    // så kontrollera att namnet syns någonstans i det öppnade kortet.
-    await expect(page.locator('#venue-card, .vc-sheet, #vc-status').first()).toBeVisible();
+    await expect(rader.first()).toHaveAttribute('aria-expanded', 'true');
+    const kort = page.locator('.erow + #venue-card');
+    await expect(kort).toBeVisible();
+    await expect(kort.locator('#vc-sub')).toContainText(/rapport/);
+    await expect(kort.locator('#vc-act-primary')).toBeVisible();
+    await rader.first().click();
+    await expect(rader.first()).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#venue-card')).toBeHidden();
   });
 
   test('en sökning utan träff säger det, i stället för att visa en tom lista', async ({ page }) => {

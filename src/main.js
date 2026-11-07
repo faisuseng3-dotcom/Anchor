@@ -48,6 +48,7 @@ import './style.css';
     var prevScreen = 'home';
 
     function showScreen(name) {
+      if (name !== currentScreen && _vcMode) vcHideNow(); // kortet hör till skärmen det öppnades på
       prevScreen = currentScreen;
       currentScreen = name;
       document.querySelectorAll('.screen').forEach(function(el) {
@@ -870,42 +871,37 @@ import './style.css';
       if (!list || !btn) return;
       list.hidden = !_vcListOpen;
       btn.setAttribute('aria-expanded', String(_vcListOpen));
+      vcKeepVisible(); // rapportlistan gör kapseln högre
     }
 
-    // Var kortet kommer ifrån: raden, "Bäst nu"-kortet eller pillen man tryckte på. Kortet växer ur den och krymper
-    // tillbaka in i den, i stället för att glida upp från skärmkanten likadant varje gång — det var ett bibliotekskort.
-    // Rader fångas här (före deras onclick), pillar sätts i kartans klick. Gäller i 600 ms: ett kort som öppnas av något
-    // annat (Enter i sökningen, "Menade du") glider upp som förut.
-    var _vcOrigin = null, _vcOpenOrigin = null, _vcCloseTimer = null;
-    var VC_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'; // arkens kurva i iOS: snabb start, mjuk landning
-    document.addEventListener('click', function(e) {
-      var el = e.target && e.target.closest && e.target.closest('.erow, .lv-row, .bn-card, .msearch-row');
-      if (el) _vcOrigin = { el: el, at: Date.now() };
-    }, true);
-    // Rutan i fönstret som kortet växer ur. null om den inte finns eller inte syns (raden ritades om, rullades bort).
-    function vcOriginRect(o) {
-      if (!o) return null;
-      var r;
-      if (o.lngLat) {
-        if (!map) return null;
-        var m = document.getElementById('map').getBoundingClientRect(), p = map.project(o.lngLat);
-        r = { left: m.left + p.x - 45, top: m.top + p.y - 17, bottom: m.top + p.y + 17, width: 90, height: 34 };
-      } else {
-        var el = o.el && document.contains(o.el) ? o.el
-          : activeVenue && document.querySelector('#screen-' + currentScreen + ' .erow[data-venue="' + activeVenue.id + '"]');
-        if (!el) return null;
-        r = el.getBoundingClientRect();
-      }
-      return r.width && r.height && r.bottom > 0 && r.top < window.innerHeight ? r : null;
+    // ── Venue-kortet: kapsel på kartan, utfälld rad i Lista och Live ──
+    // Ett element (#venue-card), två lägen. På kartan (vc--map) en kapsel i pillens form och färg som växer ur pillen
+    // och följer stället när kartan rör sig: namn, väntetid och huvudknappen. Ett tryck på kapseln fäller ut resten, ett
+    // tryck på kartan stänger. I Lista och Live (vc--inline) läggs samma element direkt under raden man tryckte på, och
+    // ett tryck till på raden fäller ihop den. Förut ett ark nertill över en mörk bakgrund: det kändes som en
+    // bibliotekskomponent och dolde det man just hade tryckt på.
+    var _vcMode = null; // null (stängt) | 'map' | 'inline'
+    var _vcCloseTimer = null;
+    var VC_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'; // snabb start, mjuk landning
+    var VC_PILL = { w: 90, h: 34 }; // pillens ungefärliga storlek; kapseln växer ur och krymper in i den
+
+    function vcCard() { return document.getElementById('venue-card'); }
+
+    // Pillens ruta i fönstret, eller null om stället inte syns på kartan.
+    function vcPillRect(venue) {
+      if (!map || !venue) return null;
+      var m = document.getElementById('map').getBoundingClientRect(), p = map.project([venue.lng, venue.lat]);
+      if (p.x < 0 || p.y < 0 || p.x > m.width || p.y > m.height) return null;
+      return { left: m.left + p.x - VC_PILL.w / 2, top: m.top + p.y - VC_PILL.h / 2, width: VC_PILL.w, height: VC_PILL.h };
     }
-    // Kortet skalas från ursprungets ruta (pillen, raden) till full storlek. Bara transform och opacity: de körs utanför
-    // huvudtråden, så kortet växer jämnt även när kartan samtidigt flyger och placerar om 292 nålar. Förut klipptes kortet
-    // med clip-path, som räknas om på huvudtråden varje bild och hackade med kartan. Innehållet tonar in efter halva vägen,
-    // så den hoptryckta texten aldrig syns. Kräver transform-origin 0 0 på #venue-card.
+
+    // Kortet skalas från ruta r till sin egen plats och storlek (eller tillbaka). Bara transform och opacity: de körs
+    // utanför huvudtråden, så kapseln växer jämnt medan kartan flyger. Innehållet tonar in efter halva vägen, så den
+    // hoptryckta texten aldrig syns. Kräver transform-origin 0 0 (.vc--map).
     function vcMorph(card, r, reverse, dur) {
       var c = card.getBoundingClientRect();
-      var at = 'translateX(-50%) translate(' + (r.left - c.left) + 'px, ' + (r.top - c.top) + 'px) scale(' + (r.width / c.width) + ', ' + (r.height / c.height) + ')';
-      var full = 'translateX(-50%) translate(0px, 0px) scale(1, 1)';
+      var at = 'translate(' + (r.left - c.left) + 'px, ' + (r.top - c.top) + 'px) scale(' + (r.width / c.width) + ', ' + (r.height / c.height) + ')';
+      var full = 'translate(0px, 0px) scale(1, 1)';
       var opts = { duration: dur, easing: VC_EASE, fill: reverse ? 'forwards' : 'none' };
       function dir(frames) {
         return reverse ? frames.slice().reverse().map(function(f) {
@@ -920,58 +916,112 @@ import './style.css';
       return card.animate(dir([{ transform: at, opacity: 0 }, { opacity: 1, offset: 0.12 }, { transform: full, opacity: 1 }]), opts);
     }
 
-    // Öppnar kortet: fokus på kartan, glider upp, centrerar stället. Innehållet ritas av renderVenueCard, som också körs
-    // när data eller position ändras medan kortet är öppet — annars stod "10–20 min" kvar medan pillen bakom bytte värde.
-    function openVenueCard(venue, source) {
+    // Den del av kartan som syns: mellan knapparna under sökfältet och "Bäst nu"-kortet (eller menyn). Kartkoordinater.
+    function vcMapBounds() {
+      var m = document.getElementById('map').getBoundingClientRect();
+      var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar');
+      var bn = document.getElementById('best-now-card'), bnRect = bn && bn.getBoundingClientRect();
+      var bottom = bnRect && bnRect.height ? bnRect.top - m.top : m.height - 88;
+      return { top: (bar ? bar.getBoundingClientRect().bottom - m.top : 0) + 8, bottom: bottom - 8, height: m.height };
+    }
+
+    // Kapseln sitter på stället: pillens mitt i höjd med kapselns översta rad, i sidled inom skärmen. Körs när kartan
+    // rör sig, när innehållet ändras och när kapseln fälls ut.
+    function vcPlace() {
+      if (_vcMode !== 'map' || !activeVenue || !map) return;
+      var card = vcCard(), head = card.querySelector('.vc-head');
+      var p = map.project([activeVenue.lng, activeVenue.lat]), W = document.getElementById('map').clientWidth;
+      card.style.left = Math.max(12, Math.min(W - card.offsetWidth - 12, p.x - card.offsetWidth / 2)) + 'px';
+      card.style.top = (p.y - head.offsetTop - head.offsetHeight / 2) + 'px';
+    }
+    window.addEventListener('resize', vcPlace);
+
+    // Kartan flyttas så att hela kapseln syns, efter utfällning eller när rapportlistan öppnas. Layoutmått, inte
+    // getBoundingClientRect: en pågående animation skalar kapseln.
+    function vcKeepVisible() {
+      if (_vcMode !== 'map' || !map) return;
+      var card = vcCard(), b = vcMapBounds();
+      var top = card.offsetTop, bottom = top + card.offsetHeight;
+      var dy = bottom > b.bottom ? bottom - b.bottom : top < b.top ? top - b.top : 0;
+      if (dy) map.panBy([0, dy], { duration: _reduceMotion ? 0 : 300 });
+    }
+
+    function vcMarkRow(row, open) {
+      row.classList.toggle('is-open', open);
+      row.setAttribute('aria-expanded', String(open));
+    }
+
+    // Ett tryck på kapseln (utanför knapparna) fäller ut eller ihop resten.
+    vcCard().addEventListener('click', function(e) {
+      if (_vcMode !== 'map' || e.target.closest('button')) return;
+      vcCard().classList.toggle('vc--open');
+      vcPlace();
+      vcKeepVisible();
+    });
+
+    // Den utfällda raden rullas fram ovanför menyn längst ned. scrollIntoView räknar inte med menyn (listan går under den)
+    // och kortet hamnade bakom den.
+    function vcRevealInline(smooth) {
+      var card = vcCard(), wrap = card.closest('#explore-list-wrap, #live-list-wrap'), nav = document.getElementById('bottom-nav');
+      if (!wrap) return;
+      var over = card.getBoundingClientRect().bottom - (nav ? nav.getBoundingClientRect().top : window.innerHeight) + 12;
+      if (over > 0) wrap.scrollBy({ top: over, behavior: smooth ? 'smooth' : 'auto' });
+    }
+
+    // Öppnar kortet för ett ställe: på kartan som kapsel vid stället, annars under raden (row: den man tryckte på).
+    function openVenueCard(venue, source, row) {
       console.log('[QueueBar] openVenueCard:', venue.id, '| källa:', source || 'lista');
+      var card = vcCard(), onMap = currentScreen === 'home';
+      if (!onMap) row = row || document.querySelector('#screen-' + currentScreen + ' [data-venue="' + venue.id + '"]');
+      // Ett tryck till på raden som redan är utfälld fäller ihop den.
+      if (!onMap && _vcMode === 'inline' && activeVenue === venue && !_vcCloseTimer && row && row.nextElementSibling === card) {
+        closeVenueCard();
+        return;
+      }
+      vcHideNow(); // ett annat öppet kort, eller ett som håller på att stänga, försvinner direkt
+      if (!onMap && !row) return;
       activeVenue = venue;
       applyMapFocus();
       _vcListOpen = false; // varje kort börjar hopfällt
+      _vcMode = onMap ? 'map' : 'inline';
+      card.classList.add(onMap ? 'vc--map' : 'vc--inline');
+      card.setAttribute('role', onMap ? 'dialog' : 'region');
       renderVenueCard(venue);
-      var card = document.getElementById('venue-card');
-      // Ett kort som öppnas medan förra stänger: stängningen får inte dölja det nya kortet när den blir klar.
-      clearTimeout(_vcCloseTimer);
-      card.getAnimations({ subtree: true }).concat(document.getElementById('vc-overlay').getAnimations()).forEach(function(a) { a.cancel(); });
-      document.getElementById('vc-overlay').style.display = 'block';
-      card.style.removeProperty('--vc-drag');
-      document.getElementById('vc-overlay').style.removeProperty('--vc-overlay');
-      card.classList.remove('vc-dragging', 'vc-settling');
-      card.style.display = 'block';
-      var overlay = document.getElementById('vc-overlay');
-      var origin = _vcOrigin && Date.now() - _vcOrigin.at < 600 ? _vcOrigin : null;
-      _vcOrigin = null;
-      _vcOpenOrigin = origin;
-      var from = !_reduceMotion && vcOriginRect(origin);
-      var grow = null;
-      if (from) {
-        card.style.animation = 'none';
-        grow = vcMorph(card, from, false, 420);
-        overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: VC_EASE });
-      } else {
-        card.style.animation = _reduceMotion ? 'none' : 'slideUp 0.32s ' + VC_EASE;
+      if (!onMap) {
+        row.after(card);
+        vcMarkRow(row, true);
+        if (_reduceMotion) { vcRevealInline(false); return; }
+        // Raden fälls ut: kortet växer från noll höjd under raden.
+        var h = card.offsetHeight;
+        card.style.overflow = 'hidden';
+        var a = card.animate([{ height: '0px', opacity: 0 }, { height: h + 'px', opacity: 1 }], { duration: 260, easing: VC_EASE });
+        a.onfinish = function() { card.style.overflow = ''; vcRevealInline(true); };
+        a.oncancel = function() { card.style.overflow = ''; };
+        return;
       }
-      // Fokus in i kortet (skärmläsare och tangentbord hamnar där det händer) och tillbaka dit det kom ifrån vid stängning.
+      document.getElementById('screen-home').appendChild(card);
+      vcPlace();
+      // Fokus in i kapseln (skärmläsare och tangentbord hamnar där det händer) och tillbaka dit det kom ifrån.
       if (!card.contains(document.activeElement)) _vcReturnFocus = document.activeElement;
-      document.getElementById('vc-close').focus({ preventScroll: true });
-      // Stället centreras mitt i den del av kartan som syns: mellan raden med knappar under sökfältet och kortets överkant.
-      // Förut räknades bara kortet (en halv korthöjd upp), och pillen hamnade bakom knapparna medan kartan zoomade in mot
-      // vattnet mitt på skärmen. Är man redan närmare än zoom 14 zoomar kortet inte ut. Flygningen startar först när kortets
-      // animation har börjat: kartans första bild (nya tiles, omplacering) blockerade annars kortets första bilder.
-      if (map && venue.lat && venue.lng) (grow ? grow.ready : Promise.resolve()).then(function() {
-        if (activeVenue !== venue) return;
-        var m = document.getElementById('map').getBoundingClientRect();
-        var bar = document.querySelector('.map-type-chips') || document.querySelector('.map-topbar');
-        var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
-        var bottom = Math.max(top + 60, window.innerHeight - card.offsetHeight - m.top);
+      card.focus({ preventScroll: true });
+      var from = !_reduceMotion && vcPillRect(venue);
+      var grow = from ? vcMorph(card, from, false, 380)
+        : _reduceMotion ? null : card.animate([{ opacity: 0, transform: 'scale(0.96)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: VC_EASE });
+      // Kartan flyger först när kapselns animation har börjat: kartans första bild (nya tiles, omplacering) blockerade
+      // annars dess första bilder. Stället hamnar en bit ovanför mitten av det som syns, så den utfällda kapseln ryms under.
+      (grow ? grow.ready : Promise.resolve()).then(function() {
+        if (!map || activeVenue !== venue || _vcMode !== 'map') return;
+        var b = vcMapBounds();
         map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(14, map.getZoom()), duration: 800,
-          offset: [0, (top + bottom) / 2 - m.height / 2] });
+          offset: [0, b.top + (b.bottom - b.top) * 0.35 - b.height / 2] });
       }, function() {}); // avbruten animation: ett nytt kort öppnades och flyger själv
     }
 
     // Ritar om ett öppet kort med aktuell data. Inget om kortet är stängt.
     function refreshVenueCard() {
-      var card = document.getElementById('venue-card');
-      if (activeVenue && card && card.style.display === 'block') renderVenueCard(activeVenue);
+      if (!activeVenue || !_vcMode) return;
+      renderVenueCard(activeVenue);
+      vcPlace();
     }
 
     function renderVenueCard(venue) {
@@ -1032,9 +1082,8 @@ import './style.css';
       // Huvudknappen följer läget. Vid stället: rapportera kön. Annars: gå dit — öppnar vägbeskrivningen och markerar
       // "på väg" (anonymt, on_my_way_counts). Över 40 min promenad, eller om stället stänger innan du är framme, bara
       // vägbeskrivning: då går man inte dit, och ankomsten i "På väg" vore fel. Stängt: inga knappar alls.
-      var actions = document.querySelector('.vc-actions-main');
-      actions.hidden = closed;
       var primary = document.getElementById('vc-act-primary'), secondary = document.getElementById('vc-act-secondary');
+      primary.hidden = closed;
       if (isAtVenue(venue)) {
         primary.textContent = 'Rapportera kön';
         primary.onclick = goToReport;
@@ -1045,7 +1094,7 @@ import './style.css';
         primary.onclick = directionsOnly ? openDirections : vcGoThere;
         secondary.textContent = 'Rapportera';
         secondary.onclick = goToReport;
-        secondary.hidden = false;
+        secondary.hidden = closed;
       }
 
       document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports);
@@ -1063,103 +1112,72 @@ import './style.css';
       event.currentTarget.classList.toggle('fav', isFavorite(activeVenue.id));
     }
 
+    // Stänger: kapseln krymper tillbaka in i pillen (eller tonar ut om stället inte syns), raden fälls ihop.
     function closeVenueCard() {
-      var card = document.getElementById('venue-card');
-      var overlay = document.getElementById('vc-overlay');
-      // Neddraget kort stänger nedåt, i fingrets riktning, från där det släpptes (--vc-drag). Annars krymper kortet
-      // tillbaka in i raden eller pillen det kom från, om den fortfarande syns.
-      var dragged = parseFloat(card.style.getPropertyValue('--vc-drag')) > 0;
-      card.classList.remove('vc-dragging', 'vc-settling');
-      var to = !dragged && !_reduceMotion && card.style.display === 'block' && vcOriginRect(_vcOpenOrigin);
-      var dur = 200;
-      if (to) {
-        dur = 300;
-        card.style.animation = 'none';
-        vcMorph(card, to, true, dur);
-        overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: VC_EASE, fill: 'forwards' });
-      } else {
-        card.style.animation = 'slideDown 0.2s cubic-bezier(0.36,0,0.66,0) forwards';
-        overlay.style.display = 'none';
+      if (!_vcMode || _vcCloseTimer) return;
+      var card = vcCard(), dur = 0;
+      card.getAnimations({ subtree: true }).forEach(function(a) { a.cancel(); });
+      if (!_reduceMotion) {
+        if (_vcMode === 'map') {
+          var to = vcPillRect(activeVenue);
+          dur = 260;
+          if (to) vcMorph(card, to, true, dur);
+          else card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: VC_EASE, fill: 'forwards' });
+        } else {
+          dur = 220;
+          card.style.overflow = 'hidden';
+          card.animate([{ height: card.offsetHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0 }], { duration: dur, easing: VC_EASE, fill: 'forwards' });
+        }
       }
-      _vcOpenOrigin = null;
-      _vcCloseTimer = setTimeout(function() {
-        card.style.display = 'none';
-        card.style.animation = '';
-        card.getAnimations({ subtree: true }).forEach(function(a) { a.cancel(); });
-        overlay.getAnimations().forEach(function(a) { a.cancel(); });
-        overlay.style.display = 'none';
-        card.style.removeProperty('--vc-drag');
-        overlay.style.removeProperty('--vc-overlay');
-        if (_vcReturnFocus && document.contains(_vcReturnFocus)) _vcReturnFocus.focus({ preventScroll: true });
-        _vcReturnFocus = null;
-        activeVenue = null;
-        applyMapFocus();
-      }, dur);
+      _vcCloseTimer = setTimeout(vcHideNow, dur);
     }
 
-    // Dra kortet nedåt för att stänga. Följer fingret 1:1, stänger vid >120 px eller en snabb sänkning (>0.5 px/ms),
-    // annars fjädrar det tillbaka. Uppåt går det inte att dra (gummiband: 15 % av rörelsen), så kortet aldrig lämnar kanten.
-    (function setupVenueCardDrag() {
-      var card = document.getElementById('venue-card');
-      var grab = document.getElementById('vc-grab');
-      var overlay = document.getElementById('vc-overlay');
-      if (!card || !grab) return;
-      var startY = 0, lastY = 0, lastT = 0, velocity = 0, dragging = false, pointerId = null;
+    // Stänger utan animation: när en stängning är klar, när ett annat kort öppnas och vid skärmbyte. Kortet parkeras
+    // utanför listorna, så att en omritning av listan inte tar bort elementet.
+    function vcHideNow() {
+      var card = vcCard();
+      clearTimeout(_vcCloseTimer);
+      _vcCloseTimer = null;
+      card.getAnimations({ subtree: true }).forEach(function(a) { a.cancel(); });
+      card.style.overflow = card.style.left = card.style.top = ''; // kapselns plats får inte följa med till listan
+      var row = document.querySelector('.is-open[data-venue]'), hadFocus = card.contains(document.activeElement);
+      if (row) vcMarkRow(row, false);
+      if (!_vcMode) return;
+      var wasMap = _vcMode === 'map';
+      _vcMode = null;
+      card.classList.remove('vc--map', 'vc--inline', 'vc--open');
+      document.body.appendChild(card);
+      // Fokus tillbaka dit det kom ifrån: knappen eller kartan som öppnade kapseln, raden som fälldes ut.
+      if (wasMap && _vcReturnFocus && document.contains(_vcReturnFocus)) _vcReturnFocus.focus({ preventScroll: true });
+      else if (hadFocus && row) row.focus({ preventScroll: true });
+      _vcReturnFocus = null;
+      activeVenue = null;
+      applyMapFocus();
+    }
 
-      function offset(dy) { return dy > 0 ? dy : dy * 0.15; }
-      function apply(dy) {
-        var o = offset(dy);
-        card.style.setProperty('--vc-drag', o + 'px');
-        // Bakgrunden ljusnar i takt med att kortet sjunker, så det syns att det håller på att försvinna
-        var fade = Math.max(0, 1 - Math.max(0, o) / 320);
-        overlay.style.setProperty('--vc-overlay', String(fade));
-      }
-
-      grab.addEventListener('pointerdown', function(e) {
-        if (e.button !== undefined && e.button !== 0) return;
-        dragging = true; pointerId = e.pointerId;
-        startY = lastY = e.clientY; lastT = performance.now(); velocity = 0;
-        card.classList.remove('vc-settling');
-        card.classList.add('vc-dragging');
-        card.style.animation = 'none';
-        if (grab.setPointerCapture) { try { grab.setPointerCapture(pointerId); } catch (err) {} }
+    // Listorna ritas om med innerHTML. Ett utfällt kort flyttas undan först (annars försvinner det med raden) och läggs
+    // tillbaka under samma ställes nya rad när omritningen är klar; finns raden inte längre (bortfiltrerad) stängs det.
+    function vcPark() {
+      var card = vcCard();
+      if (_vcMode !== 'inline' || card.parentNode === document.body) return;
+      var focused = card.contains(document.activeElement) ? document.activeElement : null;
+      document.body.appendChild(card);
+      queueMicrotask(function() {
+        if (_vcMode !== 'inline' || !activeVenue) return;
+        var row = document.querySelector('#screen-' + currentScreen + ' [data-venue="' + activeVenue.id + '"]');
+        if (!row) { vcHideNow(); return; }
+        row.after(card);
+        vcMarkRow(row, true);
+        if (focused) focused.focus({ preventScroll: true });
       });
-
-      grab.addEventListener('pointermove', function(e) {
-        if (!dragging || e.pointerId !== pointerId) return;
-        var now = performance.now();
-        var dt = now - lastT;
-        if (dt > 0) velocity = (e.clientY - lastY) / dt;
-        lastY = e.clientY; lastT = now;
-        apply(e.clientY - startY);
-      });
-
-      function release(e) {
-        if (!dragging || (e && e.pointerId !== pointerId)) return;
-        dragging = false;
-        card.classList.remove('vc-dragging');
-        var dy = lastY - startY;
-        if (dy > 120 || velocity > 0.5) {
-          closeVenueCard();
-        } else {
-          // Fjädra tillbaka: övergången tar kortet till 0 px och bakgrunden till full styrka
-          card.classList.add('vc-settling');
-          card.style.animation = '';
-          card.style.setProperty('--vc-drag', '0px');
-          overlay.style.setProperty('--vc-overlay', '1');
-          setTimeout(function() { card.classList.remove('vc-settling'); }, 340);
-        }
-        if (grab.releasePointerCapture) { try { grab.releasePointerCapture(pointerId); } catch (err) {} }
-      }
-      grab.addEventListener('pointerup', release);
-      grab.addEventListener('pointercancel', release);
-    })();
+    }
 
     function goToReport() {
+      var v = activeVenue; // showScreen stänger kortet direkt och nollar activeVenue
       closeVenueCard();
       showScreen('report');
       // Via pickRV, så att kortets "Rapportera" får samma kontroller som listan (stängt, långt bort).
-      if (activeVenue) pickRV(activeVenue.id);
+      if (v) pickRV(v.id);
     }
 
     // Gående vägbeskrivning. Apple Kartor på iPhone/iPad (öppnas direkt i appen), annars Google Maps.
@@ -1904,12 +1922,20 @@ import './style.css';
             }
             var venue = getVenueById(f.properties.id);
             console.log('[QueueBar] Kartmarkörsklick:', f.properties.id);
-            if (venue) { _vcOrigin = { lngLat: [venue.lng, venue.lat], at: Date.now() }; openVenueCard(venue, 'karta'); }
+            if (venue) openVenueCard(venue, 'karta');
           });
 
           ['venues-more', 'venues-pins', 'venues-empty-pins', 'venues-empty-dots'].forEach(function(l) {
             map.on('mouseenter', l, function() { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', l, function() { map.getCanvas().style.cursor = ''; });
+          });
+          // Kapseln följer stället när kartan rör sig. Ett tryck på kartan utanför ett ställe stänger den, som ett tryck
+          // utanför ett ark; ett tryck på ett annat ställe öppnar dess kapsel (klicket ovan).
+          map.on('move', vcPlace);
+          map.on('click', function(e) {
+            if (_vcMode !== 'map') return;
+            if (map.queryRenderedFeatures(e.point, { layers: ['venues-more', 'venues-pins', 'venues-empty-pins', 'venues-empty-dots'] }).length) return;
+            closeVenueCard();
           });
           // Avstånden på skärmen ändras med zoom och lutning: räkna om vilka pillar som krockar när kartan står still.
           map.on('moveend', declutterPills);
@@ -1987,6 +2013,7 @@ import './style.css';
     }
 
     function showExploreError() {
+      vcPark();
       var el = document.getElementById('explore-list');
       if (!el) return;
       el.innerHTML = '<div class="explore-error-state">' +
@@ -2319,8 +2346,7 @@ import './style.css';
       if (e.key === 'Escape') {
         var sheet = document.getElementById('qr-sheet');
         if (sheet && sheet.style.display === 'block') { closeQuickReport(); return; }
-        var card = document.getElementById('venue-card');
-        if (card && card.style.display === 'block') closeVenueCard();
+        if (_vcMode) closeVenueCard();
         return;
       }
       var row = e.target;
@@ -3207,7 +3233,7 @@ import './style.css';
 
       // Raden är neutral: statusen står i den färgade siffran till höger. Färgad kant och tonad bakgrund sa samma sak två
       // gånger till.
-      return '<div class="erow' + stateClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" role="button" tabindex="0" style="--row-delay:' + delay + ';" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\')">' +
+      return '<div class="erow' + stateClass + (isBest ? ' erow--best' : '') + (_listIntro ? ' erow--intro' : '') + '" data-venue="' + venue.id + '" role="button" tabindex="0" aria-expanded="false" style="--row-delay:' + delay + ';" onclick="openVenueCard(getVenueById(\'' + venue.id + '\'),\'explore\',this)">' +
         '<div class="erow-inner">' +
           '<div class="erow-body">' +
             (isBest ? '<div class="bast-chip">Bäst nu' + (bastReason ? ' · ' + bastReason : '') + '</div>' : '') +
@@ -3263,6 +3289,7 @@ import './style.css';
     var _listIntroAt = 0; // när introt spelades — GPS-omritning väntar tills raderna glidit in
 
         function renderExploreVenues() {
+      vcPark(); // ett utfällt kort under en rad får inte försvinna med raden när listan ritas om
       renderExploreSummary();
       var q = (document.getElementById('explore-search') || {}).value || '';
       q = q.toLowerCase();
@@ -3459,7 +3486,7 @@ import './style.css';
           '<span>' + (open ? 'Dölj' : '+' + olderCount + ' tidigare') + '</span>' +
           '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>';
       }
-      return '<div class="lv-row" role="button" tabindex="0" onclick="openVenueCard(getVenueById(\'' + r.venue_id + '\'), \'live\')">' +
+      return '<div class="lv-row" data-venue="' + r.venue_id + '" role="button" tabindex="0" aria-expanded="false" onclick="openVenueCard(getVenueById(\'' + r.venue_id + '\'), \'live\', this)">' +
         '<div class="lv-inner"><div class="lv-body">' +
           '<div class="lv-name">' + name + '</div>' +
           (area ? '<div class="lv-meta">' + area + '</div>' : '') +
@@ -3493,6 +3520,7 @@ import './style.css';
     }
 
     function renderLiveFeed() {
+      vcPark();
       var el = document.getElementById('live-feed');
       if (!el) return;
       // Prickarna (fliken och rubriken) säger "live" bara när det finns en färsk rapport (< 10 min) och kontakt med

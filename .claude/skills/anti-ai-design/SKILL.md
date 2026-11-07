@@ -16,7 +16,7 @@ This skill is a detection and removal tool. For the full quality standard (what 
 
 Cards, rows, and list containers should use `border-color` for hover/active feedback — not `box-shadow`. Shadows imply depth and permanence; this product is live and changing.
 
-**Exception**: map overlays, floating action buttons, and bottom sheets emerging from the edge of the screen may keep shadows (they need the depth cue to separate from content behind them).
+**Exception**: map overlays and floating action buttons may keep shadows (they need the depth cue to separate from content behind them).
 
 ```bash
 grep -n "box-shadow" index.html | grep -v "map\|fab\|sheet\|ripple\|conf-bar\|focus\|0 0 0\|inset"
@@ -163,6 +163,13 @@ grep -n "text-transform: uppercase" src/style.css
 
 A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining. The screens must explain themselves. Qbar
 removed its tour on 2026-11-02; do not add one back.
+
+### Bottom-sheet detail card
+
+A rectangular sheet from the bottom edge with a grab handle, icon row (star, ×), big headline, two-button row and a
+text link, over a dimmed backdrop. It is the drawer component from every UI kit, and it hides the row or pin the user
+just tapped. Qbar replaced it on 2026-11-07: on the map the pill grows into a capsule at the venue, in lists the row
+expands in place (`openVenueCard`). Do not bring the sheet back.
 
 ### Loading that claims "empty"
 

@@ -334,93 +334,87 @@
     /* ── Favorit: studs när stjärnan trycks (toggleFavorite) ──────────────── */
     @keyframes heartBounce { 0%{transform:scale(1)} 30%{transform:scale(1.35)} 60%{transform:scale(0.9)} 100%{transform:scale(1)} }
 
-    /* ── Bottom Sheet (Venue Card) ─────────────────────────────────────── */
-    /* Lätt tonad: listan eller kartan bakom ska synas, så att man ser var kortet kom ifrån. */
-    #vc-overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.3); }
+    /* ── Venue-kortet ─────────────────────────────────────────────────── */
+    /* Inget ark och ingen mörk bakgrund. På kartan (.vc--map) en kapsel som växer ur pillen och sitter kvar vid stället;
+       i Lista och Live (.vc--inline) fälls det ut under raden. Samma innehåll och knappar i båda (renderVenueCard).
+       Ett rektangulärt ark nertill med handtag, ikonrad och knapprad var en bibliotekskomponent och kändes genererad. */
+    #venue-card { display: none; font-family: var(--font-base); color: var(--text-primary); }
+    #venue-card:focus { outline: none; }
 
-    #venue-card {
-      display: none; position: fixed; z-index: 30;
-      bottom: 0; left: 50%;
-      /* Y-förskjutningen kommer från --vc-drag så att kortet kan följa fingret utan att tappa centreringen (-50%). */
-      transform: translateX(-50%) translateY(var(--vc-drag, 0px)); transform-origin: 0 0; /* 0 0: vcMorph skalar från pillens hörn */
-      width: min(430px, 100vw);
-      background: var(--surface);
-      /* Skarpare hörn (6 px) i stället för 22: kortet ska se ut som ett verktyg, inte en bubbla. Ingen skugga — kanten
-         och statusfärgen i toppen räcker för att skilja kortet från det som ligger bakom. */
-      border-radius: 6px 6px 0 0;
-      border: 1px solid var(--border-hover);
-      border-bottom: 0;
-      border-top: 3px solid var(--st, var(--status-unknown));
-      padding: 0 16px 16px;
-      /* Med många rapporter utfällda växte kortet över skärmkanten; nu rullar det i stället. */
-      max-height: calc(100dvh - 16px - env(safe-area-inset-top)); overflow-y: auto; overscroll-behavior: contain;
-      padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    /* Kartan: pillens form och statusfärg. Det man tryckte på har vuxit; inget nytt har lagts ovanpå kartan. */
+    #venue-card.vc--map {
+      display: block; position: absolute; z-index: 3; /* under sökfältet, knapparna och "Bäst nu" när kartan dras */
+      width: max-content; min-width: 220px; max-width: min(340px, calc(100% - 24px));
+      padding: 8px 8px 8px 20px;
+      background: var(--surface); border: 2px solid var(--st, var(--status-unknown)); border-radius: var(--radius-full);
+      transform-origin: 0 0; /* vcMorph skalar från pillens hörn */
+      cursor: pointer;
     }
-    /* Under pågående drag följer kortet fingret direkt (ingen övergång). Vid släpp fjädrar det tillbaka. */
-    #venue-card.vc-dragging { transition: none; }
-    #venue-card.vc-settling { transition: transform var(--dur-slow) var(--ease-spring); }
-    /* Draghandtaget är hela toppen av kortet: 44 px tryckyta, och webbläsaren får inte tolka draget som scroll. */
-    .vc-grab { touch-action: none; cursor: grab; margin: 0 -16px; padding: 8px 16px 0; height: 28px; display: flex; align-items: flex-start; justify-content: center; }
-    .vc-grab::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 44px; }
-    .vc-grab:active { cursor: grabbing; }
-    #vc-overlay { transition: opacity var(--dur-mid) var(--ease-out); opacity: var(--vc-overlay, 1); }
-    @keyframes slideUp {
-      from { transform: translateX(-50%) translateY(100%); }
-      to   { transform: translateX(-50%) translateY(0); }
-    }
-    @keyframes slideDown {
-      from { transform: translateX(-50%) translateY(var(--vc-drag, 0px)); }
-      to   { transform: translateX(-50%) translateY(110%); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      #venue-card.vc-settling { transition: none; }
-      #vc-overlay { transition: none; }
-    }
+    /* Utfälld kapsel: samma rundade form, bara större. */
+    #venue-card.vc--map.vc--open { width: min(340px, calc(100% - 24px)); padding: 12px 16px 8px 20px; border-radius: 24px; }
+    .vc--map:not(.vc--open) .vc-more { display: none; }
 
-    .vc-handle { width: 28px; height: 3px; border-radius: 1px; background: var(--border-hover); }
-
-    /* Rubrik: namn och område · typ · avstånd till vänster, favorit och stäng till höger. Vanlig text, inte stämplar. */
-    .vc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 4px; }
-    .vc-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    #vc-name { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-primary); line-height: 1.15; overflow-wrap: anywhere; }
-    .vc-area { font-size: 13px; font-weight: 500; color: var(--text-muted); }
-    .vc-tools { display: flex; flex-shrink: 0; margin-top: -4px; }
-    .vc-tool {
-      width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
-      background: none; border: 0; color: var(--text-secondary); cursor: pointer;
+    /* Listan och Live: raden som fälldes ut, inte en ruta ovanpå. Namn, område och väntetid står redan i raden. */
+    #venue-card.vc--inline {
+      display: flex; flex-direction: column; position: relative;
+      padding: 0 16px 8px; background: var(--surface-raised); border-bottom: 1px solid var(--border);
     }
-    .vc-tool svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: miter; stroke-linecap: square; }
-    .vc-tool:active { color: var(--text-primary); }
-    #vc-fav.fav { color: var(--text-primary); }
-    #vc-fav.fav svg { fill: currentColor; }
+    .vc--inline .vc-title, .vc--inline #vc-area { display: none; }
+    .vc--inline .vc-more { display: contents; }
+    .vc--inline #vc-sub, .vc--inline #vc-meta, .vc--inline #vc-go { order: 1; }
+    .vc--inline .vc-head { order: 2; margin-top: 12px; }
+    .vc--inline .vc-links { order: 3; }
+    .vc--inline #vc-timeline { order: 4; }
+    .erow.is-open, .lv-row.is-open { background: var(--surface-raised); border-bottom-color: transparent; }
 
-    /* En kolumn i viktighetsordning, ingen faktakolumn bredvid: väntetiden ensam och störst, sedan vad den bygger på i
-       vardagsspråk, sedan allt annat på en lugn rad. Avstånd skiljer delarna åt, inte linjer. */
-    .vc-hero { padding: 12px 0 16px; }
+    .vc-head { display: flex; align-items: center; gap: 12px; }
+    .vc-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    #vc-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #vc-status {
-      font-family: var(--font-mono); font-size: clamp(42px, 13vw, 54px); font-weight: 700; letter-spacing: -0.05em;
-      line-height: 0.95; font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap;
+      font-size: 24px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+      font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap;
     }
-    #vc-sub { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-top: 12px; }
-    #vc-meta { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
-    #vc-meta:empty { display: none; }
     .vc--aging #vc-status { opacity: 0.75; }
+    .vc-primary {
+      flex-shrink: 0; height: 44px; padding: 0 20px; border: 0; border-radius: var(--radius-full); cursor: pointer;
+      background: var(--text-primary); color: var(--bg-primary);
+      font: 700 15px var(--font-base); font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .vc-primary[hidden] { display: none; }
+
+    /* Det som syns när kapseln fälls ut: vad siffran bygger på, resten på lugna rader, prognosen, länkar, rapporterna. */
+    .vc-more { padding-top: 8px; }
+    #vc-sub { font-size: 13px; font-weight: 600; }
     .vc--nodata #vc-sub { color: var(--text-muted); }
+    #vc-meta, #vc-area { margin-top: 2px; font-size: 13px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    #vc-meta:empty, #vc-go:empty, #vc-timeline:empty { display: none; }
     /* Om du går nu: det enda med ram, för det är svaret på "är det värt att gå?". Bara när det finns en prognos. */
-    #vc-go:empty { display: none; }
-    #vc-go { margin-bottom: 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    #vc-go { margin-top: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; }
+    .vc-links { display: flex; align-items: center; gap: 16px; }
+    .vc-link {
+      min-height: 44px; padding: 0; background: none; border: 0; cursor: pointer;
+      font: 600 13px var(--font-base); color: var(--text-secondary);
+    }
+    .vc-link[hidden] { display: none; }
+    .vc-link:active { color: var(--text-primary); }
+    .vc-fav svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: miter; }
+    .vc-fav.fav { color: var(--text-primary); }
+    .vc-fav.fav svg { fill: currentColor; }
+    /* Stängs med ett tryck på kartan eller raden. För tangentbord finns knappen, synlig bara när den har fokus. */
+    .vc-close { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .vc-close:focus-visible {
+      width: auto; height: 32px; overflow: visible; clip-path: none; top: -40px; right: 0; padding: 0 12px;
+      border-radius: var(--radius-full); background: var(--text-primary); color: var(--bg-primary); font: 700 13px var(--font-base);
+    }
 
     /* Vad som hänt (trendraden) och rapporterna själva, hopfällda. Syns bara när det finns något ärligt att visa. */
-    #vc-timeline:empty { display: none; }
-    #vc-timeline { margin-bottom: 8px; font-variant-numeric: tabular-nums; }
-
+    #vc-timeline { font-variant-numeric: tabular-nums; }
     .vc-chg { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
     .vc-chg-dir { font-size: 13px; }
     .vc-chg-time { color: var(--text-muted); font-weight: 500; }
     .vc-chg-val { margin-left: auto; color: var(--text-primary); }
     .vc-chg--up .vc-chg-dir { color: var(--status-medium); }
     .vc-chg--down .vc-chg-dir { color: var(--status-free); }
-
     .vc-reps-toggle {
       display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 0;
       background: none; border: 0; cursor: pointer;
@@ -438,21 +432,11 @@
     .vc-rep-ago { color: var(--text-muted); font-size: 12px; }
     @media (prefers-reduced-motion: reduce) { .vc-reps-toggle svg { transition: none; } }
 
-    /* Knappar: en huvudhandling som följer läget (Gå hit eller Rapportera kön, se openVenueCard) och en sekundär. */
-    .vc-actions-main { display: flex; gap: 8px; }
-    .vc-actions-main[hidden] { display: none; }
-    .vc-btn {
-      flex: 1; border: 1px solid var(--border-hover); border-radius: var(--radius-sm); height: 50px; padding: 0 16px;
-      font-family: var(--font-base); font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
-      cursor: pointer; background: transparent; color: var(--text-primary); white-space: nowrap;
+    /* Snabbrapportens ark glider ned när det stängs (closeQuickReport). */
+    @keyframes slideDown {
+      from { transform: translateX(-50%) translateY(0); }
+      to   { transform: translateX(-50%) translateY(110%); }
     }
-    .vc-btn[hidden] { display: none; }
-    .vc-primary { flex: 2; background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-primary); font-variant-numeric: tabular-nums; }
-    .vc-share {
-      display: block; width: 100%; min-height: 44px; margin-top: 4px; background: none; border: 0; cursor: pointer;
-      font-family: var(--font-base); font-size: 13px; font-weight: 500; color: var(--text-muted);
-    }
-    .vc-share:active { color: var(--text-primary); }
 
     /* ── Consent Modal ─────────────────────────────────────────────────── */
     #consent-modal {
@@ -1014,28 +998,28 @@
     /* Hover bara där det finns en pekare (annars fastnar den efter ett tryck på mobil). Kanten eller färgen skiftar, aldrig
        en skugga eller ett hopp: knappar och rader ska kännas levande med mus utan att något flyttar sig. */
     @media (hover: hover) {
-      .fbtn:not(.active):hover, .avatar-btn:hover, .bn-card:hover, .qs-btn:hover, .vc-btn:not(.vc-primary):hover {
+      .fbtn:not(.active):hover, .avatar-btn:hover, .bn-card:hover, .qs-btn:hover {
         border-color: var(--border-focus); }
-      .fbtn:not(.active):hover, .tab:hover, .vc-tool:hover, .vc-share:hover, .vc-reps-toggle:hover, .lv-more:hover,
+      .fbtn:not(.active):hover, .tab:hover, .vc-link:hover, .vc-reps-toggle:hover, .lv-more:hover,
       #map-search-clear:hover, .ip-close:hover, .qs-close:hover, .rs-back:hover { color: var(--text-primary); }
       .msearch-row:hover, .rs-item:hover, .lv-row:hover { background: var(--surface-raised); }
       .vc-primary:hover, .ip-accept:hover { opacity: 0.88; }
     }
 
     :root { --press-scale: 0.96; --press-dur: 90ms; }
-    .fbtn, .tab, .avatar-btn, .vc-btn, .vc-tool, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
+    .fbtn, .tab, .avatar-btn, .vc-btn, .vc-link, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
     .explore-err-btn, .consent-accept, .lv-more, .bn-card {
       transition-property: transform, background-color, border-color, color, opacity;
       transition-duration: var(--press-dur), var(--dur-fast), var(--dur-fast), var(--dur-fast), var(--dur-fast);
       transition-timing-function: var(--ease-out);
     }
-    .fbtn:active, .tab:active, .avatar-btn:active, .vc-btn:active, .vc-tool:active, .q-btn:active, .qs-btn:active,
+    .fbtn:active, .tab:active, .avatar-btn:active, .vc-btn:active, .vc-link:active, .q-btn:active, .qs-btn:active,
     .ip-accept:active, .ip-close:active, .empty-btn:active, .explore-err-btn:active, .consent-accept:active,
     .lv-more:active, .bn-card:active { transform: scale(var(--press-scale)); }
     @media (prefers-reduced-motion: reduce) {
-      .fbtn, .tab, .avatar-btn, .vc-btn, .vc-tool, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
+      .fbtn, .tab, .avatar-btn, .vc-btn, .vc-link, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
       .explore-err-btn, .consent-accept, .lv-more, .bn-card { transition: none; }
-      .fbtn:active, .tab:active, .avatar-btn:active, .vc-btn:active, .vc-tool:active, .q-btn:active, .qs-btn:active,
+      .fbtn:active, .tab:active, .avatar-btn:active, .vc-btn:active, .vc-link:active, .q-btn:active, .qs-btn:active,
       .ip-accept:active, .ip-close:active, .empty-btn:active, .explore-err-btn:active, .consent-accept:active,
       .lv-more:active, .bn-card:active { transform: none; }
     }
