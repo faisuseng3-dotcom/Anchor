@@ -1603,28 +1603,27 @@ import './style.css';
 
         map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
-        // Kartans färger. dark-v11 har vatten, byggnader och mark i nästan samma grå (12–15 %), så Stockholm blir en platt
-        // yta. Här får vatten en kall blåton och parker en dämpad grön, medan vägar och byggnader hålls tillbaka — så att
-        // statusfärgerna på nålarna är det starkaste på kartan. Varje lager sätts bara om det finns (Mapbox kan ändra stilen),
-        // och ett enskilt fel får aldrig stoppa resten av kartan.
+        // Kartans färger: "Neonvatten". Stockholm är en stad av vatten, så det är vattnet som bär kartan: djupt blågrönt med
+        // en lysande cyan strandlinje som glöder svagt, medan mark, vägar och byggnader är nästan svarta. Cyan och indigo
+        // finns inte bland statusfärgerna, så kartan blir levande utan att tävla med köerna. Inget gult, orange, rött eller
+        // grönt i grundkartan. Varje lager sätts bara om det finns (Mapbox kan ändra stilen), och ett enskilt fel får aldrig
+        // stoppa resten av kartan.
         var MAP_THEME = {
-          background: '#0E0F12',
-          // Grundkartan är dämpad så att statusfärgerna är det enda som lyser. Vatten och park skiljs från marken med
-          // kulör, inte ljushet (1,25:1 och 1,21:1), och strandlinjen ritar upp Stockholm. Krav: röd "lång kö" minst
-          // 3,5:1 mot allt den kan ligga på — 4,28:1 mot vatten, 4,42:1 mot park. Väntetiden står aldrig direkt på
-          // kartan — den ligger i en pill med egen fyllning och mörk kant. Etiketter är mätta separat.
-          water: '#112D4F',
-          waterDeep: '#082C57',
-          shore: '#3470B0',       // strandlinje: 2,7:1 mot vattnet, så kustlinjen ritar upp Stockholm
-          park: '#1C2E24',        // dämpad grön, så att grön "ingen kö" inte drunknar i parkerna; etikett 5,4:1
-          land: '#191A20',
-          building: '#1E2026',
-          buildingTop: '#262932', // taket på 3D-byggnader (ljusare än väggen så formen läses)
-          roadMinor: '#2E3140',
-          roadMajor: '#3A3E4C',   // neutrala vägar: guldtonen konkurrerade med gula pillar (1,6:1 mot marken)
-          roadHighway: '#4E5365', // motorvägar och trunk (2,3:1 mot marken)
-          label: '#9A9EAD',
-          labelWater: '#8FB6E0'   // 6,6:1 mot vattnet
+          background: '#08090D',
+          // Krav: röd "lång kö" minst 3,5:1 mot allt den kan ligga på: 3,73:1 mot vatten, 4,68:1 mot park, 5,77:1 mot mark.
+          // Väntetiden står aldrig direkt på kartan, den ligger i en pill med egen fyllning och mörk kant.
+          water: '#06385E',
+          shore: '#2FC3FF',       // lysande strandlinje, 6:1 mot vattnet: kusten ritar upp Stockholm
+          shoreGlow: '#1E9BFF',   // svagt sken utanför strandlinjen
+          park: '#0E2A2A',        // blågrön, inte grön: grön "ingen kö" ska inte blandas ihop med parkerna
+          land: '#101218',
+          building: '#16181F',
+          buildingTop: '#22252F', // taket på 3D-byggnader (ljusare än väggen så formen läses)
+          roadMinor: '#23262F',
+          roadMajor: '#2C3140',   // neutrala vägar: guldtonen konkurrerade med gula pillar
+          roadHighway: '#3C4256', // motorvägar och trunk (1,9:1 mot marken)
+          label: '#9A9EAD',       // 7:1 mot marken
+          labelWater: '#7FD8FF'   // 7,6:1 mot vattnet
         };
         function themeMap(map) {
           function paint(id, prop, value) {
@@ -1651,18 +1650,31 @@ import './style.css';
           ].forEach(function(id) { paint(id, 'line-color', MAP_THEME.roadMinor); });
           paint('bridge-case-simple', 'line-color', MAP_THEME.land);
 
-          // Strandlinje: ett tunt ljusare streck längs vattnet. Dark-v11 har ingen, så vi lägger ett lager ovanpå
-          // vattnet. Det ritar upp Stockholm som en stad vid vatten, och kostar inget i läsbarhet (en linje, inte en yta).
+          // Strandlinje och sken: en lysande linje längs vattnet med en bred, suddig glöd under. Dark-v11 har ingen, så vi
+          // lägger två linjelager ovanpå vattnet. Det ritar upp Stockholm som en stad vid vatten och kostar inget i
+          // läsbarhet (linjer, inte ytor). Ingen animation: glöden ritas en gång per tile, inte per bildruta.
           if (map.getLayer('water') && !map.getLayer('water-shore')) {
             try {
+              map.addLayer({
+                id: 'water-glow', type: 'line', source: 'composite', 'source-layer': 'water',
+                minzoom: 10,
+                layout: { 'line-join': 'round' },
+                paint: {
+                  'line-color': MAP_THEME.shoreGlow,
+                  'line-opacity': 0.35,
+                  'line-width': ['interpolate', ['linear'], ['zoom'], 11, 6, 15, 14],
+                  'line-blur': ['interpolate', ['linear'], ['zoom'], 11, 6, 15, 12]
+                }
+              }, 'building');
               map.addLayer({
                 id: 'water-shore', type: 'line', source: 'composite', 'source-layer': 'water',
                 minzoom: 10,
                 layout: { 'line-join': 'round' },
                 paint: {
                   'line-color': MAP_THEME.shore,
-                  'line-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.35, 14, 0.7],
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 15, 1.4]
+                  'line-opacity': 0.95,
+                  'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 2.2],
+                  'line-blur': 0.6
                 }
               }, 'building');
             } catch (e) { console.warn('[QueueBar] Strandlinje hoppades över:', e.message); }

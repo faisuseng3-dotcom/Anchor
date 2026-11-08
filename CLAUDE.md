@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 105 rader), `src/style.css` (1 134 rader), `index.html` (292 rader) |
+| Kod | `src/main.js` (4 117 rader), `src/style.css` (1 134 rader), `index.html` (292 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 105-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 117-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -349,8 +349,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   som startvyn) och filtrerar inget, så en kortare kö i grannområdet syns fortfarande. Inget kort öppnas
   Valt område (`_selectedArea`, `selectArea`) är vitt som typknapparna och gäller samtidigt med Alla/Barer/Klubbar:
   byts typen ramas samma område in för den nya typen. Ett nytt tryck på området tar bort valet
-- Grundkartan (`MAP_THEME`) är dämpad: grå vägar, dov park, mörkt vatten. Statusfärgerna ska vara det enda som lyser;
-  röd ska ha ≥3,5:1 mot allt den kan ligga på
+- Grundkartan (`MAP_THEME`) är "Neonvatten": nästan svart mark och vägar, blågröna parker, djupblått vatten med en
+  lysande cyan strandlinje (`water-shore`) och ett svagt sken (`water-glow`). Cyan och indigo finns inte bland
+  statusfärgerna; gult, orange, rött och grönt hör inte hemma i grundkartan. Statusfärgerna ska lysa starkast, och röd
+  ska ha ≥3,5:1 mot allt den kan ligga på (vatten 3,73, park 4,68, mark 5,77)
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
   för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
   under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.

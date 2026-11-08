@@ -54,7 +54,7 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 
 ```
 index.html                  292 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
-src/main.js                4105 rader   HELA applikationen: data, modell, karta, all rendering
+src/main.js                4117 rader   HELA applikationen: data, modell, karta, all rendering
 src/style.css              1134 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
