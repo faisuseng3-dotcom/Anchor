@@ -226,17 +226,36 @@
     .map-type-chips::-webkit-scrollbar { display: none; }
     .chip-sep { flex: 0 0 1px; margin: 8px 4px; background: var(--border-hover); }
     .map-type-chips .fbtn:not(.active) { background: var(--overlay-surface); border-color: var(--border-hover); color: var(--text-primary); }
-    /* Natt/Skymning: under typknapparna längst till höger, samma yta och kant som de, med ikon och namn på läget. */
-    .map-light-btn {
-      position: absolute; z-index: 4; right: 12px;
+    /* Karttyp: rund lagerknapp under profilknappen, där kartappar brukar ha den. Samma yta och kant som profilknappen. */
+    .map-style-btn {
+      position: absolute; z-index: 5; right: 12px;
       top: calc(12px + 48px + 8px + 40px + 8px + env(safe-area-inset-top) + var(--banner-h, 0px));
-      display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px; cursor: pointer;
-      background: var(--overlay-surface); border: 1px solid var(--border-hover); border-radius: var(--radius-full);
-      font: 700 13px var(--font-base); color: var(--text-primary);
+      width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      background: var(--overlay-surface); border: 1px solid var(--border-hover); color: var(--text-primary); cursor: pointer;
       transition: top var(--dur-slow) var(--ease-out);
     }
-    .map-light-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .map-light-btn:active { transform: scale(var(--press-scale)); }
+    .map-style-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; }
+    .map-style-btn[aria-expanded="true"] { border-color: var(--text-primary); }
+    .map-style-btn:active { transform: scale(var(--press-scale)); }
+    /* Menyn: en rad med förhandsbilder, valt läge med vit ram. Fäller ut under knappen, till vänster om den. */
+    .map-style-menu {
+      position: absolute; z-index: 6; right: 12px;
+      top: calc(12px + 48px + 8px + 40px + 8px + 44px + 8px + env(safe-area-inset-top) + var(--banner-h, 0px));
+      padding: 12px; background: var(--overlay-surface); border: 1px solid var(--border-hover); border-radius: var(--radius-lg);
+      animation: fadeIn var(--dur-fast) var(--ease-out);
+    }
+    .map-style-menu[hidden] { display: none; }
+    .msm-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+    .msm-row { display: flex; gap: 8px; }
+    .msm-opt {
+      display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: none; border: 0; cursor: pointer;
+      font: 600 13px var(--font-base); color: var(--text-secondary);
+    }
+    .msm-opt img { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-md); border: 2px solid transparent; }
+    .msm-opt.is-on { color: var(--text-primary); }
+    .msm-opt.is-on img { border-color: var(--text-primary); }
+    .msm-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-md); }
+    @media (prefers-reduced-motion: reduce) { .map-style-menu { animation: none; } }
     .avatar-btn {
       flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;

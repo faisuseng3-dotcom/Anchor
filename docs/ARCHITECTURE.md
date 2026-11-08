@@ -29,7 +29,7 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Språk | Vanilla JavaScript, ES-moduler, ES5-syntax i kroppen (`var`, `function`) | `src/main.js` |
 | Ramverk | **inget** — ingen React, Vue eller Svelte | — |
 | Styling | Ren CSS med custom properties | `src/style.css` |
-| Karta | `mapbox-gl` 3.x via npm, stil `mapbox://styles/mapbox/standard` (ljusläge natt/skymning) | `src/main.js` |
+| Karta | `mapbox-gl` 3.x via npm, Mapbox Standard som import `basemap`; karttyp natt, skymning eller satellit (`MAP_STYLES`) | `src/main.js` |
 | Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js` |
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
@@ -53,9 +53,9 @@ väntetidsmodellen finns inte alls där. Det är inte produktionskod och delar i
 ## 3. Filstruktur
 
 ```
-index.html                  294 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
-src/main.js                4053 rader   HELA applikationen: data, modell, karta, all rendering
-src/style.css              1145 rader   Design tokens + alla komponentklasser
+index.html                  298 rader   Allt DOM-skelett: 5 skärmar, modaler, snabbrapportens ark
+src/main.js                4090 rader   HELA applikationen: data, modell, karta, all rendering
+src/style.css              1164 rader   Design tokens + alla komponentklasser
 
 tests/harness.js                        Klipper ut de rena funktionerna ur src/main.js
 tests/*.test.js             143 tester   Vitest: modell, status, sessioner, historik, sök, venues, lägen, Bäst nu

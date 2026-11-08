@@ -1405,30 +1405,65 @@ import './style.css';
       return { top: top + 24, bottom: bottom + 24, left: 28, right: 28 };
     }
 
-    // ── Kartans ljus: natt eller skymning ──────────────────────────────────
-    // Mapbox Standard ritar staden med riktiga 3D-byggnader, landmärken, träd och ljus. Användaren väljer ljuset: natt
-    // (upplysta fönster, mörk himmel) eller skymning (varmare, ljusare). Valet sparas på enheten och byts direkt, utan att
-    // kartan laddas om. Nålar, glöd och namn ser likadana ut i båda: de lyser själva (emissive-strength, se kartans load).
-    var MAP_LIGHT_KEY = 'qb_map_light';
-    function mapLight() {
-      try { return localStorage.getItem(MAP_LIGHT_KEY) === 'dusk' ? 'dusk' : 'night'; } catch (e) { return 'night'; }
+    // ── Kartans utseende ───────────────────────────────────────────────────
+    // Användaren väljer kartans utseende i lagermenyn (knappen under profilknappen), som "Karttyp" i Google Maps. Varje
+    // läge är en Mapbox Standard-stil med egen config. Nytt läge = en rad här och en förhandsbild i public/map-styles/.
+    // Stilen byts med updateImport på grundkartan ('basemap'), inte setStyle: då ligger våra lager (nålar, pillar, glöd,
+    // kapseln) kvar, och bara grundkartan laddas om. Samma stil (natt ↔ skymning) byter bara ljuset, utan omladdning.
+    // Satellitbilderna hämtas först när någon väljer Satellit.
+    var MAP_STYLES = [
+      { id: 'night', name: 'Natt', url: 'mapbox://styles/mapbox/standard', light: 'night' },
+      { id: 'dusk', name: 'Skymning', url: 'mapbox://styles/mapbox/standard', light: 'dusk' },
+      { id: 'satellite', name: 'Satellit', url: 'mapbox://styles/mapbox/standard-satellite', light: 'night' }
+    ];
+    var MAP_STYLE_KEY = 'qb_map_style';
+    function mapStyle() {
+      var id;
+      // qb_map_light: valet från när det bara fanns natt och skymning
+      try { id = localStorage.getItem(MAP_STYLE_KEY) || localStorage.getItem('qb_map_light'); } catch (e) {}
+      return MAP_STYLES.find(function(s) { return s.id === id; }) || MAP_STYLES[0];
     }
-    function renderMapLightBtn() {
-      var btn = document.getElementById('map-light-btn');
-      if (!btn) return;
-      var dusk = mapLight() === 'dusk';
-      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
-        (dusk ? 'M3 18h18M7 18a5 5 0 0 1 10 0M12 6v3M5.6 9.6l1.8 1.8M18.4 9.6l-1.8 1.8' : 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z') +
-        '"/></svg><span>' + (dusk ? 'Skymning' : 'Natt') + '</span>';
-      btn.setAttribute('aria-label', 'Kartans ljus: ' + (dusk ? 'skymning' : 'natt') + '. Byt till ' + (dusk ? 'natt' : 'skymning'));
+    // Grundkartans config: ljuset, och inga affärer eller hållplatser (bara det som hjälper valet av ställe).
+    function mapStyleConfig(s) {
+      return { lightPreset: s.light, showPointOfInterestLabels: false, showTransitLabels: false };
     }
-    function toggleMapLight() {
-      var next = mapLight() === 'night' ? 'dusk' : 'night';
-      try { localStorage.setItem(MAP_LIGHT_KEY, next); } catch (e) {}
-      if (map) { try { map.setConfigProperty('basemap', 'lightPreset', next); } catch (e) { console.warn('[QueueBar] Kartljus:', e.message); } }
-      renderMapLightBtn();
+    function renderMapStyleMenu() {
+      var menu = document.getElementById('map-style-menu');
+      if (!menu) return;
+      var cur = mapStyle().id;
+      menu.innerHTML = '<div class="msm-title" id="msm-title">Karttyp</div><div class="msm-row">' + MAP_STYLES.map(function(s) {
+        return '<button class="msm-opt' + (s.id === cur ? ' is-on' : '') + '" aria-pressed="' + (s.id === cur) + '" onclick="setMapStyle(\'' + s.id + '\')">' +
+          '<img src="/map-styles/' + s.id + '.jpg" alt="" width="72" height="72"><span>' + s.name + '</span></button>';
+      }).join('') + '</div>';
     }
-    renderMapLightBtn();
+    function toggleMapStyleMenu(open) {
+      var menu = document.getElementById('map-style-menu'), btn = document.getElementById('map-style-btn');
+      if (!menu || !btn) return;
+      open = open === undefined ? menu.hidden : open;
+      if (open) renderMapStyleMenu();
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      if (open) { var on = menu.querySelector('.is-on'); if (on) on.focus({ preventScroll: true }); }
+    }
+    function setMapStyle(id) {
+      var prev = mapStyle(), next = MAP_STYLES.find(function(s) { return s.id === id; });
+      if (!next) return;
+      try { localStorage.setItem(MAP_STYLE_KEY, next.id); } catch (e) {}
+      if (map && next.id !== prev.id) {
+        try {
+          if (next.url === prev.url) map.setConfigProperty('basemap', 'lightPreset', next.light);
+          else map.updateImport('basemap', { id: 'basemap', url: next.url, config: mapStyleConfig(next) });
+        } catch (e) { console.warn('[QueueBar] Karttyp:', e.message); }
+      }
+      renderMapStyleMenu();
+      toggleMapStyleMenu(false);
+      document.getElementById('map-style-btn').focus({ preventScroll: true });
+    }
+    // Ett tryck utanför menyn stänger den, som ett tryck utanför kapseln.
+    document.addEventListener('click', function(e) {
+      var menu = document.getElementById('map-style-menu');
+      if (menu && !menu.hidden && !e.target.closest('#map-style-menu, #map-style-btn')) toggleMapStyleMenu(false);
+    }, true);
 
     // ── Karta ────────────────────────────────────────────────────────────────
     var map = null;
@@ -1459,9 +1494,8 @@ import './style.css';
       try {
         map = new mapboxgl.Map({
           container: 'map',
-          style: 'mapbox://styles/mapbox/standard',
-          // Affärer och hållplatser döljs: bara det som hjälper valet av ställe. Ljuset väljer användaren (mapLight).
-          config: { basemap: { lightPreset: mapLight(), showPointOfInterestLabels: false, showTransitLabels: false } },
+          // Grundkartan är en import ('basemap'), så att den kan bytas (setMapStyle) utan att våra lager försvinner.
+          style: { version: 8, imports: [{ id: 'basemap', url: mapStyle().url, config: mapStyleConfig(mapStyle()) }], sources: {}, layers: [] },
           center: [18.0686, 59.3293],
           zoom: 12.5,
           minZoom: 11,
@@ -2344,6 +2378,8 @@ import './style.css';
       if (e.key === 'Escape') {
         var sheet = document.getElementById('qr-sheet');
         if (sheet && sheet.style.display === 'block') { closeQuickReport(); return; }
+        var msMenu = document.getElementById('map-style-menu');
+        if (msMenu && !msMenu.hidden) { toggleMapStyleMenu(false); document.getElementById('map-style-btn').focus(); return; }
         if (_vcMode) closeVenueCard();
         return;
       }
@@ -4044,7 +4080,8 @@ Object.assign(window, {
   showPrivacyPolicy,
   showScreen,
   toggleLiveVenue,
-  toggleMapLight,
+  setMapStyle,
+  toggleMapStyleMenu,
   toggleVcReports,
   useListSuggestion,
   useMapSuggestion,
