@@ -30,8 +30,8 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 117 rader), `src/style.css` (1 134 rader), `index.html` (292 rader) |
-| Karta | `mapbox-gl` 3.x **via npm**, stil `dark-v11`, centrum `[18.0686, 59.3293]` |
+| Kod | `src/main.js` (4 053 rader), `src/style.css` (1 145 rader), `index.html` (294 rader) |
+| Karta | `mapbox-gl` 3.x **via npm**, stil Mapbox Standard (3D, ljusläge natt/skymning), centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
 | Hosting | Vercel |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 117-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 053-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -349,10 +349,15 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   som startvyn) och filtrerar inget, så en kortare kö i grannområdet syns fortfarande. Inget kort öppnas
   Valt område (`_selectedArea`, `selectArea`) är vitt som typknapparna och gäller samtidigt med Alla/Barer/Klubbar:
   byts typen ramas samma område in för den nya typen. Ett nytt tryck på området tar bort valet
-- Grundkartan (`MAP_THEME`) är "Neonvatten": nästan svart mark och vägar, blågröna parker, djupblått vatten med en
-  lysande cyan strandlinje (`water-shore`) och ett svagt sken (`water-glow`). Cyan och indigo finns inte bland
-  statusfärgerna; gult, orange, rött och grönt hör inte hemma i grundkartan. Statusfärgerna ska lysa starkast, och röd
-  ska ha ≥3,5:1 mot allt den kan ligga på (vatten 3,73, park 4,68, mark 5,77)
+- Grundkartan är **Mapbox Standard**: riktiga 3D-byggnader, landmärken (Slottet, kyrkorna, Berns) och ljus. Ljuset
+  väljer användaren med knappen under typknapparna: **Natt** (standard) eller **Skymning** (`toggleMapLight`,
+  `setConfigProperty('basemap', 'lightPreset', …)`, sparas i `qb_map_light`). Affärer och hållplatser är avstängda i
+  stilens config. Standards egna lager går inte att färga lager för lager; våra egna lager får
+  `*-emissive-strength: 1` i kartans load, så att nattljuset inte dämpar statusfärgerna. Ett valt ställe flyger till
+  zoom 15 med lutning 45°, där 3D-byggnaderna syns
+- **Varje symbollager på källan `venues` måste bero på feature-state (`APPEAR`)**, även när värdet är fast (t.ex.
+  `['*', APPEAR, 0]`). Annars kraschar Mapbox 3.33 i `updateBuckets` när kartans ljus räknas om ("reading 'paint'":
+  inga state-beroende lager i en bucket som har feature-state). Hände i hälften av gångerna en kapsel öppnades
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
   för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
   under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.

@@ -226,6 +226,17 @@
     .map-type-chips::-webkit-scrollbar { display: none; }
     .chip-sep { flex: 0 0 1px; margin: 8px 4px; background: var(--border-hover); }
     .map-type-chips .fbtn:not(.active) { background: var(--overlay-surface); border-color: var(--border-hover); color: var(--text-primary); }
+    /* Natt/Skymning: under typknapparna längst till höger, samma yta och kant som de, med ikon och namn på läget. */
+    .map-light-btn {
+      position: absolute; z-index: 4; right: 12px;
+      top: calc(12px + 48px + 8px + 40px + 8px + env(safe-area-inset-top) + var(--banner-h, 0px));
+      display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px; cursor: pointer;
+      background: var(--overlay-surface); border: 1px solid var(--border-hover); border-radius: var(--radius-full);
+      font: 700 13px var(--font-base); color: var(--text-primary);
+      transition: top var(--dur-slow) var(--ease-out);
+    }
+    .map-light-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .map-light-btn:active { transform: scale(var(--press-scale)); }
     .avatar-btn {
       flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;

@@ -85,6 +85,8 @@
         <button class="fbtn" data-type="bar" aria-pressed="false" onclick="setVenueType('bar')">Barer</button>
         <button class="fbtn" data-type="klubb" aria-pressed="false" onclick="setVenueType('klubb')">Klubbar</button>
       </div>
+      <!-- Kartans ljus: natt eller skymning (toggleMapLight). Ikonen och texten sätts av renderMapLightBtn. -->
+      <button id="map-light-btn" class="map-light-btn" onclick="toggleMapLight()"></button>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
         <span class="err-toast-msg">Ingen kontakt med servern</span>

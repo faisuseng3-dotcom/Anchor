@@ -1015,7 +1015,8 @@ import './style.css';
       (grow ? grow.ready : Promise.resolve()).then(function() {
         if (!map || activeVenue !== venue || _vcMode !== 'map') return;
         var b = vcMapBounds();
-        map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(14, map.getZoom()), duration: 800,
+        // Zoom 15 och lutning: där syns Standard-kartans 3D-byggnader och landmärken runt stället.
+        map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(15, map.getZoom()), pitch: Math.max(45, map.getPitch()), duration: 800,
           offset: [0, b.top + (b.bottom - b.top) * 0.35 - b.height / 2] });
       }, function() {}); // avbruten animation: ett nytt kort öppnades och flyger själv
     }
@@ -1404,6 +1405,31 @@ import './style.css';
       return { top: top + 24, bottom: bottom + 24, left: 28, right: 28 };
     }
 
+    // ── Kartans ljus: natt eller skymning ──────────────────────────────────
+    // Mapbox Standard ritar staden med riktiga 3D-byggnader, landmärken, träd och ljus. Användaren väljer ljuset: natt
+    // (upplysta fönster, mörk himmel) eller skymning (varmare, ljusare). Valet sparas på enheten och byts direkt, utan att
+    // kartan laddas om. Nålar, glöd och namn ser likadana ut i båda: de lyser själva (emissive-strength, se kartans load).
+    var MAP_LIGHT_KEY = 'qb_map_light';
+    function mapLight() {
+      try { return localStorage.getItem(MAP_LIGHT_KEY) === 'dusk' ? 'dusk' : 'night'; } catch (e) { return 'night'; }
+    }
+    function renderMapLightBtn() {
+      var btn = document.getElementById('map-light-btn');
+      if (!btn) return;
+      var dusk = mapLight() === 'dusk';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
+        (dusk ? 'M3 18h18M7 18a5 5 0 0 1 10 0M12 6v3M5.6 9.6l1.8 1.8M18.4 9.6l-1.8 1.8' : 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z') +
+        '"/></svg><span>' + (dusk ? 'Skymning' : 'Natt') + '</span>';
+      btn.setAttribute('aria-label', 'Kartans ljus: ' + (dusk ? 'skymning' : 'natt') + '. Byt till ' + (dusk ? 'natt' : 'skymning'));
+    }
+    function toggleMapLight() {
+      var next = mapLight() === 'night' ? 'dusk' : 'night';
+      try { localStorage.setItem(MAP_LIGHT_KEY, next); } catch (e) {}
+      if (map) { try { map.setConfigProperty('basemap', 'lightPreset', next); } catch (e) { console.warn('[QueueBar] Kartljus:', e.message); } }
+      renderMapLightBtn();
+    }
+    renderMapLightBtn();
+
     // ── Karta ────────────────────────────────────────────────────────────────
     var map = null;
 
@@ -1433,13 +1459,15 @@ import './style.css';
       try {
         map = new mapboxgl.Map({
           container: 'map',
-          style: 'mapbox://styles/mapbox/dark-v11',
+          style: 'mapbox://styles/mapbox/standard',
+          // Affärer och hållplatser döljs: bara det som hjälper valet av ställe. Ljuset väljer användaren (mapLight).
+          config: { basemap: { lightPreset: mapLight(), showPointOfInterestLabels: false, showTransitLabels: false } },
           center: [18.0686, 59.3293],
           zoom: 12.5,
           minZoom: 11,
           maxZoom: 17,
           pitch: 0,
-          maxPitch: 50,
+          maxPitch: 60,
           bearing: 0,
           pitchWithRotate: false,
           dragRotate: false,
@@ -1603,113 +1631,6 @@ import './style.css';
 
         map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
-        // Kartans färger: "Neonvatten". Stockholm är en stad av vatten, så det är vattnet som bär kartan: djupt blågrönt med
-        // en lysande cyan strandlinje som glöder svagt, medan mark, vägar och byggnader är nästan svarta. Cyan och indigo
-        // finns inte bland statusfärgerna, så kartan blir levande utan att tävla med köerna. Inget gult, orange, rött eller
-        // grönt i grundkartan. Varje lager sätts bara om det finns (Mapbox kan ändra stilen), och ett enskilt fel får aldrig
-        // stoppa resten av kartan.
-        var MAP_THEME = {
-          background: '#08090D',
-          // Krav: röd "lång kö" minst 3,5:1 mot allt den kan ligga på: 3,73:1 mot vatten, 4,68:1 mot park, 5,77:1 mot mark.
-          // Väntetiden står aldrig direkt på kartan, den ligger i en pill med egen fyllning och mörk kant.
-          water: '#06385E',
-          shore: '#2FC3FF',       // lysande strandlinje, 6:1 mot vattnet: kusten ritar upp Stockholm
-          shoreGlow: '#1E9BFF',   // svagt sken utanför strandlinjen
-          park: '#0E2A2A',        // blågrön, inte grön: grön "ingen kö" ska inte blandas ihop med parkerna
-          land: '#101218',
-          building: '#16181F',
-          buildingTop: '#22252F', // taket på 3D-byggnader (ljusare än väggen så formen läses)
-          roadMinor: '#23262F',
-          roadMajor: '#2C3140',   // neutrala vägar: guldtonen konkurrerade med gula pillar
-          roadHighway: '#3C4256', // motorvägar och trunk (1,9:1 mot marken)
-          label: '#9A9EAD',       // 7:1 mot marken
-          labelWater: '#7FD8FF'   // 7,6:1 mot vattnet
-        };
-        function themeMap(map) {
-          function paint(id, prop, value) {
-            if (!map.getLayer(id)) return;
-            try { map.setPaintProperty(id, prop, value); } catch (e) { console.warn('[QueueBar] Kartfärg hoppades över:', id, e.message); }
-          }
-          paint('land', 'background-color', MAP_THEME.background);
-          paint('water', 'fill-color', MAP_THEME.water);
-          paint('waterway', 'line-color', MAP_THEME.water);
-          paint('national-park', 'fill-color', MAP_THEME.park);
-          paint('landuse', 'fill-color', MAP_THEME.park);
-          paint('land-structure-polygon', 'fill-color', MAP_THEME.land);
-          paint('building', 'fill-color', MAP_THEME.building);
-          // Vägar i tre nivåer efter klass: motorväg/trunk ljusast, primär/sekundär mellan, resten mörkast. Alla gråa.
-          // Det är ett uttryck på ett enda lager (road-simple täcker alla klasser), så det kostar inga extra lager.
-          var roadColor = ['match', ['get', 'class'],
-            ['motorway', 'trunk', 'motorway_link', 'trunk_link'], MAP_THEME.roadHighway,
-            ['primary', 'secondary', 'primary_link', 'secondary_link'], MAP_THEME.roadMajor,
-            MAP_THEME.roadMinor];
-          paint('road-simple', 'line-color', roadColor);
-          paint('bridge-simple', 'line-color', roadColor);
-          paint('tunnel-simple', 'line-color', MAP_THEME.roadMinor);
-          ['road-path', 'road-pedestrian', 'road-steps', 'road-path-trail', 'road-path-cycleway-piste'
-          ].forEach(function(id) { paint(id, 'line-color', MAP_THEME.roadMinor); });
-          paint('bridge-case-simple', 'line-color', MAP_THEME.land);
-
-          // Strandlinje och sken: en lysande linje längs vattnet med en bred, suddig glöd under. Dark-v11 har ingen, så vi
-          // lägger två linjelager ovanpå vattnet. Det ritar upp Stockholm som en stad vid vatten och kostar inget i
-          // läsbarhet (linjer, inte ytor). Ingen animation: glöden ritas en gång per tile, inte per bildruta.
-          if (map.getLayer('water') && !map.getLayer('water-shore')) {
-            try {
-              map.addLayer({
-                id: 'water-glow', type: 'line', source: 'composite', 'source-layer': 'water',
-                minzoom: 10,
-                layout: { 'line-join': 'round' },
-                paint: {
-                  'line-color': MAP_THEME.shoreGlow,
-                  'line-opacity': 0.35,
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 11, 6, 15, 14],
-                  'line-blur': ['interpolate', ['linear'], ['zoom'], 11, 6, 15, 12]
-                }
-              }, 'building');
-              map.addLayer({
-                id: 'water-shore', type: 'line', source: 'composite', 'source-layer': 'water',
-                minzoom: 10,
-                layout: { 'line-join': 'round' },
-                paint: {
-                  'line-color': MAP_THEME.shore,
-                  'line-opacity': 0.95,
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 2.2],
-                  'line-blur': 0.6
-                }
-              }, 'building');
-            } catch (e) { console.warn('[QueueBar] Strandlinje hoppades över:', e.message); }
-          }
-
-          // 3D-byggnader. Samma källa som det platta byggnadslagret, men som extruderade volymer. De platta byggnaderna
-          // göms när 3D tar över (zoom 15), så att inget ritas dubbelt. Väggen är dämpad och taket något ljusare.
-          // Höjderna är verkliga (height-egenskapen i kartdatan), men i 60 % så att staden inte blir en vägg framför nålarna.
-          if (map.getLayer('building') && !map.getLayer('building-3d')) {
-            try {
-              map.addLayer({
-                id: 'building-3d', type: 'fill-extrusion', source: 'composite', 'source-layer': 'building',
-                minzoom: 14.5,
-                filter: ['all', ['!=', ['get', 'type'], 'building:part'], ['==', ['get', 'underground'], 'false']],
-                paint: {
-                  'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'height'], 0, MAP_THEME.building, 60, MAP_THEME.buildingTop],
-                  'fill-extrusion-height': ['*', ['coalesce', ['get', 'height'], 8], 0.6],
-                  'fill-extrusion-base': ['*', ['coalesce', ['get', 'min_height'], 0], 0.6],
-                  'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14.5, 0, 15.5, 0.92],
-                  'fill-extrusion-vertical-gradient': true
-                }
-              }, 'road-label-simple');
-              map.setPaintProperty('building', 'fill-opacity', ['interpolate', ['linear'], ['zoom'], 14.5, 1, 15.5, 0]);
-            } catch (e) { console.warn('[QueueBar] 3D-byggnader hoppades över:', e.message); }
-          }
-          // Etiketter: vatten får en blå ton (Mälaren, Saltsjön), övrigt dämpas så nålarna vinner
-          ['road-label-simple', 'settlement-subdivision-label', 'settlement-minor-label', 'settlement-major-label',
-           'natural-point-label', 'natural-line-label', 'waterway-label'].forEach(function(id) { paint(id, 'text-color', MAP_THEME.label); });
-          ['water-point-label', 'water-line-label'].forEach(function(id) { paint(id, 'text-color', MAP_THEME.labelWater); });
-          // Allt som inte hjälper valet av ställe döljs: affärer, hållplatser, bensinstationer och liknande
-          ['poi-label', 'airport-label'].forEach(function(id) {
-            if (map.getLayer(id)) { try { map.setLayoutProperty(id, 'visibility', 'none'); } catch (e) {} }
-          });
-        }
-
         var _mapStarted = false; // sätts först i load; därefter är inget Mapbox-fel skäl att stänga av kartan
         map.on('load', function() {
           _mapStarted = true;
@@ -1730,7 +1651,6 @@ import './style.css';
             if (!document.fonts || !document.fonts.check || document.fonts.check('700 13px Satoshi')) { draw(); }
             else { document.fonts.load('700 13px Satoshi').then(draw, draw); }
           });
-          themeMap(map);
           registerTypePins(map);
 
           // Två källor. "venues": ställen med en pill (färsk väntetid); krockar löser declutterPills, inget kluster — en
@@ -1949,7 +1869,7 @@ import './style.css';
             requestAnimationFrame(animateMapPulse);
           } else {
             // Stillbild i stället för rörelse: ringen syns, den andas inte
-            map.setPaintProperty('venues-urgent', 'icon-opacity', pillsIn(0.55));
+            map.setPaintProperty('venues-urgent', 'icon-opacity', pillsIn(['*', APPEAR, 0.55])); // APPEAR: se applyMapFocus
           }
 
           // En lyssnare för alla: features[0] är den översta. "+N" zoomar in mot pillen; en pill vinner över en tom ring
@@ -1979,6 +1899,16 @@ import './style.css';
           });
           // Avstånden på skärmen ändras med zoom och lutning: räkna om vilka pillar som krockar när kartan står still.
           map.on('moveend', declutterPills);
+
+          // Standard lyser upp kartan med sitt eget ljus. Våra lager ska inte dämpas av det: nålar, glöd och namn lyser
+          // själva, så statusfärgerna ser likadana ut i natt och skymning. Bara våra lager finns i getStyle().layers;
+          // Standards egna ligger i en import.
+          map.getStyle().layers.forEach(function(l) {
+            try {
+              if (l.type === 'circle') map.setPaintProperty(l.id, 'circle-emissive-strength', 1);
+              if (l.type === 'symbol') { map.setPaintProperty(l.id, 'icon-emissive-strength', 1); map.setPaintProperty(l.id, 'text-emissive-strength', 1); }
+            } catch (e) { console.warn('[QueueBar] Lyskraft hoppades över:', l.id, e.message); }
+          });
 
           // Uppdatera markörerna med ev. redan inladdad data
           applyMapFocus();
@@ -2282,7 +2212,12 @@ import './style.css';
       map.setPaintProperty('venues-icon-focus', 'circle-stroke-opacity', iconsOut(APPEAR));
       map.setPaintProperty('venues-more', 'text-opacity', pillsIn(['*', APPEAR, ['case', dim, 0.3, 1]]));
       // Med öppet kort visas bara det valda namnet (eget lager); grannarnas namn skulle krocka med det.
-      map.setPaintProperty('venues-names', 'text-opacity', sel ? 0 : ['*', APPEAR, ['case', ['==', ['get', 'aging'], 1], 0.6, 1]]);
+      // Varje symbollager på källan "venues" måste bero på feature-state (APPEAR), även när värdet är fast. Annars
+      // kraschar Mapbox (3.33) i updateBuckets när kartans ljus räknas om: lagret har feature-state men inga
+      // state-beroende lager, och bucket.update läser layers[0] ur en tom lista ("reading 'paint'"). Det hände när en
+      // kapsel öppnades, eftersom namnen då fick opacitet 0 och det valda namnet aldrig berodde på feature-state.
+      map.setPaintProperty('venues-names', 'text-opacity', ['*', APPEAR, sel ? 0 : ['case', ['==', ['get', 'aging'], 1], 0.6, 1]]);
+      map.setPaintProperty('venues-name-focus', 'text-opacity', APPEAR);
       map.setPaintProperty('venues-empty-names', 'text-opacity', sel ? 0 : 1);
       // Gammal data (15–45 min) glöder svagare.
       map.setPaintProperty('venues-glow', 'circle-opacity',
@@ -4109,6 +4044,7 @@ Object.assign(window, {
   showPrivacyPolicy,
   showScreen,
   toggleLiveVenue,
+  toggleMapLight,
   toggleVcReports,
   useListSuggestion,
   useMapSuggestion,

@@ -83,7 +83,7 @@ check('src/main.js exists', fs.existsSync(path.join(root, 'src/main.js')));
 check('vite.config.js exists', fs.existsSync(path.join(root, 'vite.config.js')));
 check('Font: Satoshi loaded', html.includes('satoshi'));
 check('Font var: --font-base Satoshi', css.includes("--font-base: 'Satoshi'"));
-check('Mapbox dark-v11 (night design)', js.includes('dark-v11'));
+check('Mapbox Standard med ljusläge (natt/skymning)', js.includes("mapbox://styles/mapbox/standard") && js.includes("setConfigProperty('basemap', 'lightPreset'"));
 check('Supabase npm import', js.includes('supabase-js'));
 
 // ── Security ──────────────────────────────────────────────────────────────────
