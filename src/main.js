@@ -1563,15 +1563,16 @@ import './style.css';
           if (hollow) {
             ctx.fillStyle = '#151517';
             ctx.fill();
+            // Ljus kant: den gråa (#55555B) hade samma ton som gatorna i alla karttyper.
             ctx.lineWidth = 2;
-            ctx.strokeStyle = getStatusColor('unknown');
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
             ctx.stroke();
           } else {
             ctx.fillStyle = color;
             ctx.fill();
           }
 
-          var glyphColor = hollow ? '#85858A' : '#0B0B0D';
+          var glyphColor = hollow ? '#D8D8DC' : '#0B0B0D';
           var iconSize = 17, s = iconSize / 24;
           ctx.save();
           ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
@@ -1743,14 +1744,17 @@ import './style.css';
               'circle-stroke-opacity': ['*', 0.9, ['-', 1, ['get', 'k']]]
             } });
 
-          // Ställen utan data, utzoomat: en liten svag prick. Ingen siffra och inget kluster — "21" i en bubbla såg ut som
-          // data men sa bara "här vet vi inget". Prickarna visar att ställena finns; ikonerna kommer från zoom 14.
+          // Ställen utan data, utzoomat: en liten prick. Ingen siffra och inget kluster — "21" i en bubbla såg ut som
+          // data men sa bara "här vet vi inget". Ljus kärna syns på mörk karta, mörk kant på satellit; neutral, för
+          // färg betyder status. Prickarna visar att ställena finns; ikonerna kommer från zoom 14.
           map.addLayer({
             id: 'venues-empty-dots', type: 'circle', source: 'venues-empty', maxzoom: 14,
             paint: {
-              'circle-color': '#85858A',
+              'circle-color': '#D8D8DC',
               'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2, 14, 3.5],
-              'circle-opacity': 0.5,
+              'circle-stroke-color': '#0B0B0D',
+              'circle-stroke-width': 1,
+              'circle-opacity': 0.85,
               'circle-pitch-alignment': 'map'
             }
           });
@@ -2251,8 +2255,10 @@ import './style.css';
       map.setPaintProperty('venues-pins', 'icon-opacity', pillsIn(pinOpacity));
       map.setPaintProperty('venues-icons', 'icon-opacity', iconsOut(pinOpacity));
       // Stängt tonas mer än "ingen rapport än" — annars såg en stängd bar ut som en inbjudan att gå dit och rapportera.
-      map.setPaintProperty('venues-empty-pins', 'icon-opacity', ['case', dim, 0.3, ['==', ['get', 'closed'], 1], 0.3, 0.7]);
-      map.setPaintProperty('venues-empty-dots', 'circle-opacity', ['case', dim, 0.2, ['==', ['get', 'closed'], 1], 0.25, 0.5]);
+      map.setPaintProperty('venues-empty-pins', 'icon-opacity', ['case', dim, 0.3, ['==', ['get', 'closed'], 1], 0.3, 0.9]);
+      var emptyDotOpacity = ['case', dim, 0.2, ['==', ['get', 'closed'], 1], 0.25, 0.85];
+      map.setPaintProperty('venues-empty-dots', 'circle-opacity', emptyDotOpacity);
+      map.setPaintProperty('venues-empty-dots', 'circle-stroke-opacity', emptyDotOpacity);
       map.setPaintProperty('venues-focus', 'icon-opacity', pillsIn(APPEAR));
       map.setPaintProperty('venues-icon-focus', 'circle-stroke-opacity', iconsOut(APPEAR));
       map.setPaintProperty('venues-more', 'text-opacity', pillsIn(['*', APPEAR, ['case', dim, 0.3, 1]]));

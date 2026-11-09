@@ -329,7 +329,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Pulsanimation: ta bort klassen → tvinga reflow (`void el.offsetWidth`) → lägg tillbaka
 - Väntetid är aldrig en fast sträng per status — alltid `venueWaitText()`
 - **Två kartkällor, inga kluster:** `venues` = ställen med en pill (färsk väntetid); `venues-empty` = ställen utan data,
-  små svaga prickar (`venues-empty-dots`) under zoom 14 och tomma ringar därifrån. `updateMapStatuses` fördelar dem.
+  små ljusa prickar med mörk kant (`venues-empty-dots`) under zoom 14 och tomma ringar med ljus kant därifrån — neutralt
+  vitt, för färg betyder status och grått försvann i gatorna. `updateMapStatuses` fördelar dem.
   Siffror i bubblor ("21") är borta: de såg ut som data men sa bara "här vet vi inget". Krockande pillar löser
   `declutterPills`: valt ställe → "Bäst nu" → längst kö (Fullt före intervall, färskt före 15–45 min) syns och får "+N"
   (`venues-more`, tryck zoomar in); övriga döljs (`hidden`) tills de får plats. Körs efter data, val och `moveend`.
