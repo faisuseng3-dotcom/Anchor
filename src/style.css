@@ -420,7 +420,7 @@
     #vc-meta:empty, #vc-go:empty, #vc-timeline:empty { display: none; }
     /* Om du går nu: det enda med ram, för det är svaret på "är det värt att gå?". Bara när det finns en prognos. */
     #vc-go { margin-top: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; }
-    .vc-links { display: flex; align-items: center; gap: 16px; }
+    .vc-links { display: flex; align-items: center; gap: 12px; }
     .vc-link {
       min-height: 44px; padding: 0; background: none; border: 0; cursor: pointer;
       font: 600 13px var(--font-base); color: var(--text-secondary);

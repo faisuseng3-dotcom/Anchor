@@ -388,11 +388,14 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   ställes nya rad (eller stänger, om raden är bortfiltrerad). Kapselns `left`/`top` nollas vid stängning, annars
   följde de med in i listan. Den utfällda raden rullas fram ovanför menyn (`vcRevealInline`)
 - Innehållet i viktighetsordning: väntetiden, vad den bygger på (`#vc-sub`: "25–50 personer i kö · 2 rapporter
-  senaste 20 min", siffran är medianen), `#vc-meta`, prognosrutan (`#vc-go`), Rapportera · Dela · ☆, rapporterna
+  senaste 20 min", siffran är medianen), `#vc-meta`, prognosrutan (`#vc-go`), Rapportera · Vägbeskrivning · Dela · ☆, rapporterna
   hopfällda. Animationerna är bara `transform`/`opacity`/`height`; kartans `flyTo` startar vid `animation.ready`
 - Huvudknappen följer läget (`renderVenueCard`): vid stället (`isAtVenue`: ≤150 m med GPS-osäkerheten, högst 100 m, till
   din fördel) → "Rapportera kön"; annars "Gå hit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
   eller om stället stänger innan du är framme → bara "Vägbeskrivning · 7,8 km"
+- Vägbeskrivning (`openDirections`) öppnar Google Maps till fots med "namn, adress, Stockholm" som mål, på alla enheter.
+  Länken `#vc-dir` finns i länkraden på varje kort, även stängda och vid stället ("Gå hit" öppnar den också men säger det
+  inte); den döljs bara när huvudknappen redan är "Vägbeskrivning"
 - `renderVenueCard` ritar innehållet, `openVenueCard` öppnar. Ett öppet kort ritas om vid ny data och ny position
   (`refreshVenueCard`). All omritning efter läsning, fel och väckning går genom `renderReports()`
 - Positionen följer med (`watchPosition`, omritning efter ≥25 m). `loadReports` har löpnummer (ett äldre svar skriver

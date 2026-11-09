@@ -1100,6 +1100,9 @@ import './style.css';
         secondary.onclick = goToReport;
         secondary.hidden = closed;
       }
+      // Vägbeskrivning finns alltid i länkraden ("Gå hit" öppnar den också, men säger det inte), utom när huvudknappen
+      // redan heter så.
+      document.getElementById('vc-dir').hidden = !primary.hidden && primary.onclick === openDirections;
 
       document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports);
       document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type) + (km !== null ? ' · ' + formatDistance(km) : '');
@@ -4079,6 +4082,7 @@ Object.assign(window, {
   onMapSearchFocus,
   onMapSearchInput,
   onMapSearchKey,
+  openDirections,
   openVenueCard,
   pickAhead,
   pickRV,
