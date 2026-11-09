@@ -22,7 +22,7 @@ anon-nyckeln ligger i klartext i `src/main.js`; se säkerhetsavsnittet längst n
 
 ## 1. `VENUES` — ställena
 
-**Ställena ligger inte i databasen.** De är en hårdkodad array på 308 objekt i
+**Ställena ligger inte i databasen.** De är en hårdkodad array på 310 objekt i
 `src/main.js`. Att lägga till, ta bort eller flytta ett ställe är en **kodändring och en
 deploy**, inte en databasuppdatering.
 
@@ -37,7 +37,7 @@ deploy**, inte en databasuppdatering.
 | `closing` | string `HH:MM` \| `null` | `'05:00'` | `minutesToClose()` / `isClosed()` → "Stängt", "Stänger 01:00", "Bäst nu", "hinner du". `null` = okänd: aldrig "Stängt", ingen stängningsrad. |
 | `pace` | `'slow'` \| `'normal'` \| `'fast'` | `'slow'` | **Startgissning för dörrtakt** innan mätningar finns. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md). |
 
-Alla 308 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av dem är dolda, se nedan.
+Alla 310 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av dem är dolda, se nedan.
 
 ### Var ställena kommer från
 

@@ -2,7 +2,7 @@
 
 ## Vad projektet är
 
-Mobil webbapp som visar köstatus och uppskattad väntetid för **292 barer, pubar och nattklubbar** i
+Mobil webbapp som visar köstatus och uppskattad väntetid för **294 barer, pubar och nattklubbar** i
 Stockholm (alla som finns i OpenStreetMap, se `VENUES`). All data kommer från användarnas egna rapporter — det finns ingen extern
 datakälla för kölängder.
 
@@ -31,7 +31,7 @@ de är frysta ögonblicksbilder).
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
 | Kod | `src/main.js` (4 101 rader), `src/style.css` (1 164 rader), `index.html` (298 rader) |
-| Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Skymning eller Satellit, centrum `[18.0686, 59.3293]` |
+| Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Ljus eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
 | Hosting | Vercel |
@@ -48,7 +48,7 @@ Allt ligger i **en fil**: `src/main.js`. Dela inte upp den utan att fråga förs
 ```
 index.html  →  <script type="module" src="/src/main.js">
                ↓
-VENUES (308 hårdkodade objekt, 292 synliga)  +  allReports (från Supabase)
+VENUES (310 hårdkodade objekt, 294 synliga)  +  allReports (från Supabase)
                ↓
 estimateWait()  →  formatWait()  →  venueWaitText()
                ↓
@@ -72,7 +72,7 @@ blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
 | Vad | Funktioner |
 |---|---|
 | **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
-| Venue-data | `VENUES` — 308 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`); 16 dolda via `HIDDEN_VENUES`. **Inte i databasen** — ändring = deploy |
+| Venue-data | `VENUES` — 310 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 2 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården); 16 dolda via `HIDDEN_VENUES`. **Inte i databasen** — ändring = deploy |
 | Supabase-läsning | `loadReports` — alla icke-utgångna rapporter (≤45 min, tak 1000) |
 | Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
 | Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
@@ -352,9 +352,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   byts typen ramas samma område in för den nya typen. Ett nytt tryck på området tar bort valet
 - Grundkartan är **Mapbox Standard**: riktiga 3D-byggnader, landmärken (Slottet, kyrkorna, Berns) och ljus. **Karttyp**
   väljs i lagermenyn (rund knapp under profilknappen, `toggleMapStyleMenu`/`setMapStyle`): **Natt** (standard),
-  **Skymning** eller **Satellit**. Lägena står i `MAP_STYLES`; ett nytt läge är en rad där och en förhandsbild i
+  **Ljus** eller **Satellit**. Lägena står i `MAP_STYLES`; ett nytt läge är en rad där och en förhandsbild i
   `public/map-styles/<id>.jpg` (144 px, beskuren skärmbild). Valet sparas i `qb_map_style` (gamla `qb_map_light` läses
-  som reserv). Grundkartan är en import med id `basemap` i en tom stil. Annan stil (satellit ↔ standard) byts med
+  som reserv; sparad `'dusk'` från det borttagna läget Skymning blir Ljus).
+  Grundkartan är en import med id `basemap` i en tom stil. Annan stil (satellit ↔ standard) byts med
   `removeImport` + `addImport` med lägets egen config; `updateImport` bytte bara adressen och behöll förra lägets config
   (satelliten fick nattljus och vägar). Importen ritas under våra lager, så nålar och pillar ligger kvar. Samma stil
   byter bara configen (`setConfig`). **Satellit** har dagsljus (nattljuset lade ett grått filter över flygbilderna),
@@ -362,6 +363,12 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   hämtas först när någon väljer Satellit. Affärer och hållplatser är avstängda i importens config.
   Våra egna lager får `*-emissive-strength: 1` i kartans load, så att nattljuset inte dämpar statusfärgerna. Ett valt
   ställe flyger till zoom 15 med lutning 45°, där 3D-byggnaderna syns
+- **Ljus** ersatte Skymning (som var för likt Natt): Standard i dagsljus med vita hus (`colorBuildings`) mot grå mark
+  (`colorLand`), så att 3D-modellen syns och statusen är den enda färgen. `focus3d`: ett valt ställe flyger till zoom
+  16,2, lutning 60° och vrids −30°, och ställets hus färgas i statusfärgen (`lightVenueBuilding`: featureset
+  `buildings`, tillståndet `select`, `colorBuildingSelect`). Okänd status färgar inget. Huset och vridningen tas bort i
+  `vcHideNow` (rotation med fingrarna är avstängd, så kartan får aldrig bli kvar vriden) och vid byte av karttyp. Den
+  valda knappen (`.fbtn.active`) och testlägets etikett har en mörk kant, annars försvann de mot den vita kartan
 - **Varje symbollager på källan `venues` måste bero på feature-state (`APPEAR`)**, även när värdet är fast (t.ex.
   `['*', APPEAR, 0]`). Annars kraschar Mapbox 3.33 i `updateBuckets` när kartans ljus räknas om ("reading 'paint'":
   inga state-beroende lager i en bucket som har feature-state). Hände i hälften av gångerna en kapsel öppnades

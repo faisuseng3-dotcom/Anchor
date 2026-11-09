@@ -7,7 +7,7 @@ Allt i detta dokument är läst ur koden. Avsnitt som inte kunnat verifieras är
 
 ## 1. Vad systemet är
 
-QueueBar är en **mobil webbapp** som visar köstatus och uppskattad väntetid för 292 barer, pubar och
+QueueBar är en **mobil webbapp** som visar köstatus och uppskattad väntetid för 294 barer, pubar och
 nattklubbar i Stockholm. Data kommer från användarnas egna rapporter — det finns ingen
 extern datakälla för kölängder.
 
@@ -29,7 +29,7 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Språk | Vanilla JavaScript, ES-moduler, ES5-syntax i kroppen (`var`, `function`) | `src/main.js` |
 | Ramverk | **inget** — ingen React, Vue eller Svelte | — |
 | Styling | Ren CSS med custom properties | `src/style.css` |
-| Karta | `mapbox-gl` 3.x via npm, Mapbox Standard som import `basemap`; karttyp natt, skymning eller satellit (`MAP_STYLES`) | `src/main.js` |
+| Karta | `mapbox-gl` 3.x via npm, Mapbox Standard som import `basemap`; karttyp natt, ljus eller satellit (`MAP_STYLES`) | `src/main.js` |
 | Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js` |
 | Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
@@ -120,7 +120,7 @@ delningsbar vy.** `?testdata=true` är den enda URL-parameter som läses.
 ```mermaid
 flowchart TD
     subgraph Klient["Webbläsaren"]
-        VENUES["VENUES<br/>308 objekt hårdkodade, 16 dolda<br/>src/main.js"]
+        VENUES["VENUES<br/>310 objekt hårdkodade, 16 dolda<br/>src/main.js"]
         AR["allReports<br/>global array"]
         LS["localStorage<br/>qb_user_id, qb_queue_session,<br/>qb_on_my_way, qb_testdata,<br/>qb_favorites, qb_consent"]
     end
@@ -185,7 +185,7 @@ radnummer** — en enda commit kan flytta allt nedanför sig. Kör
 | `Mapbox token` | Token sätts | — |
 | `Supabase` | Klienten skapas | nej |
 | `Feltoast` | Felvisning, återanslutning | nej |
-| `Data och hjälpfunktioner` | `VENUES` (308 ställen) + `HIDDEN_VENUES` (16 dolda) | data / ja |
+| `Data och hjälpfunktioner` | `VENUES` (310 ställen) + `HIDDEN_VENUES` (16 dolda) | data / ja |
 | **`Väntetid = kölängd ÷ köns hastighet`** | **Väntetidsmodellen** — `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait` | **ja** |
 | *(efter modellen)* | `escapeHtml`, `timeAgo`, toast | delvis |
 | `Dela (Share)` | `shareVenue` | nej |

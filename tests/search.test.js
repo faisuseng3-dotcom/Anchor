@@ -166,6 +166,14 @@ describe('venueSearch — vanliga sökningar som förut gav noll', () => {
     expect(r.length).toBe(VENUES.filter((v) => v.type === 'klubb').length);
     expect(r.every((v) => v.type === 'klubb')).toBe(true);
   });
+
+  it('apostrofen spelar ingen roll: rak och typografisk hittar samma ställen', () => {
+    const john = ['john-scott-s-kungsgatan', 'john-scott-s-kungstradgarden'];
+    expect(names("john scott's").sort()).toEqual(john);
+    expect(names('john scott’s').sort()).toEqual(john);
+    expect(names('kelly’s')).toEqual(names("kelly's"));
+    expect(names("kelly's")[0]).toBe('kelly-s');
+  });
 });
 
 describe('didYouMean — frågar i stället för att gissa tyst', () => {

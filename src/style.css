@@ -226,6 +226,8 @@
     .map-type-chips::-webkit-scrollbar { display: none; }
     .chip-sep { flex: 0 0 1px; margin: 8px 4px; background: var(--border-hover); }
     .map-type-chips .fbtn:not(.active) { background: var(--overlay-surface); border-color: var(--border-hover); color: var(--text-primary); }
+    /* Vald knapp är vit: på Ljus-kartan (vit och ljusgrå) försvann den utan en mörk kant. */
+    .map-type-chips .fbtn.active { border-color: var(--bg-primary); }
     /* Karttyp: rund lagerknapp under profilknappen, där kartappar brukar ha den. Samma yta och kant som profilknappen. */
     .map-style-btn {
       position: absolute; z-index: 5; right: 12px;
@@ -1157,7 +1159,7 @@
       position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
       bottom: calc(76px + env(safe-area-inset-bottom));
       padding: 3px 10px; border-radius: 6px; pointer-events: none;
-      background: var(--text-primary); color: var(--bg-primary);
+      background: var(--text-primary); color: var(--bg-primary); border: 1px solid var(--bg-primary);
       font: 700 12px/1.4 var(--font-base);
     }
     /* Telefoner har ingen Alt + 2: där räcker beskedet. */

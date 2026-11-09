@@ -255,6 +255,8 @@ import './style.css';
       { id: 'international-bar-hantverkargatan', name: 'International Bar, Hantverkargatan', address: 'Hantverkargatan 36', area: 'Kungsholmen', type: 'bar', lat: 59.329458, lng: 18.040495, closing: '01:00', pace: 'fast' },
       { id: 'international-bar-norrlandsgatan', name: 'International Bar, Norrlandsgatan', address: 'Norrlandsgatan 23', area: 'Norrmalm', type: 'bar', lat: 59.335653, lng: 18.070925, closing: '03:00', pace: 'fast' },
       { id: 'japanese-pub-mix', name: 'Japanese Pub Mix', address: 'Norrlandsgatan 18', area: 'Norrmalm', type: 'bar', lat: 59.335033, lng: 18.07132, closing: null, pace: 'fast' },
+      { id: 'john-scott-s-kungsgatan', name: 'John Scott’s Kungsgatan', address: 'Kungsgatan 37', area: 'Norrmalm', type: 'bar', lat: 59.335568, lng: 18.064679, closing: null, pace: 'fast' },
+      { id: 'john-scott-s-kungstradgarden', name: 'John Scott’s Kungsträdgården', address: 'Hamngatan 19', area: 'Norrmalm', type: 'bar', lat: 59.332580, lng: 18.071129, closing: null, pace: 'fast' },
       { id: 'jolo', name: 'Jolo', address: 'Västmannagatan 50', area: 'Vasastan', type: 'bar', lat: 59.341165, lng: 18.048428, closing: '01:00', pace: 'fast' },
       { id: 'karamell', name: 'Karamell', address: 'Skeppsbron 36', area: 'Gamla Stan', type: 'bar', lat: 59.323368, lng: 18.075512, closing: '01:00', pace: 'fast' },
       { id: 'katarina-olkafe', name: 'Katarina Ölkafé', address: 'Katarina Bangata 27', area: 'Södermalm', type: 'bar', lat: 59.311691, lng: 18.079458, closing: null, pace: 'fast' },
@@ -1015,10 +1017,31 @@ import './style.css';
       (grow ? grow.ready : Promise.resolve()).then(function() {
         if (!map || activeVenue !== venue || _vcMode !== 'map') return;
         var b = vcMapBounds();
-        // Zoom 15 och lutning: där syns Standard-kartans 3D-byggnader och landmärken runt stället.
-        map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(15, map.getZoom()), pitch: Math.max(45, map.getPitch()), duration: 800,
-          offset: [0, b.top + (b.bottom - b.top) * 0.35 - b.height / 2] });
+        // Zoom 15 och lutning: där syns Standard-kartans 3D-byggnader och landmärken runt stället. Ljus går närmare,
+        // brantare och vrider kartan, och färgar ställets hus i statusfärgen när kameran är framme.
+        var f3d = mapStyle().focus3d;
+        map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(f3d ? 16.2 : 15, map.getZoom()), pitch: f3d ? 60 : Math.max(45, map.getPitch()),
+          bearing: f3d ? -30 : 0, duration: 800, offset: [0, b.top + (b.bottom - b.top) * 0.35 - b.height / 2] });
+        if (f3d) map.once('moveend', function() { if (activeVenue === venue) lightVenueBuilding(venue); });
       }, function() {}); // avbruten animation: ett nytt kort öppnades och flyger själv
+    }
+
+    // Ljus: ställets hus i statusfärgen (Standards featureset 'buildings', tillståndet select). Okänd status (ingen data,
+    // stängt) färgar inget. Huset hittas under ställets punkt, så kartan måste stå still och husen vara ritade.
+    var _litBuildings = [];
+    function lightVenueBuilding(venue) {
+      unlightBuildings();
+      var st = computeStatus(venue.id, allReports);
+      if (st === 'unknown') return;
+      map.setConfigProperty('basemap', 'colorBuildingSelect', getStatusColor(st));
+      var p = map.project([venue.lng, venue.lat]);
+      _litBuildings = map.queryRenderedFeatures([[p.x - 6, p.y - 6], [p.x + 6, p.y + 6]], { target: { featuresetId: 'buildings', importId: 'basemap' } });
+      _litBuildings.forEach(function(f) { map.setFeatureState(f, { select: true }); });
+    }
+    function unlightBuildings() {
+      // Efter byte av karttyp finns husen inte längre i importen.
+      _litBuildings.forEach(function(f) { try { map.setFeatureState(f, { select: false }); } catch (e) {} });
+      _litBuildings = [];
     }
 
     // Ritar om ett öppet kort med aktuell data. Inget om kortet är stängt.
@@ -1153,6 +1176,8 @@ import './style.css';
       var wasMap = _vcMode === 'map';
       _vcMode = null;
       card.classList.remove('vc--map', 'vc--inline', 'vc--open');
+      // Ljus vred kartan, och den går inte att vrida tillbaka med fingrarna (dragRotate är av).
+      if (wasMap && map) { unlightBuildings(); if (map.getBearing()) map.easeTo({ bearing: 0, duration: 500 }); }
       document.body.appendChild(card);
       // Fokus tillbaka dit det kom ifrån: knappen eller kartan som öppnade kapseln, raden som fälldes ut.
       if (wasMap && _vcReturnFocus && document.contains(_vcReturnFocus)) _vcReturnFocus.focus({ preventScroll: true });
@@ -1411,11 +1436,14 @@ import './style.css';
     // Användaren väljer kartans utseende i lagermenyn (knappen under profilknappen), som "Karttyp" i Google Maps. Varje
     // läge är en Mapbox Standard-stil med egen config. Nytt läge = en rad här och en förhandsbild i public/map-styles/.
     // Stilen byts med updateImport på grundkartan ('basemap'), inte setStyle: då ligger våra lager (nålar, pillar, glöd,
-    // kapseln) kvar, och bara grundkartan laddas om. Samma stil (natt ↔ skymning) byter bara ljuset, utan omladdning.
+    // kapseln) kvar, och bara grundkartan laddas om. Samma stil (natt ↔ ljus) byter bara configen, utan omladdning.
     // Satellitbilderna hämtas först när någon väljer Satellit.
     var MAP_STYLES = [
       { id: 'night', name: 'Natt', url: 'mapbox://styles/mapbox/standard', light: 'night' },
-      { id: 'dusk', name: 'Skymning', url: 'mapbox://styles/mapbox/standard', light: 'dusk' },
+      // Ljus: dagskarta med vita hus mot grå mark, så att 3D-modellen syns; färgen på skärmen är statusen. focus3d: ett
+      // valt ställe visas brantare, vridet och med sitt hus i statusfärgen (openVenueCard).
+      { id: 'light', name: 'Ljus', url: 'mapbox://styles/mapbox/standard', light: 'day', focus3d: true,
+        config: { colorBuildings: 'hsl(0, 0%, 100%)', colorLand: 'hsl(220, 12%, 86%)' } },
       // Dagsljus: nattljuset lade ett grått filter över flygbilderna, så tak, parker och gator blev grumliga.
       // Inga ritade vägar eller gränser: de lade ljusa streck över flygbilderna. Gatunamnen finns kvar. Satellit kan zooma
       // ett steg längre in (zoom 18): där syns övergångsställen, bilar och folk utanför stället.
@@ -1425,8 +1453,9 @@ import './style.css';
     var MAP_STYLE_KEY = 'qb_map_style';
     function mapStyle() {
       var id;
-      // qb_map_light: valet från när det bara fanns natt och skymning
+      // qb_map_light: valet från när det bara fanns natt och skymning. Skymning ('dusk') ersattes av Ljus.
       try { id = localStorage.getItem(MAP_STYLE_KEY) || localStorage.getItem('qb_map_light'); } catch (e) {}
+      if (id === 'dusk') id = 'light';
       return MAP_STYLES.find(function(s) { return s.id === id; }) || MAP_STYLES[0];
     }
     // Grundkartans config: ljuset, och inga affärer eller hållplatser (bara det som hjälper valet av ställe).
@@ -1456,6 +1485,7 @@ import './style.css';
       if (!next) return;
       try { localStorage.setItem(MAP_STYLE_KEY, next.id); } catch (e) {}
       if (map && next.id !== prev.id) {
+        unlightBuildings();
         try {
           // Annan stil (satellit ↔ standard): importen tas bort och läggs till på nytt med sin egen config. updateImport
           // bytte bara adressen och behöll förra lägets config, så satelliten fick nattljus och vägar. En import ritas
@@ -1952,7 +1982,7 @@ import './style.css';
           map.on('moveend', declutterPills);
 
           // Standard lyser upp kartan med sitt eget ljus. Våra lager ska inte dämpas av det: nålar, glöd och namn lyser
-          // själva, så statusfärgerna ser likadana ut i natt och skymning. Bara våra lager finns i getStyle().layers;
+          // själva, så statusfärgerna ser likadana ut i alla karttyper. Bara våra lager finns i getStyle().layers;
           // Standards egna ligger i en import.
           map.getStyle().layers.forEach(function(l) {
             try {
@@ -2966,7 +2996,8 @@ import './style.css';
     function _searchNorm(s, keepSwedish) {
       s = s.toLowerCase();
       if (!keepSwedish) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-      return s.replace(/\s+/g, ' ').trim();
+      // Apostrofer: iPhone skriver ’, datorn ', och namnen har båda ("Kelly's", "John Scott’s").
+      return s.replace(/[’‘`´]/g, "'").replace(/\s+/g, ' ').trim();
     }
     function _searchCompact(s, keepSwedish) { return _searchNorm(s, keepSwedish).replace(/\s/g, ''); }
     // Typord man skriver i en sökning: "nattklubb" ska hitta klubbarna, "berns bar" ska hitta Berns.
