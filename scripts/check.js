@@ -83,7 +83,7 @@ check('src/main.js exists', fs.existsSync(path.join(root, 'src/main.js')));
 check('vite.config.js exists', fs.existsSync(path.join(root, 'vite.config.js')));
 check('Font: Satoshi loaded', html.includes('satoshi'));
 check('Font var: --font-base Satoshi', css.includes("--font-base: 'Satoshi'"));
-check('Karttyp: Mapbox Standard som utbytbar import (natt, skymning, satellit)', js.includes("imports: [{ id: 'basemap'") && js.includes("map.updateImport('basemap'") && js.includes("mapbox://styles/mapbox/standard-satellite"));
+check('Karttyp: Mapbox Standard som utbytbar import (natt, skymning, satellit)', js.includes("imports: [{ id: 'basemap'") && js.includes("map.addImport({ id: 'basemap'") && js.includes("mapbox://styles/mapbox/standard-satellite"));
 check('Supabase npm import', js.includes('supabase-js'));
 
 // ── Security ──────────────────────────────────────────────────────────────────

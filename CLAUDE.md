@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 091 rader), `src/style.css` (1 164 rader), `index.html` (298 rader) |
+| Kod | `src/main.js` (4 101 rader), `src/style.css` (1 164 rader), `index.html` (298 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Skymning eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 091-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 101-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -353,9 +353,12 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   väljs i lagermenyn (rund knapp under profilknappen, `toggleMapStyleMenu`/`setMapStyle`): **Natt** (standard),
   **Skymning** eller **Satellit**. Lägena står i `MAP_STYLES`; ett nytt läge är en rad där och en förhandsbild i
   `public/map-styles/<id>.jpg` (144 px, beskuren skärmbild). Valet sparas i `qb_map_style` (gamla `qb_map_light` läses
-  som reserv). Grundkartan är en import med id `basemap` i en tom stil, så att `map.updateImport('basemap', …)` byter
-  den utan att våra lager försvinner (`setStyle` raderade dem); samma URL byter bara ljuset (`setConfigProperty`).
-  Satellitbilderna hämtas först när någon väljer Satellit. Affärer och hållplatser är avstängda i importens config.
+  som reserv). Grundkartan är en import med id `basemap` i en tom stil. Annan stil (satellit ↔ standard) byts med
+  `removeImport` + `addImport` med lägets egen config; `updateImport` bytte bara adressen och behöll förra lägets config
+  (satelliten fick nattljus och vägar). Importen ritas under våra lager, så nålar och pillar ligger kvar. Samma stil
+  byter bara configen (`setConfig`). **Satellit** har dagsljus (nattljuset lade ett grått filter över flygbilderna),
+  inga ritade vägar eller gränser (`config` i `MAP_STYLES`) och zoom till 18 (`maxZoom`; övriga 17). Satellitbilderna
+  hämtas först när någon väljer Satellit. Affärer och hållplatser är avstängda i importens config.
   Våra egna lager får `*-emissive-strength: 1` i kartans load, så att nattljuset inte dämpar statusfärgerna. Ett valt
   ställe flyger till zoom 15 med lutning 45°, där 3D-byggnaderna syns
 - **Varje symbollager på källan `venues` måste bero på feature-state (`APPEAR`)**, även när värdet är fast (t.ex.

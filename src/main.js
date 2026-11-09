@@ -1415,7 +1415,10 @@ import './style.css';
       { id: 'night', name: 'Natt', url: 'mapbox://styles/mapbox/standard', light: 'night' },
       { id: 'dusk', name: 'Skymning', url: 'mapbox://styles/mapbox/standard', light: 'dusk' },
       // Dagsljus: nattljuset lade ett grått filter över flygbilderna, så tak, parker och gator blev grumliga.
-      { id: 'satellite', name: 'Satellit', url: 'mapbox://styles/mapbox/standard-satellite', light: 'day' }
+      // Inga ritade vägar eller gränser: de lade ljusa streck över flygbilderna. Gatunamnen finns kvar. Satellit kan zooma
+      // ett steg längre in (zoom 18): där syns övergångsställen, bilar och folk utanför stället.
+      { id: 'satellite', name: 'Satellit', url: 'mapbox://styles/mapbox/standard-satellite', light: 'day', maxZoom: 18,
+        config: { showRoadsAndTransit: false, showAdminBoundaries: false, showPedestrianRoads: false } }
     ];
     var MAP_STYLE_KEY = 'qb_map_style';
     function mapStyle() {
@@ -1426,7 +1429,7 @@ import './style.css';
     }
     // Grundkartans config: ljuset, och inga affärer eller hållplatser (bara det som hjälper valet av ställe).
     function mapStyleConfig(s) {
-      return { lightPreset: s.light, showPointOfInterestLabels: false, showTransitLabels: false };
+      return Object.assign({ lightPreset: s.light, showPointOfInterestLabels: false, showTransitLabels: false }, s.config);
     }
     function renderMapStyleMenu() {
       var menu = document.getElementById('map-style-menu');
@@ -1452,8 +1455,15 @@ import './style.css';
       try { localStorage.setItem(MAP_STYLE_KEY, next.id); } catch (e) {}
       if (map && next.id !== prev.id) {
         try {
-          if (next.url === prev.url) map.setConfigProperty('basemap', 'lightPreset', next.light);
-          else map.updateImport('basemap', { id: 'basemap', url: next.url, config: mapStyleConfig(next) });
+          // Annan stil (satellit ↔ standard): importen tas bort och läggs till på nytt med sin egen config. updateImport
+          // bytte bara adressen och behöll förra lägets config, så satelliten fick nattljus och vägar. En import ritas
+          // under stilens egna lager, så nålar och pillar ligger kvar ovanpå. Samma stil: bara configen (ljuset).
+          var cfg = mapStyleConfig(next);
+          if (next.url !== prev.url) {
+            map.removeImport('basemap');
+            map.addImport({ id: 'basemap', url: next.url, config: cfg });
+          } else map.setConfig('basemap', cfg);
+          map.setMaxZoom(next.maxZoom || 17);
         } catch (e) { console.warn('[QueueBar] Karttyp:', e.message); }
       }
       renderMapStyleMenu();
@@ -1500,7 +1510,7 @@ import './style.css';
           center: [18.0686, 59.3293],
           zoom: 12.5,
           minZoom: 11,
-          maxZoom: 17,
+          maxZoom: mapStyle().maxZoom || 17, // 17, eller lägets egen gräns (Satellit 18)
           pitch: 0,
           maxPitch: 60,
           bearing: 0,
