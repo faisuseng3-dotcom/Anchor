@@ -1184,13 +1184,12 @@ import './style.css';
       if (v) pickRV(v.id);
     }
 
-    // Gående vägbeskrivning. Apple Kartor på iPhone/iPad (öppnas direkt i appen), annars Google Maps.
+    // Gående vägbeskrivning i Google Maps (appen om den finns, annars webben) till ställets adress. Namnet följer med så
+    // att Google hittar rätt ställe även där adressen saknar husnummer ("Arenatorget") eller delas av flera ("Sturegatan 4").
     function openDirections() {
       if (!activeVenue) return;
-      var to = activeVenue.lat + ',' + activeVenue.lng;
-      window.open(/iPhone|iPad|iPod/.test(navigator.userAgent)
-        ? 'https://maps.apple.com/?daddr=' + to + '&dirflg=w'
-        : 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + to, '_blank');
+      var to = activeVenue.name + ', ' + activeVenue.address + ', Stockholm';
+      window.open('https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + encodeURIComponent(to), '_blank');
     }
 
     // Kartans enda kort: svaret på "vart går vi nu?". Visar bara färsk data (computeBestNow: ≤30 min). Följer samma
