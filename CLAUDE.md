@@ -30,7 +30,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 090 rader), `src/style.css` (1 164 rader), `index.html` (298 rader) |
+| Kod | `src/main.js` (4 091 rader), `src/style.css` (1 164 rader), `index.html` (298 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Skymning eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -129,7 +129,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 090-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 091-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).

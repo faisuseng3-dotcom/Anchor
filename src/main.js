@@ -1414,7 +1414,8 @@ import './style.css';
     var MAP_STYLES = [
       { id: 'night', name: 'Natt', url: 'mapbox://styles/mapbox/standard', light: 'night' },
       { id: 'dusk', name: 'Skymning', url: 'mapbox://styles/mapbox/standard', light: 'dusk' },
-      { id: 'satellite', name: 'Satellit', url: 'mapbox://styles/mapbox/standard-satellite', light: 'night' }
+      // Dagsljus: nattljuset lade ett grått filter över flygbilderna, så tak, parker och gator blev grumliga.
+      { id: 'satellite', name: 'Satellit', url: 'mapbox://styles/mapbox/standard-satellite', light: 'day' }
     ];
     var MAP_STYLE_KEY = 'qb_map_style';
     function mapStyle() {
