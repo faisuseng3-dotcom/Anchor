@@ -1922,20 +1922,21 @@ import './style.css';
               'icon-allow-overlap': true,
               'icon-ignore-placement': true
             },
-            paint: { 'icon-opacity': 0 }
+            // Andningen ligger i feature-state "breath": ett nytt paint-uttryck per bildruta (det beror på feature-state, alltså
+            // datadrivet) fick Mapbox att ladda om hela källan "venues" 60 gånger i sekunden, och kartan hackade.
+            paint: { 'icon-opacity': pillsIn(['*', APPEAR, ['coalesce', ['feature-state', 'breath'], 0]]) }
           }, 'venues-pins');
 
           // Andning: opacity 0 → 0,7 → 0 på ~2,2 s, bara när något är brådskande. Samma bildruta driver ringen runt
-          // din position (växer och tonar ut på 2,4 s). Bara några paint-värden per bildruta.
+          // din position (växer och tonar ut på 2,4 s). Bara feature-state och konstanta paint-värden per bildruta.
           var _breathStart = performance.now();
           function animateMapPulse() {
             // Bara på kartskärmen: annars ritade Mapbox om 60 gånger i sekunden hela natten bakom Lista och Live.
             if (map && !document.hidden && currentScreen === 'home') {
               var now = performance.now() - _breathStart;
-              if (_hasUrgent && map.getLayer('venues-urgent')) {
-                var t = (now % 2200) / 2200;
-                map.setPaintProperty('venues-urgent', 'icon-opacity',
-                  pillsIn(['*', APPEAR, 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2))]));
+              if (_urgentIds.length) {
+                var t = (now % 2200) / 2200, breath = 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2));
+                _urgentIds.forEach(function(id) { map.setFeatureState({ source: 'venues', id: id }, { breath: breath }); });
               }
               if (window._userPos && map.getLayer('me-halo')) {
                 var k = (now % 2400) / 2400;
@@ -2171,7 +2172,7 @@ import './style.css';
 
     // Brådskande = lång kö OCH en kö-rapport yngre än 20 min. Exakt samma regel som den pulserande pricken i listan
     // (showPulseDot i renderExploreVenueRow), så kartan och listan aldrig är oense om vad som är akut.
-    var _hasUrgent = false;
+    var _urgentIds = [];
     function isUrgent(venueId, status) {
       if (status !== 'long') return false;
       var latest = 0;
@@ -2186,7 +2187,7 @@ import './style.css';
     function updateMapStatuses() {
       if (!map || !venueGeoJSON) return;
       if (!map.getSource('venues') || !map.getSource('venues-empty')) return;
-      _hasUrgent = false;
+      _urgentIds = [];
       var best = computeBestNow(), bestId = best ? best.venue.id : null;
       var updated = venueGeoJSON.features.filter(function(f) { return venueTypeMatches(f.properties); }).map(function(f) {
         var id = f.properties.id;
@@ -2195,7 +2196,7 @@ import './style.css';
         // Pillens bildnamn bär allt som ritas: status (färg), typ (ikon) och text. Bilden skapas första gången kartan ber om den.
         var pill = status === 'unknown' || !text ? '' : 'pill|' + status + '|' + (f.properties.type === 'bar' ? 'bar' : 'club') + '|' + text;
         var urgent = pill && isUrgent(id, status);
-        if (urgent) _hasUrgent = true;
+        if (urgent) _urgentIds.push(id);
         return Object.assign({}, f, {
           properties: Object.assign({}, f.properties, {
             status: pill ? status : 'unknown',

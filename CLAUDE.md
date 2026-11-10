@@ -372,6 +372,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - **Varje symbollager på källan `venues` måste bero på feature-state (`APPEAR`)**, även när värdet är fast (t.ex.
   `['*', APPEAR, 0]`). Annars kraschar Mapbox 3.33 i `updateBuckets` när kartans ljus räknas om ("reading 'paint'":
   inga state-beroende lager i en bucket som har feature-state). Hände i hälften av gångerna en kapsel öppnades
+- **Animera aldrig med `setPaintProperty` på ett datadrivet uttryck** (feature-state, `['get', …]`): Mapbox laddar då
+  om hela källan i workern. Andningen på `venues-urgent` gjorde det i varje bildruta (~1000 worker-meddelanden/s) och
+  kartan hackade vid zoom och panorering. Animera via `setFeatureState` (`breath`, `appear`), eller med konstanta värden
+  (`me-halo`)
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
   för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
   under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.
