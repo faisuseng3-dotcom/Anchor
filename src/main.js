@@ -1,4 +1,3 @@
-import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createClient } from '@supabase/supabase-js';
 import './style.css';
@@ -66,12 +65,18 @@ import './style.css';
       }
       // Listan ritas om varje gång den visas, så avstånd och åldrar stämmer — position och klocka har gått sedan sist.
       if (name === 'explore') renderExploreVenues();
+      if (name === 'live') renderLiveFeed();
       console.log('[QueueBar] Byter till skärm:', name);
     }
 
-    // ── Mapbox token ─────────────────────────────────────────────────────────
-    mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
-    console.log('[QueueBar] Mapbox token satt');
+    // ── Mapbox ───────────────────────────────────────────────────────────────
+    // Kartbiblioteket (~1,7 MB) är en egen fil som hämtas direkt men inte står i vägen: listan, datan och introt behöver
+    // inte vänta på det. Kartan skapas när både biblioteket och introts ring är klara (se afterRing).
+    var mapboxgl = null;
+    var _mapboxLoad = import('mapbox-gl').then(function(m) {
+      mapboxgl = m.default;
+      mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
+    });
 
     // ── Supabase ──────────────────────────────────────────────────────────────
     const SUPABASE_URL = 'https://awwmfsjsrjktekmbgadx.supabase.co';
@@ -1550,7 +1555,7 @@ import './style.css';
       if (anim && anim.playState !== 'finished') anim.finished.then(function() { fn(); }, function() { fn(); });
       else fn();
     }
-    if (mapboxgl) afterRing(function() {
+    Promise.all([_mapboxLoad, new Promise(afterRing)]).then(function() {
       console.log('[QueueBar] Initierar Mapbox-karta');
       try {
         map = new mapboxgl.Map({
@@ -2065,9 +2070,10 @@ import './style.css';
         map = null;
         showMapError('Kartan kunde inte startas');
       }
-    }); else {
+    }, function(err) {
+      console.error('[QueueBar] Mapbox laddades inte:', err);
       showMapError('Mapbox GL JS laddades inte');
-    }
+    });
 
     // ── Supabase-funktioner ──────────────────────────────────────────────────
     function getUserId() {
@@ -3629,7 +3635,6 @@ import './style.css';
     }
 
     function renderLiveFeed() {
-      vcPark();
       var el = document.getElementById('live-feed');
       if (!el) return;
       // Prickarna (fliken och rubriken) säger "live" bara när det finns en färsk rapport (< 10 min) och kontakt med
@@ -3640,6 +3645,9 @@ import './style.css';
       var isLive = _loadState !== 'error' && allReports.some(function(r) { return isQueueReport(r) && openNow(r) && new Date(r.created_at).getTime() > freshCut; });
       var navDot = document.querySelector('.live-dot');
       if (navDot) navDot.classList.toggle('on', isLive);
+      // Pricken i menyn syns överallt; resten av flödet bara på Live, som ritas när den visas (showScreen).
+      if (currentScreen !== 'live') return;
+      vcPark();
       var headDot = document.getElementById('live-dot');
       if (headDot) headDot.hidden = !isLive;
       var subText = document.getElementById('live-sub-text');

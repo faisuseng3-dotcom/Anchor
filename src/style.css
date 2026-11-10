@@ -934,7 +934,8 @@
       from { transform: translateX(-50%) translateY(100%); }
       to   { transform: translateX(-50%) translateY(0); }
     }
-    .qr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    /* Ingen backdrop-filter: oskärpan räknades om över kartan i varje bildruta den ritades. Mörkningen räcker. */
+    .qr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; }
     .qr-sheet {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 430px; box-sizing: border-box; z-index: 201;

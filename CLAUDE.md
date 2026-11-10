@@ -16,8 +16,10 @@ Vercel-URL:en, `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo
 ringen fylls som en timer (en färg i taget, röd → gul → grön, stannar på 72 % — aldrig flera färger samtidigt, då
 liknar den Googles logga), i hålet spelar en 3D-stad där gubben leds in i en gata, sedan krymper Q:et in i "Qbar",
 ~2,4 s. Stan
-är klippet `public/splash-city.mp4` (490 kB, spelas i dubbel fart), renderat ur reklamprojektet med
-`node scripts/render-splash.mjs` i `~/Desktop/qbar-ad` (kamera och gång i `renderSplashAt`). Spelar klippet inte
+är klippet `public/splash-city.mp4` (360×360, 153 kB, spelas i dubbel fart), renderat ur reklamprojektet med
+`node scripts/render-splash.mjs` i `~/Desktop/qbar-ad` (kamera och gång i `renderSplashAt`) och nerskalat
+(`ffmpeg -i in.mp4 -vf scale=360:360:flags=lanczos -c:v libx264 -preset veryslow -crf 23 -pix_fmt yuv420p -an
+-movflags +faststart`; hålet är ~85 px, 1080² var 480 kB på 4G mitt i introt). Spelar klippet inte
 inom 0,9 s (långsamt nät, iOS strömsparläge, webbläsare utan H.264) krymper Q:et direkt, ~1,6 s. En gång per
 session (`sessionStorage` `qb_splash`), hoppas över vid tryck, stilla logga vid `prefers-reduced-motion`.
 E2E-testerna hoppar över det i `skipOnboarding`.
@@ -383,9 +385,14 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - **Introts ring ritas på huvudtråden** (`stroke-dasharray`); resten av introt är transform/opacity. Kartan skapas därför
   först när ringen är fylld (`afterRing`), och pill-bilderna ritas med `willReadFrequently` (ingen läsning från
   grafikkortet). Förut startade kartan mitt i ringen och den hackade i 80–130 ms åt gången
-- **Listan ritas bara när den syns** (`renderExploreVenues` returnerar direkt utanför `explore`; `showScreen` ritar
-  den). Sorteringens nycklar räknas en gång per ställe, och modellens filter kollar `venue_id` före datumet
-  (`estimateWait`, `measureQueueRates`): en omritning vid 1000 rapporter gick från ~150 till ~17 ms
+- **Listan och Live ritas bara när de syns** (`renderExploreVenues` och `renderLiveFeed` returnerar direkt utanför
+  sin skärm; `showScreen` ritar dem. Live uppdaterar ändå pricken i menyn). Sorteringens nycklar räknas en gång per
+  ställe, och modellens filter kollar `venue_id` före datumet (`estimateWait`, `measureQueueRates`): en omritning vid
+  1000 rapporter gick från ~150 till ~17 ms
+- **Kartbiblioteket är en egen fil** (`import('mapbox-gl')` i `_mapboxLoad`, huvudfilen 364 kB i stället för 2,3 MB).
+  Datan och listan väntar inte på det: på 4G syns datan efter ~0,8 s i stället för ~2,8 s. `mapboxgl` är `null` tills
+  biblioteket är laddat, men bara kartkod som körs efter `map` finns använder det
+- Inga `backdrop-filter` över kartan: oskärpan räknas om i varje bildruta kartan ritar
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
   för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
   under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.
