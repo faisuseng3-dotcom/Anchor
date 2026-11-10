@@ -350,7 +350,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   som startvyn) och filtrerar inget, så en kortare kö i grannområdet syns fortfarande. Inget kort öppnas
   Valt område (`_selectedArea`, `selectArea`) är vitt som typknapparna och gäller samtidigt med Alla/Barer/Klubbar:
   byts typen ramas samma område in för den nya typen. Ett nytt tryck på området tar bort valet
-- Grundkartan är **Mapbox Standard**: riktiga 3D-byggnader, landmärken (Slottet, kyrkorna, Berns) och ljus. **Karttyp**
+- Grundkartan är **Mapbox Standard**: riktiga 3D-byggnader, landmärken (Slottet, kyrkorna, Berns) och ljus, men **inga
+  3D-träd** (`show3dTrees: false` i Natt och Ljus): träden var två tredjedelar av ritanropen och fick panoreringen att hacka. **Karttyp**
   väljs i lagermenyn (rund knapp under profilknappen, `toggleMapStyleMenu`/`setMapStyle`): **Natt** (standard),
   **Ljus** eller **Satellit**. Lägena står i `MAP_STYLES`; ett nytt läge är en rad där och en förhandsbild i
   `public/map-styles/<id>.jpg` (144 px, beskuren skärmbild). Valet sparas i `qb_map_style` (gamla `qb_map_light` läses

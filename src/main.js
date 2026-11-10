@@ -1439,11 +1439,13 @@ import './style.css';
     // kapseln) kvar, och bara grundkartan laddas om. Samma stil (natt ↔ ljus) byter bara configen, utan omladdning.
     // Satellitbilderna hämtas först när någon väljer Satellit.
     var MAP_STYLES = [
-      { id: 'night', name: 'Natt', url: 'mapbox://styles/mapbox/standard', light: 'night' },
+      // Inga 3D-träd: de var två tredjedelar av allt kartan ritade (760 mot 250 ritanrop per bildruta inzoomat och lutat)
+      // och fick kartan att hacka när man panorerade. Husen och landmärkena finns kvar.
+      { id: 'night', name: 'Natt', url: 'mapbox://styles/mapbox/standard', light: 'night', config: { show3dTrees: false } },
       // Ljus: dagskarta med vita hus mot grå mark, så att 3D-modellen syns; färgen på skärmen är statusen. focus3d: ett
       // valt ställe visas brantare, vridet och med sitt hus i statusfärgen (openVenueCard).
       { id: 'light', name: 'Ljus', url: 'mapbox://styles/mapbox/standard', light: 'day', focus3d: true,
-        config: { colorBuildings: 'hsl(0, 0%, 100%)', colorLand: 'hsl(220, 12%, 86%)' } },
+        config: { show3dTrees: false, colorBuildings: 'hsl(0, 0%, 100%)', colorLand: 'hsl(220, 12%, 86%)' } },
       // Dagsljus: nattljuset lade ett grått filter över flygbilderna, så tak, parker och gator blev grumliga.
       // Inga ritade vägar eller gränser: de lade ljusa streck över flygbilderna. Gatunamnen finns kvar. Satellit kan zooma
       // ett steg längre in (zoom 18): där syns övergångsställen, bilar och folk utanför stället.
