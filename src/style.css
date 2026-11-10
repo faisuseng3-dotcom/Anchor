@@ -74,11 +74,20 @@
       color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      /* En app, inte en webbsida: sidan rullar inte och studsar inte, och dra-ner-för-att-ladda-om är av. */
+      overflow: hidden; overscroll-behavior: none;
     }
     body {
       display: flex; justify-content: center;
       background-color: var(--bg-primary);
+      /* Äldre iOS bryr sig inte om overscroll-behavior och drog hela sidan; fast mot skärmen rör den sig inte. */
+      position: fixed; inset: 0;
     }
+    /* Listorna rullar bara så långt som innehållet räcker: ingen studs förbi kanten (den visade svart bakgrund) och
+       ingen rullning vidare till sidan. Raderna som rullar i sidled likaså: ett svep förbi kanten blev annars
+       webbläsarens "bakåt" på Android. */
+    .screen, #map-search-results, #explore-list-wrap, #live-list-wrap,
+    .map-type-chips, .filter-row, .chips-scroll { overscroll-behavior: none; }
 
     #app {
       position: relative;
@@ -513,7 +522,8 @@
     }
     #explore-list-wrap {
       flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 0 16px calc(160px + env(safe-area-inset-bottom));
+      /* Menyn (68 px) täcker listans nederkant; sista raden slutar 16 px ovanför den. 160 px gav ett svart fält. */
+      padding: 0 16px calc(68px + 16px + env(safe-area-inset-bottom));
     }
     .explore-sticky {
       position: sticky; top: 0; z-index: 3;
@@ -769,7 +779,7 @@
     }
     #live-list-wrap {
       flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 0 16px calc(160px + env(safe-area-inset-bottom));
+      padding: 0 16px calc(68px + 16px + env(safe-area-inset-bottom));
     }
 
     /* Rapportflöde: samma kortspråk som Lista — namn, rapporterat värde till höger i statusfärg */
