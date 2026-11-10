@@ -51,6 +51,10 @@
       --radius-lg:   16px;
       --radius-full: 999px;
 
+      /* Menyns avstånd till nederkanten: över hemindikatorn på iPhone (safe area 34 → 22 px), 12 px annars.
+         Menyn är 64 px hög; det som ligger ovanför den räknas från calc(var(--nav-bottom) + 64px). */
+      --nav-bottom: max(12px, calc(env(safe-area-inset-bottom) - 12px));
+
       /* ── Animationer ───────────────────────────────────────────────── */
       --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
       --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -160,15 +164,17 @@
     }
     .explore-err-btn:hover { background: rgba(255,255,255,0.12); }
 
-    /* ── Bottom Nav: 3 flikar + upphöjd Rapportera i mitten ──────────── */
+    /* ── Bottom Nav: flytande kapsel över kartan, 3 flikar + Rapportera i mitten ── */
+    /* Kartan syns runt och under menyn. */
     #bottom-nav {
-      position: absolute; left: 0; right: 0; bottom: 0;
+      position: absolute; left: 12px; right: 12px;
+      bottom: var(--nav-bottom);
       z-index: 10;
       display: flex; align-items: stretch;
-      height: calc(68px + env(safe-area-inset-bottom));
-      padding-bottom: env(safe-area-inset-bottom);
+      height: 64px;
       background: var(--bg-primary);
-      border-top: 1px solid var(--border);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-full);
     }
     .tab {
       flex: 1; display: flex; flex-direction: column;
@@ -183,7 +189,7 @@
     .tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
     .tab .icon { position: relative; display: flex; flex-direction: column; align-items: center; }
     .tab .icon::after {
-      content: ''; position: absolute; top: -12px;
+      content: ''; position: absolute; top: -8px; /* inne i kapseln, inte på kanten */
       height: 3px; width: 0; border-radius: 0 0 2px 2px;
       background: var(--accent);
       transition: width var(--dur-mid) var(--ease-out);
@@ -324,7 +330,7 @@
     /* ── "Bäst nu" — kartans enda kort ────────────────────────────────── */
     #best-now-card {
       position: absolute; z-index: 5; left: 12px; right: 12px;
-      bottom: calc(104px + env(safe-area-inset-bottom));
+      bottom: calc(var(--nav-bottom) + 100px); /* plats för Mapbox-loggan mellan kortet och menyn */
     }
     .bn-card {
       width: 100%; display: flex; flex-direction: column; gap: 4px; text-align: left;
@@ -352,7 +358,7 @@
     .bn-card--aging .bn-wait { opacity: 0.75; }
     /* Mapbox-attribution ovanför navigationen, dämpad mot mörk karta */
     #screen-home .mapboxgl-ctrl-bottom-right,
-    #screen-home .mapboxgl-ctrl-bottom-left { bottom: calc(68px + env(safe-area-inset-bottom)); opacity: 0.6; }
+    #screen-home .mapboxgl-ctrl-bottom-left { bottom: calc(var(--nav-bottom) + 64px); opacity: 0.6; }
     .bn-empty-text { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     .bn-cta { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 
@@ -523,8 +529,8 @@
     }
     #explore-list-wrap {
       flex: 1; overflow-y: auto; overflow-x: hidden;
-      /* Menyn (68 px) täcker listans nederkant; sista raden slutar 16 px ovanför den. 160 px gav ett svart fält. */
-      padding: 0 16px calc(68px + 16px + env(safe-area-inset-bottom));
+      /* Menyn täcker listans nederkant; sista raden slutar 16 px ovanför den. 160 px gav ett svart fält. */
+      padding: 0 16px calc(var(--nav-bottom) + 64px + 16px);
     }
     .explore-sticky {
       position: sticky; top: 0; z-index: 3;
@@ -780,7 +786,7 @@
     }
     #live-list-wrap {
       flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 0 16px calc(68px + 16px + env(safe-area-inset-bottom));
+      padding: 0 16px calc(var(--nav-bottom) + 64px + 16px);
     }
 
     /* Rapportflöde: samma kortspråk som Lista — namn, rapporterat värde till höger i statusfärg */
@@ -1002,7 +1008,7 @@
 
     /* ── Toast ─────────────────────────────────────────────────────────── */
     .toast {
-      position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: calc(var(--nav-bottom) + 76px); left: 50%; transform: translateX(-50%);
       background: var(--text-primary); color: var(--bg-primary);
       border-radius: var(--radius-md); padding: 12px 20px;
       font-family: var(--font-base); font-size: 13px; font-weight: 500;
@@ -1169,7 +1175,7 @@
       /* Över kartan och navigationen (10), under kortets bakgrund (20) och allt som läggs ovanpå: etiketten dolde
          venue-kortets huvudknapp. */
       position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
-      bottom: calc(76px + env(safe-area-inset-bottom));
+      bottom: calc(var(--nav-bottom) + 72px);
       padding: 3px 10px; border-radius: 6px; pointer-events: none;
       background: var(--text-primary); color: var(--bg-primary); border: 1px solid var(--bg-primary);
       font: 700 12px/1.4 var(--font-base);
