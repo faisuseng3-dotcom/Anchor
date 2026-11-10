@@ -13,6 +13,21 @@
   <title>Qbar</title>
   <!-- Introt spelas en gång per session; körs före första målningen så att det aldrig blinkar till. -->
   <script>try { sessionStorage.getItem('qb_splash') ? document.documentElement.classList.add('no-splash') : sessionStorage.setItem('qb_splash', '1'); } catch (e) {}</script>
+  <!-- Hemskärmsappen på iPhone (statusraden genomskinlig): iOS gör sidan statusradens höjd för kort, så en svart ruta
+       syns under menyn. Det som saknas mäts (--vp-gap, 0 överallt annars) och appen förlängs dit i style.css.
+       clientHeight, inte innerHeight: tangentbordet ändrar den senare. Bara när fönstret fyller skärmen (inte iPad delad vy). -->
+  <script>
+    (function () {
+      if (!navigator.standalone) return;
+      function fit() {
+        var land = innerWidth > innerHeight, lo = Math.min(screen.width, screen.height), hi = Math.max(screen.width, screen.height);
+        var full = land ? lo : hi, gap = Math.abs(innerWidth - (land ? hi : lo)) > 1 ? 0 : Math.max(0, full - document.documentElement.clientHeight);
+        document.documentElement.style.setProperty('--vp-gap', gap + 'px');
+      }
+      fit();
+      addEventListener('resize', fit);
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.fontshare.com">

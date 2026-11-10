@@ -393,6 +393,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   Datan och listan väntar inte på det: på 4G syns datan efter ~0,8 s i stället för ~2,8 s. `mapboxgl` är `null` tills
   biblioteket är laddat, men bara kartkod som körs efter `map` finns använder det
 - Inga `backdrop-filter` över kartan: oskärpan räknas om i varje bildruta kartan ritar
+- **Hemskärmsappen på iPhone når skärmens nederkant via `--vp-gap`.** Med genomskinlig statusrad gör iOS sidan
+  statusradens höjd (59 pt) för kort: en svart ruta under menyn. Skriptet i `<head>` mäter skillnaden mot skärmen
+  (`clientHeight`, inte `innerHeight` som tangentbordet ändrar; 0 i webbläsare och iPad delad vy) och `body`,
+  samtyckesrutan och snabbrapportens ark förlängs med den. `#app` är `height: 100%` av `body`, inte `100dvh`
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
   för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
   under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.

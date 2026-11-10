@@ -82,6 +82,8 @@
       background-color: var(--bg-primary);
       /* Äldre iOS bryr sig inte om overscroll-behavior och drog hela sidan; fast mot skärmen rör den sig inte. */
       position: fixed; inset: 0;
+      /* iOS hemskärmsapp: hela vägen ner, se --vp-gap i index.html. Höjd, inte bottom: height: 100% ovan vinner över bottom. */
+      height: calc(100% + var(--vp-gap, 0px));
     }
     /* Listorna rullar bara så långt som innehållet räcker: ingen studs förbi kanten (den visade svart bakgrund) och
        ingen rullning vidare till sidan. Raderna som rullar i sidled likaså: ett svep förbi kanten blev annars
@@ -91,8 +93,7 @@
 
     #app {
       position: relative;
-      width: 430px; max-width: 100%; height: 100vh;
-      height: 100dvh;
+      width: 430px; max-width: 100%; height: 100%; /* lika hög som body, som når skärmens nederkant */
       overflow: hidden;
       background: var(--bg-secondary);
     }
@@ -485,7 +486,7 @@
 
     /* ── Consent Modal ─────────────────────────────────────────────────── */
     #consent-modal {
-      display: none; position: fixed; inset: 0; z-index: 50;
+      display: none; position: fixed; inset: 0; bottom: calc(0px - var(--vp-gap, 0px)); z-index: 50;
       background: rgba(0,0,0,0.6);
       align-items: flex-end; justify-content: center;
     }
@@ -935,9 +936,9 @@
       to   { transform: translateX(-50%) translateY(0); }
     }
     /* Ingen backdrop-filter: oskärpan räknades om över kartan i varje bildruta den ritades. Mörkningen räcker. */
-    .qr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; }
+    .qr-overlay { position: fixed; inset: 0; bottom: calc(0px - var(--vp-gap, 0px)); background: rgba(0,0,0,0.6); z-index: 200; }
     .qr-sheet {
-      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: calc(0px - var(--vp-gap, 0px)); left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 430px; box-sizing: border-box; z-index: 201;
       background: var(--surface); border: 1px solid var(--border-hover); border-bottom: none;
       border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 12px 16px calc(24px + env(safe-area-inset-bottom));
