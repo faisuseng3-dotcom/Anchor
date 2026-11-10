@@ -449,6 +449,9 @@ import './style.css';
       'soder-bar': 'Oklart, ingen aktuell källa'
     };
     for (var _hv = VENUES.length - 1; _hv >= 0; _hv--) if (HIDDEN_VENUES[VENUES[_hv].id]) VENUES.splice(_hv, 1);
+    // Uppslag per id: getVenueById körs tusentals gånger per omritning, VENUES.find gick igenom ~300 ställen varje gång.
+    var VENUE_BY_ID = {};
+    VENUES.forEach(function(v) { VENUE_BY_ID[v.id] = v; });
 
     // ── Väntetid = kölängd ÷ köns hastighet ──────────────────────────────────
     // Personer per minut som släpps in, startgissning per venue.pace tills kvällens mätningar finns.
@@ -511,8 +514,9 @@ import './style.css';
     function measureQueueRates(venueId, reports, now) {
       var cutoff = now - 45 * 60 * 1000;
       return sessionRates(reports.filter(function(r) {
+        if (r.venue_id !== venueId) return false; // före datumet: de flesta rapporter gäller andra ställen
         var t = new Date(r.created_at).getTime();
-        return r.venue_id === venueId && t >= cutoff && t <= now;
+        return t >= cutoff && t <= now;
       })).map(function(x) { return x.rate; });
     }
 
@@ -544,8 +548,9 @@ import './style.css';
       now = now || Date.now();
       if (hist === undefined) hist = _historicalRates[venueId] || null;
       var counted = reports.filter(function(r) {
+        if (r.venue_id !== venueId) return false; // före datumet: de flesta rapporter gäller andra ställen
         var age = now - new Date(r.created_at).getTime();
-        return r.venue_id === venueId && isQueueReport(r) && r.people_ahead != null && age >= -skew && age < 45 * 60 * 1000;
+        return isQueueReport(r) && r.people_ahead != null && age >= -skew && age < 45 * 60 * 1000;
       }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       if (!counted.length) return null;
       var fresh = counted.filter(function(r) { return now - new Date(r.created_at).getTime() < 20 * 60 * 1000; });
@@ -724,7 +729,7 @@ import './style.css';
     }
 
     function getVenueById(id) {
-      return VENUES.find(function(v) { return v.id === id; });
+      return VENUE_BY_ID[id];
     }
 
     // All text som kommer från databasen (andras rapporter) måste gå genom den här innan den hamnar i HTML.
@@ -936,8 +941,10 @@ import './style.css';
       if (_vcMode !== 'map' || !activeVenue || !map) return;
       var card = vcCard(), head = card.querySelector('.vc-head');
       var p = map.project([activeVenue.lng, activeVenue.lat]), W = document.getElementById('map').clientWidth;
-      card.style.left = Math.max(12, Math.min(W - card.offsetWidth - 12, p.x - card.offsetWidth / 2)) + 'px';
-      card.style.top = (p.y - head.offsetTop - head.offsetHeight / 2) + 'px';
+      // Alla mått läses före skrivningarna: annars tvingade varje kartrörelse fram en extra layout.
+      var cw = card.offsetWidth, headMid = head.offsetTop + head.offsetHeight / 2;
+      card.style.left = Math.max(12, Math.min(W - cw - 12, p.x - cw / 2)) + 'px';
+      card.style.top = (p.y - headMid) + 'px';
     }
     window.addEventListener('resize', vcPlace);
 
@@ -1534,7 +1541,16 @@ import './style.css';
       mapEl.innerHTML = '<div class="map-error-inner"><span>' + (msg || 'Kartan kunde inte laddas') + '</span><small>Övriga funktioner fungerar normalt</small></div>';
     }
 
-    if (mapboxgl) {
+    // Kartan startar när introts ring har fyllts. Ringen ritas om på huvudtråden i varje bildruta, och kartans start
+    // (shaders, stil, första bilden) tog hela huvudtråden samma sekund, så ringen hackade. Resten av introt är bara
+    // transform/opacity, som webbläsaren animerar utan huvudtråden. Utan intro, eller om det trycks bort, startar kartan direkt.
+    function afterRing(fn) {
+      var arc = document.querySelector('#splash .sq-arc');
+      var anim = arc && arc.getAnimations ? arc.getAnimations()[0] : null;
+      if (anim && anim.playState !== 'finished') anim.finished.then(function() { fn(); }, function() { fn(); });
+      else fn();
+    }
+    if (mapboxgl) afterRing(function() {
       console.log('[QueueBar] Initierar Mapbox-karta');
       try {
         map = new mapboxgl.Map({
@@ -1551,6 +1567,8 @@ import './style.css';
           pitchWithRotate: false,
           dragRotate: false,
           logoPosition: 'bottom-right',
+          // Högst 2×: på en iPhone (3×) ritade kartan 2,25 gånger fler pixlar per bildruta än vid 2×, med knappt synlig skillnad.
+          pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
           attributionControl: false
         });
         map.touchZoomRotate.disableRotation();
@@ -1581,7 +1599,7 @@ import './style.css';
           var PR = 2, W = 36, H = 36;
           var canvas = document.createElement('canvas');
           canvas.width = W * PR; canvas.height = H * PR;
-          var ctx = canvas.getContext('2d');
+          var ctx = canvas.getContext('2d', { willReadFrequently: true }); // getImageData utan att läsa tillbaka från grafikkortet
           ctx.scale(PR, PR);
           var cx = W / 2, cy = H / 2, r = 15;
           var hollow = /-unknown$/.test(name);
@@ -1657,7 +1675,7 @@ import './style.css';
 
           var canvas = document.createElement('canvas');
           canvas.width = W * PR; canvas.height = TH * PR;
-          var ctx = canvas.getContext('2d');
+          var ctx = canvas.getContext('2d', { willReadFrequently: true });
           ctx.scale(PR, PR);
 
           // Mörk kant skiljer pillen från kartan och från grannpillar
@@ -1700,7 +1718,7 @@ import './style.css';
           var W = pillW + EXTRA * 2, TH = pillH + EXTRA * 2;
           var canvas = document.createElement('canvas');
           canvas.width = W * PR; canvas.height = TH * PR;
-          var ctx = canvas.getContext('2d');
+          var ctx = canvas.getContext('2d', { willReadFrequently: true });
           ctx.scale(PR, PR);
           roundedPath(ctx, 1.5, 1.5, W - 3, TH - 3, (TH - 3) / 2);
           ctx.lineWidth = focus ? 2.5 : 2; ctx.strokeStyle = focus ? '#5B9BFF' : PIN_STATUS_COLORS.long; ctx.stroke();
@@ -1929,21 +1947,16 @@ import './style.css';
             paint: { 'icon-opacity': pillsIn(['*', APPEAR, ['coalesce', ['feature-state', 'breath'], 0]]) }
           }, 'venues-pins');
 
-          // Andning: opacity 0 → 0,7 → 0 på ~2,2 s, bara när något är brådskande. Samma bildruta driver ringen runt
-          // din position (växer och tonar ut på 2,4 s). Bara feature-state och konstanta paint-värden per bildruta.
+          // Andning: opacity 0 → 0,7 → 0 på ~2,2 s, bara när något är brådskande och ringen syns (från PILL_MIN). Varje
+          // ändring ritar om hela kartan, så inget skrivs i onödan. Ringen runt din position står still av samma skäl.
           var _breathStart = performance.now();
           function animateMapPulse() {
             // Bara på kartskärmen: annars ritade Mapbox om 60 gånger i sekunden hela natten bakom Lista och Live.
             if (map && !document.hidden && currentScreen === 'home') {
               var now = performance.now() - _breathStart;
-              if (_urgentIds.length) {
+              if (_urgentIds.length && map.getZoom() >= PILL_MIN) {
                 var t = (now % 2200) / 2200, breath = 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2));
                 _urgentIds.forEach(function(id) { map.setFeatureState({ source: 'venues', id: id }, { breath: breath }); });
-              }
-              if (window._userPos && map.getLayer('me-halo')) {
-                var k = (now % 2400) / 2400;
-                map.setPaintProperty('me-halo', 'circle-radius', 8 + 18 * k);
-                map.setPaintProperty('me-halo', 'circle-opacity', 0.35 * (1 - k));
               }
               stepMapMotion(performance.now());
             }
@@ -2052,7 +2065,7 @@ import './style.css';
         map = null;
         showMapError('Kartan kunde inte startas');
       }
-    } else {
+    }); else {
       showMapError('Mapbox GL JS laddades inte');
     }
 
@@ -2378,7 +2391,9 @@ import './style.css';
     // En bildruta: pillar som tonar in (feature-state "appear") och vågor som växer. Anropas från kartans rAF-slinga.
     function stepMapMotion(now) {
       Object.keys(_appear).forEach(function(id) {
-        var a = _appear[id], k = Math.min(1, Math.max(0, (now - a.start) / a.dur)), from = a.from || 0;
+        var a = _appear[id];
+        if (now < a.start) return; // väntar dold (appear 0 är redan satt); att skriva den igen ritade om kartan under introt
+        var k = Math.min(1, (now - a.start) / a.dur), from = a.from || 0;
         map.setFeatureState({ source: 'venues', id: id }, { appear: from + (1 - from) * (1 - Math.pow(1 - k, 3)) });
         if (k >= 1) delete _appear[id];
       });
@@ -3376,6 +3391,8 @@ import './style.css';
     var _listIntroAt = 0; // när introt spelades — GPS-omritning väntar tills raderna glidit in
 
         function renderExploreVenues() {
+      // Dold lista ritas inte: ~300 rader in i en skärm ingen ser, vid varje ny data. showScreen('explore') ritar den.
+      if (currentScreen !== 'explore') return;
       vcPark(); // ett utfällt kort under en rad får inte försvinna med raden när listan ritas om
       renderExploreSummary();
       var q = (document.getElementById('explore-search') || {}).value || '';
@@ -3441,36 +3458,39 @@ import './style.css';
         return r === undefined ? 4 : r;
       }
       var activeQuery = (document.getElementById('explore-search') || {}).value || '';
-      list = list.slice().sort(function(a, b) {
-        var aReports = allReports.filter(function(r) { return r.venue_id === a.id && isQueueReport(r); });
-        var bReports = allReports.filter(function(r) { return r.venue_id === b.id && isQueueReport(r); });
-        var aLatest = aReports.length > 0 ? Math.max.apply(null, aReports.map(function(r) { return new Date(r.created_at).getTime(); })) : 0;
-        var bLatest = bReports.length > 0 ? Math.max.apply(null, bReports.map(function(r) { return new Date(r.created_at).getTime(); })) : 0;
-        var now45 = Date.now() - 45 * 60 * 1000;
+      // Nycklarna räknas en gång per ställe. Förut gick jämförelsen igenom alla rapporter två gånger per par (~2 400 par).
+      var now45 = Date.now() - 45 * 60 * 1000, latestById = {}, key = {};
+      allReports.forEach(function(r) {
+        if (!isQueueReport(r)) return;
+        var t = new Date(r.created_at).getTime();
+        if (!(latestById[r.venue_id] >= t)) latestById[r.venue_id] = t;
+      });
+      list.forEach(function(v) {
+        var latest = latestById[v.id] || 0, closed = isClosed(v);
         // Ett stängt ställe har ingen färsk data, hur nyligen det än rapporterades — det hamnar sist.
-        var aFresh = aLatest > now45 && !isClosed(a);
-        var bFresh = bLatest > now45 && !isClosed(b);
+        key[v.id] = { latest: latest, closed: closed, fresh: latest > now45 && !closed, rank: queueRank(v),
+          score: activeQuery.trim() ? venueScore(activeQuery, v) : 0 };
+      });
+      list = list.slice().sort(function(a, b) {
+        var ka = key[a.id], kb = key[b.id];
 
         // When searching: relevance score is primary sort key
         if (activeQuery.trim()) {
-          var aScore = venueScore(activeQuery, a);
-          var bScore = venueScore(activeQuery, b);
-          if (bScore !== aScore) return bScore - aScore;
-          if (!aFresh && bFresh) return 1;
-          if (aFresh && !bFresh) return -1;
-          return queueRank(a) - queueRank(b);
+          if (kb.score !== ka.score) return kb.score - ka.score;
+          if (!ka.fresh && kb.fresh) return 1;
+          if (ka.fresh && !kb.fresh) return -1;
+          return ka.rank - kb.rank;
         }
 
-        if (!aFresh && bFresh) return 1;
-        if (aFresh && !bFresh) return -1;
-        if (!aFresh && !bFresh) {
-          var ac = isClosed(a), bc = isClosed(b);
-          if (ac !== bc) return ac ? 1 : -1; // stängda allra sist, efter öppna utan data
+        if (!ka.fresh && kb.fresh) return 1;
+        if (ka.fresh && !kb.fresh) return -1;
+        if (!ka.fresh && !kb.fresh) {
+          if (ka.closed !== kb.closed) return ka.closed ? 1 : -1; // stängda allra sist, efter öppna utan data
           return a.name.localeCompare(b.name, 'sv');
         }
-        var rankDiff = queueRank(a) - queueRank(b);
+        var rankDiff = ka.rank - kb.rank;
         if (rankDiff) return rankDiff;
-        return bLatest - aLatest;
+        return kb.latest - ka.latest;
       });
 
       // “Bäst just nu” — pin best venue at top when filter is 'all'
@@ -3490,9 +3510,11 @@ import './style.css';
       function hasFreshReport(v) { return venueFreshStatus(v.id) !== 'unknown'; }
       var freshList = [], staleList = [];
       list.forEach(function(v) { (hasFreshReport(v) ? freshList : staleList).push(v); });
+      var listIndex = {};
+      list.forEach(function(v, i) { if (!(v.id in listIndex)) listIndex[v.id] = i; }); // som indexOf: första träffen
       function rowsHtml(items) {
         return items.map(function(v) {
-          return renderExploreVenueRow(v, list.indexOf(v), v.id === bestVenueId ? best : null);
+          return renderExploreVenueRow(v, listIndex[v.id], v.id === bestVenueId ? best : null);
         }).join('');
       }
       // Rubrik bara när båda grupperna finns och listan inte är filtrerad eller sökt; annars är en rubrik brus.

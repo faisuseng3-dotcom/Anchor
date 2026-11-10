@@ -122,7 +122,7 @@ check('Hero color map: heroColors[level]', js.includes('heroColors[level]'));
 // "Stabil" visades på varje rad utan att säga något nytt — bara ändring visas nu.
 check('Trend indicator: ↑ Ökar / ↓ Minskar', js.includes('↑ Ökar') && js.includes('↓ Minskar'));
 check('Sorting: Swedish localeCompare for empty venues', js.includes("localeCompare(b.name, 'sv')"));
-check('Sorting: newest-report-first for venues with data', js.includes('bLatest - aLatest'));
+check('Sorting: newest-report-first for venues with data', js.includes('kb.latest - ka.latest'));
 
 // ── Venues array ──────────────────────────────────────────────────────────────
 const testVenueIds = ['spy-bar', 'sturehof', 'soap-bar', 'tjoget', 'pelikan', 'morfar-ginko',

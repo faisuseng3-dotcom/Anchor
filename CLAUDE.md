@@ -375,8 +375,17 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   inga state-beroende lager i en bucket som har feature-state). Hände i hälften av gångerna en kapsel öppnades
 - **Animera aldrig med `setPaintProperty` på ett datadrivet uttryck** (feature-state, `['get', …]`): Mapbox laddar då
   om hela källan i workern. Andningen på `venues-urgent` gjorde det i varje bildruta (~1000 worker-meddelanden/s) och
-  kartan hackade vid zoom och panorering. Animera via `setFeatureState` (`breath`, `appear`), eller med konstanta värden
-  (`me-halo`)
+  kartan hackade vid zoom och panorering. Animera via `setFeatureState` (`breath`, `appear`)
+- **Kartan ska vila när inget rör sig.** Varje ändring (även `setFeatureState`) ritar om hela 3D-kartan. Därför: ringen
+  runt din position (`me-halo`) står still, andningen skrivs bara när ringen syns (zoom ≥ `PILL_MIN`), och pillar som
+  väntar på introt skrivs inte om (`stepMapMotion`). Förut ritade kartan om 60 gånger i sekunden så fort GPS fanns.
+  `pixelRatio` är högst 2 (en iPhone har 3)
+- **Introts ring ritas på huvudtråden** (`stroke-dasharray`); resten av introt är transform/opacity. Kartan skapas därför
+  först när ringen är fylld (`afterRing`), och pill-bilderna ritas med `willReadFrequently` (ingen läsning från
+  grafikkortet). Förut startade kartan mitt i ringen och den hackade i 80–130 ms åt gången
+- **Listan ritas bara när den syns** (`renderExploreVenues` returnerar direkt utanför `explore`; `showScreen` ritar
+  den). Sorteringens nycklar räknas en gång per ställe, och modellens filter kollar `venue_id` före datumet
+  (`estimateWait`, `measureQueueRates`): en omritning vid 1000 rapporter gick från ~150 till ~17 ms
 - Kartans lager uppifrån: pillar (`venues-pins`) och "+N" → tomma ringar/prickar → namn (från zoom 13,8 för pillar, 14
   för ringar, döljs vid krock — aldrig pillen) → du-är-här (`me-dot`/`me-halo`, accentblå) → statusglöd (`venues-glow`,
   under baskartans etiketter, bara färsk data). En klicklyssnare för alla nålar: `features[0]` är den översta.
