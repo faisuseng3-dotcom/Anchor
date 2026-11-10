@@ -637,6 +637,7 @@
     .erow--empty { animation: rowInEmpty 0ms both !important; background: rgba(255,255,255,0.02) !important; }
     .erow--empty.erow--intro { animation: rowInEmpty 550ms calc(var(--row-delay, 0ms)) var(--ease-out) both !important; }
     .erow--empty:hover { background: rgba(255,255,255,0.04) !important; }
+    .erow--empty.is-open { background: var(--surface-raised) !important; } /* samma som utfällda rader med data */
     /* Utan data tonas bara siffran. Texten ("Ingen rapport senaste 45 min", "Brukar vara …") är det enda raden säger —
        tonad hela raden låg den på 2,3:1 i kontrast och gick inte att läsa i mörker. */
     .erow--empty .erow-hero { opacity: 0.55; }
