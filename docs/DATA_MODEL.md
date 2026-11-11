@@ -143,14 +143,32 @@ rapportera.
 | `user_id` | nej | nej |
 | `venue_id` | nej | nej |
 
-Appen **varken skriver eller läser** `favorites` längre. Favoriter finns bara i
+Appen **varken skriver eller läser** `favorites` längre. Favoriter finns i
 `localStorage.qb_favorites` (`src/main.js`, `toggleFavorite`). Det enda anropet som rör tabellen är
 `delete` i `deleteAllUserData()`, som tar bort gamla rader från när appen skrev dit.
 Konsekvens: favoriter följer inte med mellan enheter — det sägs också i integritetstexten.
+Med notiser på finns en kopia i `push_subscriptions` (nedan), som bara servern läser.
 
 **OVERIFIERAT:** tidigare observation i projektet var att tabellen har en RLS-policy med
 `ALL = true`, alltså att vem som helst kan radera vem som helsts favoriter. Kan inte bekräftas
 härifrån och bör kontrolleras.
+
+---
+
+## 3b. `push_subscriptions` — notiser om favoriter
+
+Schemat finns i repot: `supabase/migrations/20261111000000_push_subscriptions.sql`. Uppsättning: `supabase/README.md`.
+
+| Kolumn | Innehåll |
+|---|---|
+| `endpoint` (pk) | Telefonens notisadress hos Apple/Google |
+| `p256dh`, `auth` | Nycklarna som notisen krypteras med |
+| `user_id` | Samma anonyma id som i `reports`; den egna rapporten ger ingen notis |
+| `venue_ids` | Favoriterna, skrivs om vid varje ändrad favorit (`syncPushFavorites`) |
+
+RLS är på utan policyer: anon når tabellen bara via `save_push_subscription` (slå på / uppdatera favoriter),
+`delete_push_subscription` (stäng av) och `delete_push_subscriptions` (`deleteAllUserData`). Edge Function
+`notify-favorites` läser med service role. En rad vars adress svarar 404/410 tas bort när den försöker skicka.
 
 ---
 
@@ -209,6 +227,8 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 | `qb_testdata` | `'1'` = testdata på (Alt + 2) | — |
 | `qb_consent` | `'true'` när informationsrutan bekräftats ("Jag förstår"); inget annat värde sätts | Informationsrutan visas igen |
 | `qb_install_dismissed` | PWA-prompten avvisad | — |
+| `qb_push` | `'1'` = notiser påslagna här | Profilen visar "Av"; prenumerationen finns kvar tills den slås på igen |
+| `qb_push_dismissed` | Rutan "Få notiser" efter en ny favorit stängd med × | — |
 
 ---
 

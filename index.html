@@ -218,6 +218,13 @@
       </div>
 
       <div class="pf-section">
+        <div class="rs-label">Notiser</div>
+        <div class="pf-card" style="padding-top:0;padding-bottom:0">
+          <button class="pf-row" onclick="togglePushNotifications()"><span>Notiser om favoriter<small id="pf-push-sub">Av</small></span></button>
+        </div>
+      </div>
+
+      <div class="pf-section">
         <div class="rs-label">Kontakt och data</div>
         <div class="pf-card" style="padding-top:0;padding-bottom:0">
           <a class="pf-row" href="mailto:support@queuebar.se"><span>Skriv till oss<small>support@queuebar.se</small></span></a>
@@ -309,6 +316,15 @@
     </div>
     <button class="ip-accept" onclick="acceptInstall()">Lägg till</button>
     <button class="ip-close" onclick="dismissInstall()" aria-label="Stäng">×</button>
+  </div>
+  <!-- Efter en ny favorit (maybeShowPushPrompt): samma ruta som installationen, ersätter toasten "Sparad som favorit". -->
+  <div id="push-prompt" class="install-prompt" role="status" style="display:none">
+    <div class="ip-text">
+      <div class="ip-title">Sparad som favorit</div>
+      <div class="ip-sub"></div>
+    </div>
+    <button class="ip-accept" onclick="togglePushNotifications()">Få notiser</button>
+    <button class="ip-close" onclick="dismissPushPrompt()" aria-label="Stäng">×</button>
   </div>
 </body>
 </html>

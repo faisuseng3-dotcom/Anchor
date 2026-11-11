@@ -57,7 +57,7 @@ import './style.css';
         el.classList.toggle('active', el.dataset.screen === name);
       });
       if (name === 'home') setTimeout(function() { if (map) map.resize(); }, 50);
-      if (name === 'profile') loadUserHistory();
+      if (name === 'profile') { loadUserHistory(); renderPushUI(); }
       if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
         selectedRV = null;
         rsStep(1);
@@ -2925,7 +2925,20 @@ import './style.css';
 
     // Fix 4 — loadReports alltid, oavsett karta
     console.log('[QueueBar] Startar initial datainläsning');
-    loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates);
+    // En notis öppnar appen med ?venue=: stället visas när datan har kommit. Parametern tas bort så att en omladdning
+    // inte öppnar det igen.
+    var _venueFromUrl = new URLSearchParams(location.search).get('venue');
+    if (_venueFromUrl) history.replaceState(null, '', location.pathname);
+    loadReports().then(function() { if (_venueFromUrl) openVenueFromNotification(_venueFromUrl); })
+      .then(loadHistoricalPatterns).then(loadHistoricalRates);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(syncPushFavorites)
+        .catch(function(err) { console.warn('[QueueBar] service worker:', err); });
+      // Tryck på en notis när appen redan är öppen (sw.js, notificationclick).
+      navigator.serviceWorker.addEventListener('message', function(e) {
+        if (e.data && e.data.venue) openVenueFromNotification(e.data.venue);
+      });
+    }
     // Historiken gäller samma veckodag ±1 h, så den följer klockan — inte varje ny rapport.
     setInterval(function() { loadHistoricalPatterns(); loadHistoricalRates(); }, 30 * 60 * 1000);
     subscribeToReports();
@@ -2940,7 +2953,7 @@ import './style.css';
     }
 
     // ── Favoriter ────────────────────────────────────────────────────────────
-    // Bara på enheten. Tabellen favorites lästes aldrig tillbaka, så en serverkopia lovade något appen inte gjorde.
+    // På enheten (qb_favorites). Med notiser på får servern en kopia, se "Notiser om favoriter" nedan.
     function toggleFavorite(event, venueId) {
       event.stopPropagation();
       var btn = event.currentTarget;
@@ -2950,8 +2963,131 @@ import './style.css';
       if (idx > -1) favorites.splice(idx, 1);
       else favorites.push(venueId);
       try { localStorage.setItem('qb_favorites', JSON.stringify(favorites)); } catch(e) {}
-      showToast(idx > -1 ? 'Borttagen från favoriter' : 'Sparad som favorit');
+      // En ny favorit erbjuder notiser; rutan säger "Sparad som favorit" själv, så ingen toast ovanpå den.
+      if (idx > -1 || !maybeShowPushPrompt(venueId)) showToast(idx > -1 ? 'Borttagen från favoriter' : 'Sparad som favorit');
+      syncPushFavorites();
       if (typeof renderExploreVenues === 'function') renderExploreVenues();
+    }
+
+    // ── Notiser om favoriter ─────────────────────────────────────────────────
+    // supabase/functions/notify-favorites skickar en notis för varje ny rapport från en favorit (inte uppföljningar,
+    // inte dina egna). Servern har därför favoriterna och telefonens notisadress så länge notiserna är på.
+    var PUSH_PUBLIC_KEY = 'BInJXo6nomTf8wkqJB5yrBZZ7NkDDVGU6oBMRvCs6SwfJpeP0BAVE2ZkAC1QpSJtsIC6poq7emjafSkeAzA178c';
+    var PUSH_ON_KEY = 'qb_push';
+    var _pushPromptTimer = null;
+
+    // 'on' | 'off' | 'denied' | 'install' | 'unsupported'
+    function pushState() {
+      if (!('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window)) {
+        // iPhone tar bara emot notiser när Qbar ligger på hemskärmen; i Safari saknas PushManager helt.
+        return navigator.standalone === false ? 'install' : 'unsupported';
+      }
+      if (Notification.permission === 'denied') return 'denied';
+      return Notification.permission === 'granted' && localStorage.getItem(PUSH_ON_KEY) ? 'on' : 'off';
+    }
+
+    async function savePushSubscription(sub) {
+      var k = sub.toJSON();
+      var res = await supabase.rpc('save_push_subscription', {
+        p_endpoint: k.endpoint, p_p256dh: k.keys.p256dh, p_auth: k.keys.auth, p_user_id: getUserId(), p_venue_ids: favorites
+      });
+      if (res.error) throw res.error;
+    }
+
+    // Vid start och varje ändrad favorit: annars kommer notiser från ett borttaget ställe, eller inga från ett nytt.
+    function syncPushFavorites() {
+      if (pushState() !== 'on' || !supabase || testDataEnabled()) return;
+      navigator.serviceWorker.ready
+        .then(function(reg) { return reg.pushManager.getSubscription(); })
+        .then(function(sub) { if (sub) return savePushSubscription(sub); })
+        .catch(function(err) { console.error('[QueueBar] notisernas favoriter sparades inte:', err); });
+    }
+
+    async function togglePushNotifications() {
+      hidePushPrompt();
+      var st = pushState();
+      if (st === 'on') return disablePushNotifications();
+      if (st === 'install') { showToast('Lägg till Qbar på hemskärmen först: Dela, sedan "Lägg till på hemskärmen".'); return; }
+      if (st === 'unsupported') { showToast('Den här webbläsaren kan inte visa notiser.'); return; }
+      if (testDataEnabled()) { showToast('Testläge: inget skickas. Stäng av med Alt + 2.'); return; }
+      if (!supabase) { showToast('Ingen kontakt med servern. Försök igen.'); return; }
+      try {
+        var perm = await Notification.requestPermission(); // först, medan trycket räknas (krav i Safari)
+        if (perm !== 'granted') {
+          if (perm === 'denied') showToast('Notiser är avstängda för Qbar i telefonens inställningar.');
+          renderPushUI();
+          return;
+        }
+        var reg = await navigator.serviceWorker.ready;
+        var key = Uint8Array.from(atob(PUSH_PUBLIC_KEY.replace(/-/g, '+').replace(/_/g, '/')), function(c) { return c.charCodeAt(0); });
+        var sub = await reg.pushManager.getSubscription() ||
+          await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+        await savePushSubscription(sub);
+        localStorage.setItem(PUSH_ON_KEY, '1');
+        showToast(favorites.length ? 'Notiser på för dina favoriter.' : 'Notiser på. Spara ett ställe med stjärnan.');
+      } catch (err) {
+        console.error('[QueueBar] notiserna gick inte att slå på:', err);
+        showToast('Kunde inte slå på notiser. Försök igen.');
+      }
+      renderPushUI();
+    }
+
+    // Avprenumerationen är det som stoppar notiserna; en rad som blir kvar på servern tas bort vid nästa sändning (410).
+    async function disablePushNotifications() {
+      localStorage.removeItem(PUSH_ON_KEY);
+      try {
+        var sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          if (supabase) await supabase.rpc('delete_push_subscription', { p_endpoint: sub.endpoint });
+        }
+      } catch (err) { console.error('[QueueBar] notiserna stängdes av lokalt, inte på servern:', err); }
+      showToast('Notiser av.');
+      renderPushUI();
+    }
+
+    var PUSH_SUB_TEXT = {
+      on: 'På · varje ny rapport från dina favoriter', off: 'Av', denied: 'Avstängda i telefonens inställningar',
+      install: 'Lägg till Qbar på hemskärmen först', unsupported: 'Den här webbläsaren kan inte visa notiser'
+    };
+    function renderPushUI() {
+      var el = document.getElementById('pf-push-sub'), st = pushState();
+      if (el) el.textContent = st === 'on' && !favorites.length ? 'På · spara ett ställe med stjärnan' : PUSH_SUB_TEXT[st];
+    }
+
+    // Efter en ny favorit, tills notiserna är på eller rutan stängts med ×. false = ingen ruta, visa toasten.
+    function maybeShowPushPrompt(venueId) {
+      var st = pushState(), card = document.getElementById('push-prompt'), v = getVenueById(venueId);
+      if (!card || !v || st === 'on' || st === 'denied' || st === 'unsupported' || testDataEnabled()) return false;
+      try { if (localStorage.getItem('qb_push_dismissed')) return false; } catch(e) {}
+      card.querySelector('.ip-sub').textContent = st === 'install'
+        ? 'Lägg till Qbar på hemskärmen för att få notiser' : 'Få en notis när någon rapporterar kön på ' + v.name;
+      card.querySelector('.ip-accept').hidden = st === 'install';
+      card.style.display = 'flex';
+      clearTimeout(_pushPromptTimer);
+      _pushPromptTimer = setTimeout(hidePushPrompt, 8000);
+      return true;
+    }
+    function hidePushPrompt() {
+      var card = document.getElementById('push-prompt');
+      if (card) card.style.display = 'none';
+    }
+    function dismissPushPrompt() {
+      try { localStorage.setItem('qb_push_dismissed', '1'); } catch(e) {}
+      hidePushPrompt();
+    }
+
+    // En notis öppnar stället i listan, under sin rad: listan finns utan kartan och har alla ställen, även stängda.
+    // Sök, typ och statusfilter nollas, annars kan raden vara bortfiltrerad.
+    function openVenueFromNotification(id) {
+      var v = getVenueById(id);
+      if (!v) return;
+      var q = document.getElementById('explore-search');
+      if (q) q.value = '';
+      if (_venueType !== 'all') setVenueType('all');
+      showScreen('explore');
+      setExploreFilter('all');
+      openVenueCard(v, 'notis');
     }
 
     // ── Consent ──────────────────────────────────────────────────────────────
@@ -2980,6 +3116,9 @@ import './style.css';
         // "På väg" ligger på servern med ditt ID (start_on_my_way) — stoppa det först.
         var stop = await supabase.rpc('stop_on_my_way', { p_user_id: userId });
         if (stop.error) throw stop.error;
+        // Notiserna: favoriterna och telefonens notisadress. PGRST202 = funktionen finns inte (före migreringen), inget att radera.
+        var push = await supabase.rpc('delete_push_subscriptions', { p_user_id: userId });
+        if (push.error && push.error.code !== 'PGRST202') throw push.error;
         var deleted = await Promise.all(tables.map(function(t) { return supabase.from(t).delete().eq('user_id', userId); }));
         var left = await Promise.all(tables.map(function(t) {
           return supabase.from(t).select('user_id', { count: 'exact', head: true }).eq('user_id', userId);
@@ -4110,7 +4249,7 @@ import './style.css';
     }
 
     function showPrivacyPolicy() {
-      alert('Integritetspolicy\n\nQbar sparar ett anonymt ID och dina kö-rapporter (ställe, antal i kö, tid, ev. kommentar).\nNär du trycker "Gå hit" sparas vart du är på väg och när du beräknas vara framme, tills du kommit fram eller avbryter.\nFavoriter och din position stannar på din enhet.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
+      alert('Integritetspolicy\n\nQbar sparar ett anonymt ID och dina kö-rapporter (ställe, antal i kö, tid, ev. kommentar).\nNär du trycker "Gå hit" sparas vart du är på väg och när du beräknas vara framme, tills du kommit fram eller avbryter.\nDin position stannar på din enhet. Favoriterna också, utom när notiser är på: då sparas de och telefonens notisadress tills du stänger av notiserna.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
     }
 
     function confirmDelete() {
@@ -4135,6 +4274,7 @@ Object.assign(window, {
   confirmDelete,
   debouncedFilterExplore,
   dismissInstall,
+  dismissPushPrompt,
   dismissQueueSession,
   filterReportList,
   flyToAreaChip,
@@ -4164,6 +4304,7 @@ Object.assign(window, {
   showPrivacyPolicy,
   showScreen,
   toggleLiveVenue,
+  togglePushNotifications,
   setMapStyle,
   toggleMapStyleMenu,
   toggleVcReports,

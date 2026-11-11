@@ -455,7 +455,13 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
 - "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
-- Favoriter finns bara i `qb_favorites` på enheten. Tabellen `favorites` skrivs inte längre (lästes aldrig tillbaka)
+- Favoriter finns i `qb_favorites` på enheten. Tabellen `favorites` skrivs inte längre (lästes aldrig tillbaka)
+- **Notiser om favoriter** (`togglePushNotifications`, profilen och rutan efter en ny favorit): Edge Function
+  `supabase/functions/notify-favorites` körs av en databas-webhook vid varje ny rapport och skickar till alla med stället
+  i `push_subscriptions.venue_ids`. Uppföljningar och den egna rapporten ger ingen notis; samma ställe ersätter förra
+  notisen (`tag`). Texten byggs i `notify.js` (låst av `tests/notify.test.js` mot `AHEAD_BUCKETS`), aldrig kommentaren.
+  Tryck öppnar stället i Lista (`?venue=`, `openVenueFromNotification`). iPhone kräver hemskärmsappen. Servern
+  sätts upp enligt `supabase/README.md`; nycklarna finns inte i repot (`PUSH_PUBLIC_KEY` i main.js är den publika)
 - Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
   data" lovade något koden aldrig gjorde
 - `forecastWait()` visas bara med ≥3 initial-rapporter från ≥2 personer på 30 min över ≥10 min. Trenden är lutningen
