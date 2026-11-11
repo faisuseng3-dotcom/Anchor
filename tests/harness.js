@@ -43,7 +43,7 @@ const exsumBlock = between('function exsumTimeSince', 'function renderExploreSum
 // "Bäst nu" med sina två hjälpare. computeBestNow läser allReports och window._userPos; båda sätts via
 // setTestReports nedan, så testet styr dem utan DOM.
 const bestNowBlock = [
-  between('function minutesToClose', '// A — vad som hänt'),
+  between('function closingTonight', '// A — vad som hänt'),
   between('function distanceKmTo', '// "650 m" under 950 m'),
   between('function computeBestNow', '// Raderna glider in')
 ].join('\n');
@@ -62,7 +62,7 @@ const exported = [
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
   'getVenueById', '_searchNorm', 'venueScore', 'venueSearch', 'areaHits', 'didYouMean',
-  'exsumText', 'exsumTimeSince', 'computeBestNow', 'setTestReports'
+  'exsumText', 'exsumTimeSince', 'computeBestNow', 'setTestReports', 'closingTonight', 'isClosed'
 ];
 
 const box = {};
@@ -81,7 +81,7 @@ export const {
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
   getVenueById, _searchNorm, venueScore, venueSearch, areaHits, didYouMean,
-  exsumText, exsumTimeSince, computeBestNow, setTestReports
+  exsumText, exsumTimeSince, computeBestNow, setTestReports, closingTonight, isClosed
 } = box;
 
 // ── Testdatabyggare ─────────────────────────────────────────────────────────

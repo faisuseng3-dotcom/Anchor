@@ -95,7 +95,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 150 enhetstester (Vitest)
+npm test                   # 153 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -315,10 +315,12 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   senaste mätningen mot den senaste som är ≥10 min äldre, i olika intervall
 - **"Ingen kö" (`'none'`) betyder att ingen står framför** — aldrig "det går fort". 1–10 personer vid en snabb dörr är
   `short` och "<5 min". Låst fast av `tests/wait.test.js` och `tests/status.test.js`
-- **Stängt** (`isClosed`: från stängningstid till lunch): ingen väntetid (`venueWaitText` ''), status `unknown`, ingen
-  pill, sist i listan med "Stängt", kortet utan knappar, kan inte rapporteras. Stänger stället innan du hinner fram säger
-  kortet det i stället för att visa en prognos. `closing: null` = okänd tid: aldrig "Stängt", ingen stängningsrad
-  (77 OSM-ställen saknar öppettider). Fyll i när en riktig tid är känd, gissa aldrig
+- **Stängt** (`isClosed`: från kvällens stängningstid till lunch, och hela kvällen en dag stället inte öppnar): ingen
+  väntetid (`venueWaitText` ''), status `unknown`, ingen pill, sist i listan med "Stängt", kortet utan knappar, kan inte
+  rapporteras. Stänger stället innan du hinner fram säger kortet det i stället för att visa en prognos. `closing` är en
+  tid för alla dagar, eller sju värden måndag–söndag (140 ställen, ur OSM:s `opening_hours`) där `false` = stängt den
+  kvällen; natten hör till dagen den började (`closingTonight`, lördag 02:00 = fredag). Testläget är en fredag.
+  `null` = okänd tid: aldrig "Stängt", ingen stängningsrad (78 ställen). Fyll i när en riktig tid är känd, gissa aldrig
 - **Stängt för gott** → raden raderas ur `VENUES`. **Stängt för säsong, ombyggnad eller oklart** → id + skäl i
   `HIDDEN_VENUES` (direkt efter `VENUES`); raden tas bort ur arrayen vid start, så stället finns inte i karta, lista, sök
   eller rapport. Öppnar det igen: ta bort raden i `HIDDEN_VENUES`. Testdatan får inte använda ett dolt ställe (`check.js`)
@@ -457,8 +459,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned. Stängning räknas
   mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
-- "På väg"-antal ska komma från RPC `on_my_way_counts()` (≥3, serverside), men RPC:erna och tabellen finns **inte** i
-  produktionen (404); "N på väg" visas aldrig. Klienten döljer också <3
+- "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside; `supabase/migrations/20261111040000_on_my_way.sql`,
+  saknades i produktionen före 2026-11-11). Klienten döljer också <3
 - Favoriter finns i `qb_favorites` på enheten. Tabellerna `favorites`, `user_profiles` och `report_votes` är tömda och
   stängda (de var öppna för alla)
 - **Notiser om favoriter** (`togglePushNotifications`, profilen och rutan efter en ny favorit): Edge Function

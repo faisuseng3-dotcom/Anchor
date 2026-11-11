@@ -3,8 +3,8 @@
 // i dag först av en användare som står på fel gata.
 
 import { readFileSync } from 'node:fs';
-import { describe, it, expect } from 'vitest';
-import { VENUES, HIDDEN_VENUES, PACE_RATE, getVenueById } from './harness.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { VENUES, HIDDEN_VENUES, PACE_RATE, getVenueById, closingTonight, isClosed } from './harness.js';
 
 const FIELDS = ['id', 'name', 'address', 'area', 'type', 'lat', 'lng', 'closing', 'pace'];
 
@@ -63,9 +63,38 @@ describe('VENUES — fältvärden', () => {
     }
   });
 
-  it('closing är HH:MM, eller null när stängningstiden är okänd', () => {
+  it('closing är HH:MM eller null, eller sju sådana (måndag–söndag) där false är stängt hela kvällen', () => {
     // null: OSM saknar öppettider. Hellre ingen "Stängt" än en gissad som visar ett öppet ställe som stängt.
-    for (const v of VENUES) if (v.closing !== null) expect(v.closing, v.id).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+    const ok = (c) => c === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(c);
+    for (const v of VENUES) {
+      if (!Array.isArray(v.closing)) { expect(ok(v.closing), v.id).toBe(true); continue; }
+      expect(v.closing, v.id).toHaveLength(7);
+      for (const c of v.closing) expect(c === false || ok(c), `${v.id}: ${c}`).toBe(true);
+      expect(new Set(v.closing).size, `${v.id}: samma alla dagar ska skrivas som en tid`).toBeGreaterThan(1);
+    }
+  });
+
+  // closing per veckodag: en fast tid räknas mot den riktiga klockan, så den måste ställas.
+  afterEach(() => vi.useRealTimers());
+  const club = { closing: [false, false, '05:00', '05:00', '05:00', '05:00', false] }; // onsdag–lördag
+  const at = (iso) => vi.useFakeTimers({ now: new Date(iso) });
+
+  it('natten hör till dagen den började: lördag 02:00 är fredagens natt', () => {
+    at('2026-10-17T02:00:00+02:00'); // lördag
+    expect(closingTonight(club)).toBe('05:00');
+    expect(isClosed(club)).toBe(false);
+  });
+
+  it('en kväll stället inte öppnar är det stängt hela kvällen, även efter midnatt', () => {
+    at('2026-10-18T23:00:00+02:00'); // söndag
+    expect(isClosed(club)).toBe(true);
+    at('2026-10-19T02:00:00+02:00'); // måndag natt = söndagens natt
+    expect(isClosed(club)).toBe(true);
+  });
+
+  it('en okänd dag är aldrig stängd', () => {
+    at('2026-10-16T23:00:00+02:00'); // fredag
+    expect(isClosed({ closing: [null, null, null, null, null, '01:00', null] })).toBe(false);
   });
 
   it('koordinaterna ligger i Stockholms innerstad', () => {

@@ -28,21 +28,25 @@ deploy**, inte en databasuppdatering.
 | `area` | string | `'Östermalm'` | Visas, sökbart (poäng 30–40), gruppering. |
 | `type` | `'bar'` \| `'klubb'` | `'klubb'` | Filter i Utforska, väljer kartikon (glas/not). |
 | `lat`, `lng` | number | `59.3360, 18.0730` | Kartnål, avstånd och gångtid (`distanceKmTo`), "Bäst nu". |
-| `closing` | string `HH:MM` \| `null` | `'05:00'` | `minutesToClose()` / `isClosed()` → "Stängt", "Stänger 01:00", "Bäst nu", "hinner du". `null` = okänd: aldrig "Stängt", ingen stängningsrad. |
+| `closing` | `HH:MM` \| `null`, eller sju sådana måndag–söndag där `false` = stängt den kvällen | `'05:00'`, `[false, false, '05:00', '05:00', '05:00', '05:00', false]` | `closingTonight()` → `minutesToClose()` / `isClosed()` → "Stängt", "Stänger 01:00", "Bäst nu", "hinner du". Natten hör till dagen den började. `null` = okänd: aldrig "Stängt", ingen stängningsrad. |
 | `pace` | `'slow'` \| `'normal'` \| `'fast'` | `'slow'` | **Startgissning för dörrtakt** innan mätningar finns. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md). |
 
 Alla 310 objekt har samtliga nio fält (test i `tests/venues.test.js`). 16 av dem är dolda, se nedan.
 
 ### Var ställena kommer från
 
-- **De 28 ursprungliga** (id som `spy-bar`, `kristall`) är handskrivna. Deras `pace` och `closing` är bedömningar.
+- **De 28 ursprungliga** (id som `spy-bar`, `kristall`) är handskrivna. Deras `pace` är bedömningar; `closing` kommer ur
+  OSM där stället finns där (Spy Bar, Sturecompagniet, Patricia m.fl.), annars är den också en bedömning.
 - **280 från OpenStreetMap** (`amenity=bar|pub|nightclub` inom bboxen i `scripts/fetch-osm-venues.mjs`,
   körd 2026-11-03), utom de som redan fanns under samma namn (även "The Soap Bar" = Soap Bar). © OpenStreetMap-bidragsgivare, ODbL.
   - `type`: `nightclub` → `'klubb'`, `bar`/`pub` → `'bar'`. `pace`: `'normal'` för klubb, `'fast'` för bar.
   - `address`: OSM:s egna `addr:*`-taggar, annars närmaste OSM-adress inom 40 m, annars gatan.
   - `area`: stadsdel från Nominatim.
-  - `closing`: senaste stängning fredag/lördag ur OSM:s `opening_hours`. Saknas den, eller går den inte att tolka
-    ("17:00+"), är den `null` (77 ställen). Ingen gissning: en gissad tid visade öppna ställen som stängda.
+  - `closing`: stängning per kväll ur OSM:s `opening_hours` (2026-11-11, ur `data/venues_candidates.json`). ";" skriver
+    över, "," lägger till, en dag som inte nämns är stängd, utom mellan två öppna dagar (troligen utelämnad, då `null`).
+    Samma tid alla dagar skrivs som en tid. Saknas den, eller går den inte att tolka ("17:00+", veckonummer), är den
+    `null` (78 ställen). Ingen gissning: en gissad tid visade öppna ställen som stängda. Jolo fick fredag–lördag `null`
+    för hand (saknas i OSM).
   - Kedjor med samma namn (The Bishops Arms, O'Learys) får gatan efter namnet: "The Bishops Arms, Vasagatan".
 
 ### Stängda ställen
@@ -175,9 +179,9 @@ Appen rör inte tabellerna. Poängen räknas i klienten i `updateProfileStats()`
 
 ## 5. `on_my_way`
 
-**Finns inte i produktionen** (kontrollerat 2026-11-11: `rpc/on_my_way_counts` svarar 404, ingen tabell). Klienten
-anropar `start_on_my_way`, `stop_on_my_way` och `on_my_way_counts`; felen loggas bara, så "N på väg" visas aldrig.
-SQL:en finns inte i repot.
+Tabell och funktioner: `supabase/migrations/20261111040000_on_my_way.sql` (fanns inte i produktionen före 2026-11-11, så
+"N på väg" hade aldrig visats). En rad per `user_id`, giltig till beräknad ankomst + 15 min (gångtiden högst 60 min).
+`delete_my_data` raderar den också.
 
 ---
 

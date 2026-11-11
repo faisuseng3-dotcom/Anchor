@@ -12,6 +12,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | Gamla öppna tabeller (`favorites`, `user_profiles`, `report_votes`) tömda och stängda | `migrations/20261111010000_lock_legacy_tables.sql` | `db query --remote=awwmfsjsrjktekmbgadx --yes -f`, körd 2026-11-11 |
 | `reports.reporter`, `reports_guard` som security definer som också sätter `expires_at`, `delete_my_data`, testrader bort | `migrations/20261111020000_reports_owner.sql` | samma, körd 2026-11-11 |
 | `user_id` oläsbart för anon, gamla id bytta, `delete_push_subscriptions` borttagen | `migrations/20261111030000_hide_user_id.sql` | samma, körd 2026-11-11 efter att klienten med `REPORT_COLUMNS` driftsatts (den gamla läste `select('*')`) |
+| Tabell `on_my_way` + `start_on_my_way`, `stop_on_my_way`, `on_my_way_counts`; `delete_my_data` tar även "på väg" | `migrations/20261111040000_on_my_way.sql` | samma, körd 2026-11-11 |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.
