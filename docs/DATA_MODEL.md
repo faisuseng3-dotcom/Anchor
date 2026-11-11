@@ -2,18 +2,12 @@
 
 Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
-> ## ⚠️ Viktig förutsättning för hela dokumentet
+> ## Var schemat finns
 >
-> **Repot innehåller ingen schemadefinition.** Det finns ingen SQL-fil, inga migrationer och ingen
-> typdefinition. Tabellerna, kolumntyperna, RLS-policyerna, triggrarna och RPC-funktionerna finns
-> **enbart** i Supabase-projektets webbgränssnitt.
->
-> Allt nedan är **härlett ur anropen i `src/main.js`** — alltså vilka kolumner appen skriver och
-> läser. Det säger inget om vilka kolumner som faktiskt finns, vilka typer de har, vilka
-> begränsningar som gäller eller hur RLS är konfigurerat.
->
-> Rader markerade **OVERIFIERAT** kan inte bekräftas utan åtkomst till Supabase-projektet.
-> Att göra schemat versionshanterat är rekommendation F-01 i granskningen.
+> Policyer, funktioner, triggrar och begränsningar lästes ur produktionen 2026-11-11
+> (`npx supabase db query --remote=awwmfsjsrjktekmbgadx --read-only`). Ändringar sedan dess ligger i
+> `supabase/migrations/`. Tabellerna `reports`, `favorites`, `user_profiles` och `report_votes` skapades i webbgränssnittet
+> och har ingen `create table` i repot; avsnitten nedan beskriver dem som de såg ut då.
 
 Inga nycklar, lösenord eller produktionsdata återges i detta dokument. Supabase-URL och den publika
 anon-nyckeln ligger i klartext i `src/main.js`; se säkerhetsavsnittet längst ned.
@@ -80,16 +74,21 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 | Kolumn | Skrivs av klienten | Läses | Innehåll |
 |---|---|---|---|
 | `id` | nej | nej | **OVERIFIERAT** — antas primärnyckel satt av databasen |
-| `created_at` | **nej** | ja, överallt | Sätts av databasens default. All färskhetslogik bygger på den. |
+| `created_at` | **nej** | ja, överallt | Sätts av triggern `reports_guard` (`now()`), oavsett vad klienten skickar. All färskhetslogik bygger på den. |
 | `venue_id` | **ja** | ja | Matchar `VENUES[].id`. Hamnar i `onclick` — se XSS-noten nedan. |
 | `venue_name` | **ja** | ja (reserv) | Denormaliserat namn. Escapas vid rendering. |
-| `user_id` | **ja** | ja | **Klientgenererad sträng** från `localStorage.qb_user_id`. Se säkerhet. |
+| `user_id` | **ja** | **nej** | Slumpat id från `localStorage.qb_user_id` (`getUserId`, 128 bitar). **Hemligt:** anon får inte läsa kolumnen, och id:t är nyckeln till `delete_my_data`. |
+| `reporter` | nej | ja | `sha256(user_id)`, satt av `reports_guard`. Prognosens "≥2 personer", spärren och historiken. Klienten sparar sin egen från svaret på första rapporten (`qb_reporter`). |
 | `queue_status` | **ja** | ja | `'none'`\|`'short'`\|`'medium'`\|`'long'`. Beräknas i klienten med `waitToStatus()`. |
 | `people_ahead` | **ja** | ja | Heltal: knappens **mittvärde** (0, 5, 17, 37 eller 60), inte ett exakt antal. |
 | `report_type` | **ja** | ja | `'initial'` \| `'followup'` \| `'entered'`. Saknas på äldre rader → behandlas som `'initial'`. |
 | `queue_session` | **ja** | ja | `'qs-<base36>-<slump>'`. Binder ihop en persons mätpunkter i samma kö. |
-| `expires_at` | **ja** | ja (filter) | `created_at + 45 min`, satt av klienten. `loadReports` filtrerar på den. |
-| `comment` | ja, om ifylld | ja | Max 80 tecken (klientsidan). **Escapas** vid rendering. |
+| `expires_at` | ja, men skrivs över | ja (filter) | `created_at + 45 min`, satt av `reports_guard`. `loadReports` filtrerar på den. |
+| `comment` | ja, om ifylld | ja | Max 80 tecken (CHECK i databasen). **Escapas** vid rendering. |
+
+Begränsningar i databasen: `people_ahead` 0–200, `queue_status` och `report_type` bara de kända värdena, `comment` ≤ 80.
+`reports_guard` (BEFORE INSERT, security definer) spärrar en ny `initial` inom 20 min från samma `user_id`
+(`rate_limited`) och kräver att uppföljningar hör till en egen, öppen session (`session_*`, `too_soon` under 3 min).
 
 ### Så här används `people_ahead`
 
@@ -143,15 +142,10 @@ rapportera.
 | `user_id` | nej | nej |
 | `venue_id` | nej | nej |
 
-Appen **varken skriver eller läser** `favorites` längre. Favoriter finns i
-`localStorage.qb_favorites` (`src/main.js`, `toggleFavorite`). Det enda anropet som rör tabellen är
-`delete` i `deleteAllUserData()`, som tar bort gamla rader från när appen skrev dit.
-Konsekvens: favoriter följer inte med mellan enheter — det sägs också i integritetstexten.
-Med notiser på finns en kopia i `push_subscriptions` (nedan), som bara servern läser.
-
-**OVERIFIERAT:** tidigare observation i projektet var att tabellen har en RLS-policy med
-`ALL = true`, alltså att vem som helst kan radera vem som helsts favoriter. Kan inte bekräftas
-härifrån och bör kontrolleras.
+**Tömd och stängd 2026-11-11** (`supabase/migrations/20261111010000_lock_legacy_tables.sql`). Policyn var
+`ALL using (true)`: vem som helst kunde läsa, ändra och radera allas favoriter. Nu finns ingen policy, så RLS nekar
+allt. Favoriter finns i `localStorage.qb_favorites` och följer inte med mellan enheter. Med notiser på finns en kopia i
+`push_subscriptions` (nedan), som bara servern läser.
 
 ---
 
@@ -167,44 +161,23 @@ Schemat finns i repot: `supabase/migrations/20261111000000_push_subscriptions.sq
 | `venue_ids` | Favoriterna, skrivs om vid varje ändrad favorit (`syncPushFavorites`) |
 
 RLS är på utan policyer: anon når tabellen bara via `save_push_subscription` (slå på / uppdatera favoriter),
-`delete_push_subscription` (stäng av) och `delete_push_subscriptions` (`deleteAllUserData`). Edge Function
+`delete_push_subscription(p_endpoint)` (stäng av) och `delete_my_data` (Radera min data). Edge Function
 `notify-favorites` läser med service role. En rad vars adress svarar 404/410 tas bort när den försöker skicka.
 
 ---
 
 ## 4. `user_profiles`
 
-Appen **rör den bara i `deleteAllUserData()`** (`src/main.js`): `delete().eq('user_id', userId)` och
-en räkning av det som finns kvar efteråt. Den läses och skrivs aldrig i övrigt.
-
-Poäng, nivå, streak och märken beräknas helt i klienten i `updateProfileStats()`
-(`src/main.js`) ur antalet egna rapporter:
-
-```
-poäng = (antal initial-rapporter × 10) + (antal entered-rapporter × 5)
-```
-
-Det betyder att tabellen är **funktionellt oanvänd**. RPC-anropet `increment_points` är borttaget
-(avsnitt 6). Se F-04 i granskningen.
+**Tömd och stängd 2026-11-11**, som `favorites` och `report_votes` (samma migrering; alla tre hade `ALL using (true)`).
+Appen rör inte tabellerna. Poängen räknas i klienten i `updateProfileStats()` ur de egna rapporterna.
 
 ---
 
 ## 5. `on_my_way`
 
-Den enda tabell som hanteras korrekt ur säkerhetsperspektiv. Appen når den **aldrig direkt** — bara
-genom tre security-definer-funktioner:
-
-| RPC | Parametrar | Används av |
-|---|---|---|
-| `start_on_my_way` | `p_user_id`, `p_venue_id`, `p_minutes` | `goOnMyWay()` |
-| `stop_on_my_way` | `p_user_id` | `cancelOnMyWay()`, `deleteAllUserData()` |
-| `on_my_way_counts` | — | `loadOnMyWayCounts()` |
-
-`on_my_way_counts()` returnerar enligt klientkoden bara ställen med minst 3 aktiva, och klienten
-döljer dessutom allt under 3 (`onMyWayCount`). Dubbel spärr mot att avslöja att en enskild
-person är på väg någonstans. **Det här är mönstret som bör användas för alla tabeller.**
-
-**OVERIFIERAT:** att tabellen har RLS utan policyer, så att bara RPC-funktionerna kommer åt den.
+**Finns inte i produktionen** (kontrollerat 2026-11-11: `rpc/on_my_way_counts` svarar 404, ingen tabell). Klienten
+anropar `start_on_my_way`, `stop_on_my_way` och `on_my_way_counts`; felen loggas bara, så "N på väg" visas aldrig.
+SQL:en finns inte i repot.
 
 ---
 
@@ -234,42 +207,26 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 
 ## 8. Säkerhet och behörigheter
 
-### Verifierat ur koden
+### Verifierat i produktionen 2026-11-11
 
-1. **`user_id` sätts av klienten.** `getUserId()` läser eller skapar en sträng i
-   `localStorage`. Den skickas med i varje `insert`. Servern kan därför inte skilja två användare
-   åt, och ingen klient kan bevisa vem den är. **Detta är grundorsaken till punkterna 2–4.**
+1. **`user_id` sätts av klienten** och ska vara hemligt: anon får läsa alla kolumner i `reports` utom `user_id`
+   (`supabase/migrations/20261111030000_hide_user_id.sql`). De gamla "user-…"-id:na, som var läsbara, byts på
+   servern mot nya som ingen känner till; klienten byter själv ut ett "user-…"-id (`getUserId`).
+   **Den migreringen körs först när klienten som läser `reporter` är driftsatt** — den gamla läser `select('*')` och
+   slutar fungera. Till dess är `user_id` läsbart och `delete_my_data` lika öppen som `delete_push_subscriptions`.
+2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`, per `user_id`). Den som rensar
+   `localStorage` får ett nytt id och är fri igen; det finns inget konto att spärra.
+3. **`expires_at` och `created_at` sätts av servern.**
+4. **`queue_status` beräknas i klienten** och skickas med. Den kan sättas till vilket känt värde som helst
+   oberoende av `people_ahead`.
+5. **Radera min data** är ett anrop: `delete_my_data(p_user_id)` (security definer) raderar dina rader i `reports` och
+   `push_subscriptions`. Bara vid svar utan fel rensas `localStorage`. Låst fast av "5. Radera min data" i
+   `e2e/app.spec.js`. Förut stoppade `stop_on_my_way` (som inte finns) och den saknade delete-policyn varje radering.
 
-2. **Spärren mot dubbelrapportering är enbart klientsidan.** `submitReport` letar efter
-   egna rapporter under 20 minuter i `allReports` — alltså i de **1000 senaste** inlästa raderna.
-   Finns ens den egna rapporten inte där, släpper spärren igenom. Och den som rensar
-   `localStorage` får ett nytt `user_id` och är fri igen.
-   Felsträngarna `rate_limited` och `too_soon` i `reportErrorText` antyder att en
-   serverspärr finns. **OVERIFIERAT.**
-
-3. **`expires_at` sätts av klienten**. En manipulerad klient kan sätta den långt fram i
-   tiden och få en rapport att överleva i Utforska, på kartan och i Live-flödet i princip för alltid.
-
-4. **`queue_status` beräknas i klienten** och skickas med. Den kan sättas till vilket
-   värde som helst oberoende av `people_ahead`.
-
-5. **`select('*')` returnerar `user_id` till alla.** Varje besökare kan läsa samtliga `user_id`
-   tillsammans med `venue_id` och `created_at` — alltså rekonstruera var en enskild person varit
-   under en kväll, i vilken ordning. Fältet renderas aldrig i gränssnittet, men det ligger i svaret.
-
-6. ~~**Radering kan misslyckas tyst.**~~ Åtgärdat. `deleteAllUserData()` stoppar först "På väg"
-   (`stop_on_my_way`), raderar sedan i alla tre tabeller och räknar raderna kvar (`count: 'exact',
-   head: true`) — en delete som RLS nekar ger inget fel, bara noll rader. En tabell som inte finns
-   (`PGRST205` / `42P01`) räknas som tom. Bara om allt är tomt rensas `localStorage` (och
-   `qb_user_id`); annars en toast och id:t finns kvar så att användaren kan försöka igen.
-   Låst fast av "5. Radera min data" i `e2e/app.spec.js`. Integritetstexten och samtyckesrutan
-   nämner att "Gå hit" sparar vart du är på väg.
-
-7. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
+6. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
    Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och
-   anon-nyckeln skyddas av RLS. Det är **korrekt** så länge RLS verkligen är satt, vilket är
-   det som inte kan verifieras. Ingen `.env` finns och ingen `import.meta.env` läses, trots att
-   Vite stöder det.
+   anon-nyckeln skyddas av RLS (punkt 1–5 och migreringarna i `supabase/migrations/`). Ingen `.env` finns och ingen
+   `import.meta.env` läses, trots att Vite stöder det.
 
 ### XSS
 
@@ -280,15 +237,9 @@ Stängd för databastext, men beroendet är indirekt och värt att skydda:
 | `comment` | `escapeHtml()`  |
 | `venue_name` | `escapeHtml()` |
 | `venue_id` | **Inget escapande.** Säkert bara därför att `loadReports` filtrerar bort okända venue_id, så värdet alltid är ett av de kända i `VENUES` (bara `[a-z0-9-]`, låst av test). Tas filtret bort öppnas en injektionsväg via `onclick`-attributet. |
-| `user_id` | Renderas aldrig |
+| `user_id` | Renderas aldrig, och kan inte läsas |
 
 ### Vad som inte kunnat verifieras
 
-- Vilka RLS-policyer som faktiskt gäller för `reports`, `favorites`, `user_profiles`, `on_my_way`
-- Om det finns serverside-triggrar som validerar `people_ahead`, `queue_status`, `expires_at`
-- Om det finns en serverspärr mot dubbelrapportering
-- Om `increment_points` finns (appen anropar den inte längre)
-- Kolumntyper, NOT NULL, CHECK-begränsningar, index och främmande nycklar
-
-Ett försök att hämta PostgREST:s OpenAPI-schema (som hade gett kolumner och typer utan att röra en
-enda datarad) avvisades av utvecklingsmiljöns nätverkspolicy.
+- `create table` för `reports`, `favorites`, `user_profiles` och `report_votes` (finns bara i produktionen)
+- Index

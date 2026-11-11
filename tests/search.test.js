@@ -153,6 +153,11 @@ describe('venueSearch — svarar inte säkert på nonsens', () => {
   it('utan svenska tecken vikas de bort: "sodra bar" hittar Södra Bar', () => {
     expect(names('sodra bar')[0]).toBe('sodra-bar');
   });
+
+  it('med å/ä/ö i sökningen vikas andra accenter ändå: "ölkafe" hittar Katarina Ölkafé', () => {
+    expect(names('ölkafe')).toContain('katarina-olkafe');
+    expect(names('ölkafé')).toEqual(names('ölkafe'));
+  });
 });
 
 describe('venueSearch — vanliga sökningar som förut gav noll', () => {

@@ -121,7 +121,7 @@ import './style.css';
     var userHistory = [];
 
     const VENUES = [
-      { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.3349, lng: 18.0735, closing: '03:00', pace: 'fast' },
+      { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.333343, lng: 18.076189, closing: '03:00', pace: 'fast' },
       { id: 'akkurat', name: 'Akkurat Bar & Restaurang', address: 'Hornsgatan 18', area: 'Slussen', type: 'bar', lat: 59.319809, lng: 18.068854, closing: '01:00', pace: 'fast' },
       { id: 'tjoget', name: 'Tjoget', address: 'Hornsbruksgatan 24', area: 'Hornstull', type: 'bar', lat: 59.3157, lng: 18.0348, closing: '01:00', pace: 'fast' },
       { id: 'sturehof', name: 'Sturehof', address: 'Stureplan 2', area: 'Östermalm', type: 'bar', lat: 59.3361, lng: 18.0733, closing: '02:00', pace: 'fast' },
@@ -131,7 +131,7 @@ import './style.css';
       { id: 'fasching', name: 'Fasching', address: 'Kungsgatan 63', area: 'Norrmalm', type: 'bar', lat: 59.333399, lng: 18.055761, closing: '03:00', pace: 'fast' },
       { id: 'berns', name: 'Berns', address: 'Berzelii Park', area: 'Norrmalm', type: 'bar', lat: 59.3322, lng: 18.0739, closing: '03:00', pace: 'slow' },
       { id: 'lounge-bar', name: 'The Lounge Bar', address: 'Sveavägen 45', area: 'Norrmalm', type: 'bar', lat: 59.339235, lng: 18.059438, closing: '01:00', pace: 'fast' },
-      { id: 'niva22', name: 'Nivå 22', address: 'Fridhemsgatan 17', area: 'Kungsholmen', type: 'bar', lat: 59.3420, lng: 18.0490, closing: '01:00', pace: 'fast' },
+      { id: 'niva22', name: 'Nivå 22', address: 'Fridhemsgatan 17', area: 'Kungsholmen', type: 'bar', lat: 59.332417, lng: 18.028535, closing: '01:00', pace: 'fast' },
       { id: 'cafe-opera', name: 'Café Opera', address: 'Karl XII:s torg 6', area: 'Kungsträdgården', type: 'klubb', lat: 59.3307, lng: 18.0715, closing: '05:00', pace: 'slow' },
       { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3088, lng: 18.0812, closing: '05:00', pace: 'fast' },
       { id: 'under-bron', name: 'Under Bron', address: 'Skansbron 4', area: 'Södermalm', type: 'klubb', lat: 59.3082, lng: 18.0798, closing: '05:00', pace: 'fast' },
@@ -142,14 +142,14 @@ import './style.css';
       { id: 'end-nightclub', name: 'END Nightclub', address: 'Jakobsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.3320, lng: 18.0640, closing: '05:00', pace: 'normal' },
       { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.337163, lng: 18.067552, closing: '03:00', pace: 'normal' },
       { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00', pace: 'normal' },
-      { id: 'patricia', name: 'Patricia', address: 'Stadsgårdskajen 152', area: 'Södermalm', type: 'klubb', lat: 59.3190, lng: 18.0650, closing: '05:00', pace: 'normal' },
+      { id: 'patricia', name: 'Patricia', address: 'Söder Mälarstrand', area: 'Södermalm', type: 'klubb', lat: 59.321397, lng: 18.052765, closing: '05:00', pace: 'normal' },
       { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Hornstull', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00', pace: 'normal' },
       { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00', pace: 'fast' },
       { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.330711, lng: 18.067169, closing: '02:00', pace: 'fast' },
       { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00', pace: 'slow' },
       { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: '05:00', pace: 'normal' },
       { id: '20hundra5', name: '20hundra5', address: 'Sankt Eriksgatan 104', area: 'Vasastan', type: 'bar', lat: 59.344145, lng: 18.039707, closing: '00:00', pace: 'fast' },
-      { id: '360', name: '360°', address: 'Tegelbacken 6', area: 'Norrmalm', type: 'bar', lat: 59.32881, lng: 18.061346, closing: '14:30', pace: 'fast' },
+      { id: '360', name: '360°', address: 'Tegelbacken 6', area: 'Norrmalm', type: 'bar', lat: 59.32881, lng: 18.061346, closing: null, pace: 'fast' },
       { id: 'afterglow', name: 'Afterglow', address: 'Erstagatan 17', area: 'Södermalm', type: 'bar', lat: 59.314304, lng: 18.090381, closing: null, pace: 'fast' },
       { id: 'alphabar', name: 'Alphabar', address: 'Instrumentvägen 4', area: 'Hägersten', type: 'bar', lat: 59.305894, lng: 17.986228, closing: '22:00', pace: 'fast' },
       { id: 'american-bar', name: 'American Bar', address: 'Arenatorget', area: 'Johanneshov', type: 'bar', lat: 59.293237, lng: 18.082146, closing: null, pace: 'fast' },
@@ -596,7 +596,7 @@ import './style.css';
       });
       if (recent.length < 3) return null;
       var people = {};
-      recent.forEach(function(r) { people[r.user_id] = true; });
+      recent.forEach(function(r) { people[r.reporter] = true; });
       if (Object.keys(people).length < 2) return null;
       var ts = recent.map(function(r) { return (new Date(r.created_at).getTime() - now) / 60000; });
       var ys = recent.map(function(r) { return r.people_ahead; });
@@ -1344,7 +1344,7 @@ import './style.css';
         return '<div class="msearch-row" onmousedown="selectMapSearchArea(' + i + ')">' +
           '<div class="msearch-dot msearch-dot--area"></div>' +
           '<div class="msearch-name">' + escapeHtml(a.area) + '</div>' +
-          '<div class="msearch-meta">Område · ' + a.count + ' ställen</div>' +
+          '<div class="msearch-meta">Område · ' + a.count + (a.count === 1 ? ' ställe' : ' ställen') + '</div>' +
           '</div>';
       }).join('') + hits.map(function(v) {
         var status = computeStatus(v.id, allReports);
@@ -2076,11 +2076,15 @@ import './style.css';
     });
 
     // ── Supabase-funktioner ──────────────────────────────────────────────────
+    // Id:t är nyckeln till din data (delete_my_data) och får aldrig läsas av andra: servern visar bara reporter,
+    // sha256(id). De gamla "user-…"-id:na var läsbara för alla och gissningsbara; de byts ut, och servern har kopplat
+    // bort dem från sina rapporter (supabase/migrations/20261111030000_hide_user_id.sql).
     function getUserId() {
       var id = localStorage.getItem('qb_user_id');
-      if (!id) {
-        id = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      if (!id || id.indexOf('user-') === 0) {
+        id = 'u-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), function(b) { return (b + 256).toString(16).slice(1); }).join('');
         localStorage.setItem('qb_user_id', id);
+        localStorage.removeItem('qb_reporter');
       }
       return id;
     }
@@ -2126,6 +2130,21 @@ import './style.css';
     // Varje läsning får ett löpnummer. Bara den senast startade får skriva — annars kunde en långsam pollning som
     // svarade sist skriva över ett nyare svar, och användarens nyss skickade rapport försvann från skärmen.
     var _loadSeq = 0;
+    // 15 s tidsgräns på varje anrop: på dåligt nät hänger det annars, och en rapport låser _reportSending för gott.
+    function timed(query) {
+      return typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? query.abortSignal(AbortSignal.timeout(15000)) : query;
+    }
+    // De kolumner andra får läsa. user_id får inte läsas (det är nyckeln till din data); reporter är sha256 av det.
+    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, comment, created_at, expires_at, reporter';
+    // Svaret ger reporter, som känner igen dina egna rapporter (spärren, historiken). Ett avbrutet svar kan ändå ha
+    // sparats: läs om, så att spärren mot dubbletter ser det innan nästa tryck.
+    async function insertReport(row) {
+      var result;
+      try { result = await timed(supabase.from('reports').insert(row).select('reporter')); } catch (e) { result = { error: e }; }
+      if (result.error) { loadReports(); throw result.error; }
+      var saved = result.data && result.data[0];
+      if (saved && saved.reporter) localStorage.setItem('qb_reporter', saved.reporter);
+    }
     async function loadReports() {
       if (!supabase) {
         console.warn('[QueueBar] loadReports: supabase är null');
@@ -2139,11 +2158,9 @@ import './style.css';
       var now = new Date().toISOString();
       try {
         // Alla icke-utgångna rapporter (≤45 min). Ett lägre tak tappade kö-sessionernas första mätpunkt en full kväll
-        // och tystade takten (B-05). 1000 är PostgREST:s standardtak för max-rows. 15 s tidsgräns: på dåligt nät efter
+        // och tystade takten (B-05). 1000 är PostgREST:s standardtak för max-rows. Tidsgränsen: på dåligt nät efter
         // att telefonen väckts hänger annars läsningen, och appen säger varken "ok" eller "ingen kontakt".
-        var query = supabase.from('reports').select('*', { count: 'exact' }).gte('expires_at', now).order('created_at', { ascending: false }).limit(1000);
-        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) query = query.abortSignal(AbortSignal.timeout(15000));
-        var result = await query;
+        var result = await timed(supabase.from('reports').select(REPORT_COLUMNS, { count: 'exact' }).gte('expires_at', now).order('created_at', { ascending: false }).limit(1000));
         if (seq !== _loadSeq) return;
         if (result.data && result.count > result.data.length) {
           console.warn('[QueueBar] loadReports: ' + result.count + ' aktiva rapporter men bara ' + result.data.length + ' lästa — äldsta saknas');
@@ -2483,7 +2500,7 @@ import './style.css';
         var type = opts.type || 'initial';
         var rep = { id: 'test-' + venueId + '-' + minsAgo + '-' + type, venue_id: venueId, people_ahead: ahead,
                     report_type: type, queue_session: opts.session || null,
-                    created_at: ago(minsAgo), expires_at: ago(minsAgo - 45), user_id: _testUsers[_tIdx++ % _testUsers.length] };
+                    created_at: ago(minsAgo), expires_at: ago(minsAgo - 45), reporter: _testUsers[_tIdx++ % _testUsers.length] };
         if (opts.comment) rep.comment = opts.comment;
         var v = getVenueById(venueId);
         rep.queue_status = waitToStatus({ ahead: ahead, mins: ahead / PACE_RATE[v.pace], full: false });
@@ -2582,7 +2599,8 @@ import './style.css';
       }
       var userId = getUserId();
       var now = new Date();
-      var recent = allReports.filter(function(r) { return r.user_id === userId && isQueueReport(r) && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
+      var me = localStorage.getItem('qb_reporter');
+      var recent = allReports.filter(function(r) { return me && r.reporter === me && isQueueReport(r) && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
       if (recent.length > 0) {
         var wait = Math.ceil(20 - (now - new Date(recent[0].created_at)) / 60000);
         throw userError('Vänta ' + wait + (wait === 1 ? ' minut' : ' minuter') + ' innan du rapporterar igen (gäller alla ställen)');
@@ -2597,17 +2615,7 @@ import './style.css';
         expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString()
       };
       if (comment) insertObj.comment = comment;
-      var result;
-      try {
-        result = await supabase.from('reports').insert(insertObj);
-        // Bara när kolumnen saknas (PostgREST PGRST204 / Postgres 42703) — ett annat fel som nämner "comment" ska inte
-        // tyst kasta bort kommentaren.
-        if (comment && result.error && (result.error.code === 'PGRST204' || result.error.code === '42703')) {
-          delete insertObj.comment;
-          result = await supabase.from('reports').insert(insertObj);
-        }
-      } catch(e) { result = { error: e }; }
-      if (result.error) throw result.error;
+      await insertReport(insertObj);
       // Den som rapporterar vid stället är framme: "På väg" är över, och en kö-session startar om det finns en kö att stå
       // i. Långt ifrån (vidarebefordrat sms, gissning) räknas rapporten, men ingen "I kön" och ingen ändring av "På väg"
       // — annars blev någon hemma en mätpunkt för dörrens takt.
@@ -2675,8 +2683,7 @@ import './style.css';
         expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString()
       };
       if (comment) row.comment = comment;
-      var result = await supabase.from('reports').insert(row);
-      if (result.error) throw result.error;
+      await insertReport(row);
       return { session: s, at: now.getTime() };
     }
 
@@ -3103,31 +3110,13 @@ import './style.css';
     }
 
     // ── Dataradering ─────────────────────────────────────────────────────────
-    // Rensar localStorage (och därmed qb_user_id) bara när servern bevisligen är tom — annars kan användaren aldrig
-    // försöka igen. En delete som RLS nekar ger inget fel, bara noll rader, så det som finns kvar räknas efteråt.
+    // delete_my_data raderar dina rapporter och notiser på servern, med ditt id som nyckel (bara du känner till det).
+    // localStorage (och därmed qb_user_id) rensas bara när servern svarat utan fel — annars kan du aldrig försöka igen.
     async function deleteAllUserData() {
       if (!supabase) { localStorage.clear(); location.reload(); return; }
-      var userId = getUserId();
-      // favorites skrevs av äldre versioner och kan ha rader kvar; user_profiles finns kanske inte alls. En tabell som
-      // inte finns (PGRST205 / 42P01) har inget att radera — den får inte göra raderingen omöjlig.
-      var tables = ['reports', 'favorites', 'user_profiles'];
-      function missing(res) { return res.error && (res.error.code === 'PGRST205' || res.error.code === '42P01'); }
       try {
-        // "På väg" ligger på servern med ditt ID (start_on_my_way) — stoppa det först.
-        var stop = await supabase.rpc('stop_on_my_way', { p_user_id: userId });
-        if (stop.error) throw stop.error;
-        // Notiserna: favoriterna och telefonens notisadress. PGRST202 = funktionen finns inte (före migreringen), inget att radera.
-        var push = await supabase.rpc('delete_push_subscriptions', { p_user_id: userId });
-        if (push.error && push.error.code !== 'PGRST202') throw push.error;
-        var deleted = await Promise.all(tables.map(function(t) { return supabase.from(t).delete().eq('user_id', userId); }));
-        var left = await Promise.all(tables.map(function(t) {
-          return supabase.from(t).select('user_id', { count: 'exact', head: true }).eq('user_id', userId);
-        }));
-        var failed = tables.filter(function(t, i) {
-          if (missing(deleted[i]) || missing(left[i])) return false;
-          return deleted[i].error || left[i].error || left[i].count !== 0;
-        });
-        if (failed.length) throw new Error('kvar i ' + failed.join(', '));
+        var res = await timed(supabase.rpc('delete_my_data', { p_user_id: getUserId() }));
+        if (res.error) throw res.error;
       } catch (err) {
         console.error('[QueueBar] deleteAllUserData misslyckades:', err);
         showToast('Kunde inte radera all data. Försök igen.');
@@ -3155,10 +3144,11 @@ import './style.css';
     //    -1 no match → excluded
 
     // Svenska tecken: utan å/ä/ö i sökningen vikas de bort ("tradgarden" hittar Trädgården — alla har inte svenskt
-    // tangentbord). Med å/ä/ö i sökningen gäller de: "öl" ska inte hitta "Old Beefeater".
+    // tangentbord). Med å/ä/ö i sökningen gäller de: "öl" ska inte hitta "Old Beefeater". Andra accenter (é, â, î)
+    // vikas alltid, annars hittar "ölkafe" inte Katarina Ölkafé.
     function _searchNorm(s, keepSwedish) {
-      s = s.toLowerCase();
-      if (!keepSwedish) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      s = s.toLowerCase().normalize('NFD');
+      s = keepSwedish ? s.replace(/([ao][\u0308\u030a])|[\u0300-\u036f]/g, '$1').normalize('NFC') : s.replace(/[\u0300-\u036f]/g, '');
       // Apostrofer: iPhone skriver ’, datorn ', och namnen har båda ("Kelly's", "John Scott’s").
       return s.replace(/[’‘`´]/g, "'").replace(/\s+/g, ' ').trim();
     }
@@ -3579,9 +3569,13 @@ import './style.css';
         } else {
           var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
           emptyTitle = 'Inga resultat' + (term ? ' för ' + term : '');
-          var sug = rawQ ? didYouMean(rawQ, VENUES) : null;
-          // Menade du …? som knapp: ett tryck byter sökordet. Annars ett konkret tips i stället för en allmän fras.
-          emptySub = sug
+          var hidden = rawQ ? venueSearch(rawQ, VENUES).length : 0;
+          var sug = rawQ && !hidden ? didYouMean(rawQ, VENUES) : null;
+          // Menade du …? som knapp: ett tryck byter sökordet. Döljer filtret träffarna säger vi det i stället, annars
+          // föreslog vi samma namn som filtret döljer, om och om igen.
+          emptySub = hidden
+            ? hidden + (hidden === 1 ? ' ställe matchar' : ' ställen matchar') + ' men döljs av filtret.'
+            : sug
             ? '<button class="explore-suggest" onclick="useListSuggestion(this.dataset.q)" data-q="' + escapeHtml(sug.text) + '">Menade du ' + escapeHtml(sug.text) + '?</button>'
             : 'Sök på ett namn, en gata eller ett område';
         }
@@ -4235,8 +4229,10 @@ import './style.css';
     async function loadUserHistory() {
       try {
         if (!supabase) throw new Error('Supabase är inte tillgänglig');
-        var result = await supabase.from('reports').select('id, queue_session, report_type, created_at')
-          .eq('user_id', getUserId()).order('created_at', { ascending: false });
+        // reporter sparas från första rapporten (rememberReporter); utan den finns inga egna rapporter att visa.
+        var me = localStorage.getItem('qb_reporter');
+        var result = me ? await supabase.from('reports').select('id, queue_session, report_type, created_at')
+          .eq('reporter', me).order('created_at', { ascending: false }) : { data: [] };
         if (result.error) throw result.error;
         userHistory = result.data || [];
         _historyState = 'ok';

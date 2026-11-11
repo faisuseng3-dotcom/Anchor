@@ -20,7 +20,7 @@ export function report(venueId, minsAgo, peopleAhead, opts = {}) {
     id: `${venueId}-${minsAgo}-${opts.type || 'initial'}`,
     venue_id: venueId,
     venue_name: opts.venueName || venueId,
-    user_id: opts.userId || 'e2e-user',
+    reporter: opts.userId || 'e2e-user',
     people_ahead: peopleAhead,
     report_type: opts.type || 'initial',
     queue_session: opts.session || null,

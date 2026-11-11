@@ -95,7 +95,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 143 enhetstester (Vitest)
+npm test                   # 150 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -279,8 +279,10 @@ aggregeringen eller säkerheten gör det.
 ## Säkerhet
 
 **Committa aldrig `.env`** — ligger i `.gitignore`. Just nu finns ingen `.env`: Mapbox-token,
-Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt och
-säkert **förutsatt** att RLS är korrekt satt i databasen — vilket inte kunnat verifieras. Se
+Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt: RLS och funktionerna i
+`supabase/migrations/` bestämmer vad anon-nyckeln når (granskat i produktionen 2026-11-11). `user_id` i `reports` är
+**hemligt**: anon läser bara `REPORT_COLUMNS`, andra ser `reporter` (sha256 av id:t), och id:t är nyckeln till
+`delete_my_data`. Läs aldrig `user_id` i klienten och lägg aldrig tillbaka `select('*')`. Se
 [docs/DATA_MODEL.md](docs/DATA_MODEL.md) avsnitt 8.
 
 All text från databasen **måste** gå genom `escapeHtml()` innan den hamnar i en HTML-sträng.
@@ -455,8 +457,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned. Stängning räknas
   mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
-- "På väg"-antal kommer från RPC `on_my_way_counts()` (≥3, serverside); klienten döljer också <3
-- Favoriter finns i `qb_favorites` på enheten. Tabellen `favorites` skrivs inte längre (lästes aldrig tillbaka)
+- "På väg"-antal ska komma från RPC `on_my_way_counts()` (≥3, serverside), men RPC:erna och tabellen finns **inte** i
+  produktionen (404); "N på väg" visas aldrig. Klienten döljer också <3
+- Favoriter finns i `qb_favorites` på enheten. Tabellerna `favorites`, `user_profiles` och `report_votes` är tömda och
+  stängda (de var öppna för alla)
 - **Notiser om favoriter** (`togglePushNotifications`, profilen och rutan efter en ny favorit): Edge Function
   `supabase/functions/notify-favorites` körs av en databas-webhook vid varje ny rapport och skickar till alla med stället
   i `push_subscriptions.venue_ids`. Uppföljningar och den egna rapporten ger ingen notis; samma ställe ersätter förra
@@ -475,7 +479,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 
 Dokumenterad i [docs/](docs/). De allvarligaste:
 
-1. **Databasschemat är inte versionshanterat** — ingen SQL i repot, RLS går inte att granska
+1. **Tabellerna saknar `create table` i repot** — policyer, funktioner och triggrar är granskade och ändringarna ligger i
+   `supabase/migrations/`, men själva tabellerna skapades i webbgränssnittet
 2. *(åtgärdad, se nedan)*
 3. *(åtgärdad, se nedan)*
 4. Täta kvarter (Stureplan, Gamla stan) har ställen några meter isär. Utzoomat visar Stureplan en pill med "+N"; Hell's
@@ -502,9 +507,9 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 - Felläget i Utforska skrevs över av `renderExploreVenues` vid skärmbyte (introanimationen ritar om listan), så ett
   serverfel såg ut som 28 tomma ställen. `renderExploreVenues` visar nu själv felläget vid fel utan data — e2e-testet
   "Serverfel … utan data" går igenom igen
-- `deleteAllUserData()` kontrollerade inget returvärde. Nu räknas raderna kvar efter raderingen (en delete som RLS
-  nekar ger inget fel, bara noll rader); `localStorage` och `qb_user_id` rensas bara när alla tre tabeller visar
-  `count === 0`, annars toast och möjlighet att försöka igen. Två e2e-tester i `e2e/app.spec.js` ("5. Radera min data")
+- "Radera min data" misslyckades för alla i produktionen: `stop_on_my_way` finns inte, och `reports` saknar
+  delete-policy. Nu ett anrop, `delete_my_data(p_user_id)`; `localStorage` rensas bara vid svar utan fel. Två e2e-tester
+  i `e2e/app.spec.js` ("5. Radera min data")
 - Död kod borttagen: `computeConfidence`, `toggleWatch`, `renderVenueCard`, `renderSparkline`, `formatAbsTime`, plus
   `BAR_SVG`/`CLUB_SVG`, `STATUS_Y` och CSS för `.vcard`/`.heart-btn`
 - `unknown` hade två färger; `STATUS_COLORS` ersatt av `getStatusColor()`. Kartsökningens prick var grå för fria ställen

@@ -209,29 +209,37 @@ test.describe('4. Rapportera en kö', () => {
 });
 
 test.describe('5. Radera min data', () => {
-  // Mocken svarar på varje läsning med `rows` — även räkningen efter raderingen. KVALL = rader finns kvar.
-  async function raderaViaProfilen(page, rows) {
+  // Raderingen är ett anrop, delete_my_data. Mocken svarar 200 på alla RPC:er; `fel` gör just det anropet till ett 500.
+  async function raderaViaProfilen(page, fel) {
     await skipOnboarding(page);
-    await mockSupabase(page, rows);
+    await mockSupabase(page, KVALL);
+    let anrop = null;
+    await page.route('**/rpc/delete_my_data', (route) => {
+      anrop = JSON.parse(route.request().postData() || 'null');
+      return fel
+        ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"e2e"}' })
+        : route.fulfill({ status: 204, body: '' });
+    });
     await openApp(page);
-    const id = 'user-e2e-radera';
+    const id = 'u-e2e-radera-0123456789abcdef';
     await page.evaluate((v) => window.localStorage.setItem('qb_user_id', v), id);
     page.once('dialog', (d) => d.accept());
     await goToScreen(page, 'profile');
     await page.getByRole('button', { name: /Radera min data/ }).click();
-    return id;
+    return { id, anrop: () => anrop };
   }
 
-  test('rader som servern behöll ger fel, och id:t sparas så att det går att försöka igen', async ({ page }) => {
-    const id = await raderaViaProfilen(page, KVALL);
+  test('ett serverfel ger fel, och id:t sparas så att det går att försöka igen', async ({ page }) => {
+    const { id } = await raderaViaProfilen(page, true);
     await expect(page.locator('.toast')).toContainText('Kunde inte radera');
     expect(await page.evaluate(() => window.localStorage.getItem('qb_user_id'))).toBe(id);
   });
 
-  test('tom server efter radering rensar den lokala datan', async ({ page }) => {
-    const id = await raderaViaProfilen(page, []);
+  test('raderingen skickar ditt id och rensar sedan den lokala datan', async ({ page }) => {
+    const { id, anrop } = await raderaViaProfilen(page, false);
     // Sidan laddas om efter raderingen; en läsning mitt i omladdningen räknas som "inte klar än".
     await expect.poll(() => page.evaluate(() => window.localStorage.getItem('qb_user_id')).catch(() => id)).not.toBe(id);
+    expect(anrop()).toEqual({ p_user_id: id });
   });
 });
 

@@ -101,7 +101,7 @@ export function report(venueId, minsAgo, peopleAhead, opts = {}) {
     report_type: opts.type || 'initial',
     queue_session: opts.session || null,
     queue_status: opts.status || null,
-    user_id: opts.userId || 'test-user',
+    reporter: opts.userId || 'test-user',
     created_at: new Date((opts.at || NOW) - minsAgo * 60000).toISOString()
   };
 }
