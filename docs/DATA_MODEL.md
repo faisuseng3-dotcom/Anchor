@@ -209,11 +209,10 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 
 ### Verifierat i produktionen 2026-11-11
 
-1. **`user_id` sätts av klienten** och ska vara hemligt: anon får läsa alla kolumner i `reports` utom `user_id`
-   (`supabase/migrations/20261111030000_hide_user_id.sql`). De gamla "user-…"-id:na, som var läsbara, byts på
-   servern mot nya som ingen känner till; klienten byter själv ut ett "user-…"-id (`getUserId`).
-   **Den migreringen körs först när klienten som läser `reporter` är driftsatt** — den gamla läser `select('*')` och
-   slutar fungera. Till dess är `user_id` läsbart och `delete_my_data` lika öppen som `delete_push_subscriptions`.
+1. **`user_id` sätts av klienten** och är hemligt: anon får läsa alla kolumner i `reports` utom `user_id`
+   (`supabase/migrations/20261111030000_hide_user_id.sql`, körd 2026-11-11 efter att klienten driftsatts). De gamla
+   "user-…"-id:na, som var läsbara, byttes på servern mot nya som ingen känner till; klienten byter själv ut ett
+   "user-…"-id (`getUserId`).
 2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`, per `user_id`). Den som rensar
    `localStorage` får ett nytt id och är fri igen; det finns inget konto att spärra.
 3. **`expires_at` och `created_at` sätts av servern.**
