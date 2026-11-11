@@ -31,6 +31,27 @@ describe('estimateWait — takten avgör svaret', () => {
   });
 });
 
+describe('estimateWait — oense och avlägsna rapporter', () => {
+  it('rapporter som går isär ger ett intervall som täcker dem, inte en median ingen rapporterat', () => {
+    // kristall: takt 2/min. Förut: medianen 30 → "10–20 min" och "25–50 personer", som om två var överens.
+    const est = estimateWait('kristall', [report('kristall', 5, 0), report('kristall', 10, 60)], NOW);
+    expect(est.conflict).toEqual({ low: 0, high: 60 });
+    expect(formatWait(est)).toBe('<30 min');
+  });
+
+  it('grannintervall (1–10 och 10–25) är inte oenighet', () => {
+    expect(estimateWait('kristall', [report('kristall', 5, 5), report('kristall', 10, 17)], NOW).conflict).toBeUndefined();
+  });
+
+  it('en rapport långt ifrån räknas inte när någon på plats har rapporterat', () => {
+    const onSite = report('kristall', 5, 5, { near: true });
+    const remote = report('kristall', 2, 60, { near: false });
+    expect(estimateWait('kristall', [onSite, remote], NOW).ahead).toBe(5);
+    // Finns bara den avlägsna räknas den ändå — hellre en gissning än ingenting, och den syns som en rapport.
+    expect(estimateWait('kristall', [remote], NOW).ahead).toBe(60);
+  });
+});
+
 describe('estimateWait — färskhetsfönstren', () => {
   it('returnerar null när den enda rapporten är äldre än 45 minuter', () => {
     expect(estimateWait('spy-bar', [report('spy-bar', 50, 37)], NOW)).toBeNull();

@@ -95,7 +95,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 154 enhetstester (Vitest)
+npm test                   # 157 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -475,7 +475,15 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   Tryck öppnar stället i Lista (`?venue=`, `openVenueFromNotification`). iPhone kräver hemskärmsappen. Servern
   sätts upp enligt `supabase/README.md`; nycklarna finns inte i repot (`PUSH_PUBLIC_KEY` i main.js är den publika)
 - Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
-  data" lovade något koden aldrig gjorde
+  data" lovade något koden aldrig gjorde. Integritet och villkor är en egen sida, `public/integritet.html` (länkad från
+  samtycket och Profil). Ändras vad som sparas eller vilka tjänster som används: ändra sidan i samma commit
+- **Ångra** (Profil): din senaste kömätning under 45 min, via `delete_my_report` (tar resten av kö-sessionen med).
+  Ingen flaggning av andras rapporter: en flagga kostar ett nytt id att missbruka, och medianen plus en egen rapport
+  från platsen rättar redan en felaktig siffra
+- **Oense rapporter** (`est.conflict`): de färska ligger minst ett intervall isär → intervallet täcker lägsta och
+  högsta, kortet säger "rapporterna går isär: ingen kö till 50+ personer". **Långt ifrån** (`near_venue` false, >300 m)
+  räknas bara när ingen på plats rapporterat. Låst av `tests/wait.test.js`
+- Kartans sök är en combobox: pil upp/ned väljer träff (`_mapActive`, `aria-activedescendant`), Enter öppnar den
 - `forecastWait()` visas bara med ≥3 initial-rapporter från ≥2 personer på 30 min över ≥10 min. Trenden är lutningen
   över alla rapporter, med tak ±0,5 personer/min — inte första mot sista rapport
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.

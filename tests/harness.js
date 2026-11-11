@@ -102,6 +102,7 @@ export function report(venueId, minsAgo, peopleAhead, opts = {}) {
     queue_session: opts.session || null,
     queue_status: opts.status || null,
     reporter: opts.userId || 'test-user',
+    near_venue: opts.near === undefined ? null : opts.near,
     created_at: new Date((opts.at || NOW) - minsAgo * 60000).toISOString()
   };
 }

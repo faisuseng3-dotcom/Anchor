@@ -137,14 +137,14 @@ import './style.css';
       { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3088, lng: 18.0812, closing: '05:00', pace: 'fast' },
       { id: 'under-bron', name: 'Under Bron', address: 'Skansbron 4', area: 'Södermalm', type: 'klubb', lat: 59.3082, lng: 18.0798, closing: '05:00', pace: 'fast' },
       { id: 'sturecompagniet', name: 'Sturecompagniet', address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.3365, lng: 18.0735, closing: [false, false, false, '03:00', '03:00', '03:00', false], pace: 'slow' },
-      { id: 'kristall', name: 'Kristall', address: 'Regeringsgatan 12', area: 'Norrmalm', type: 'klubb', lat: 59.3340, lng: 18.0620, closing: '03:00', pace: 'normal' },
+      { id: 'kristall', name: 'Kristall', address: 'Regeringsgatan 12', area: 'Norrmalm', type: 'klubb', lat: 59.330681, lng: 18.068596, closing: '03:00', pace: 'normal' },
       { id: 'golden-hits', name: 'Golden Hits', address: 'Kungsgatan 26', area: 'Norrmalm', type: 'klubb', lat: 59.335798, lng: 18.066863, closing: [false, false, '01:00', '02:00', '03:00', '03:00', false], pace: 'normal' },
       { id: 'neu', name: 'Neu', address: 'Östgötagatan 8', area: 'Södermalm', type: 'klubb', lat: 59.3115, lng: 18.0780, closing: '05:00', pace: 'normal' },
       { id: 'end-nightclub', name: 'END Nightclub', address: 'Jakobsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.3320, lng: 18.0640, closing: '05:00', pace: 'normal' },
       { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.337163, lng: 18.067552, closing: '03:00', pace: 'normal' },
       { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00', pace: 'normal' },
       { id: 'patricia', name: 'Patricia', address: 'Söder Mälarstrand', area: 'Södermalm', type: 'klubb', lat: 59.321397, lng: 18.052765, closing: [false, false, '00:00', '00:00', '05:00', '05:00', '05:00'], pace: 'normal' },
-      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Södermalm', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00', pace: 'normal' },
+      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Södermalm', type: 'klubb', lat: 59.318265, lng: 18.032598, closing: '05:00', pace: 'normal' },
       { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00', pace: 'fast' },
       { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.330711, lng: 18.067169, closing: '02:00', pace: 'fast' },
       { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00', pace: 'slow' },
@@ -560,7 +560,12 @@ import './style.css';
       }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
       if (!counted.length) return null;
       var fresh = counted.filter(function(r) { return now - new Date(r.created_at).getTime() < 20 * 60 * 1000; });
-      var ahead = median((fresh.length ? fresh : [counted[0]]).map(function(r) { return r.people_ahead; }));
+      // En rapport långt från stället (near_venue false: gissning hemifrån, vidarebefordrat sms) räknas bara när ingen på
+      // plats har rapporterat. Okänd plats (null, äldre rapporter) räknas som på plats.
+      function onSite(list) { var s = list.filter(function(r) { return r.near_venue !== false; }); return s.length ? s : list; }
+      var basis = fresh.length ? onSite(fresh) : [onSite(counted)[0]];
+      var values = basis.map(function(r) { return r.people_ahead; });
+      var ahead = median(values);
 
       // Lager: ikvällens mätningar → tidigare kvällar → startgissning per venue.pace.
       var venue = getVenueById(venueId);
@@ -574,7 +579,16 @@ import './style.css';
       if (ahead === 0) return est;
       est.full = n >= 2 && measuredRate < 0.3 && ahead >= 10;
       est.mins = ahead / rate;
-      return setWaitRange(est, n >= 3 ? 0.2 : 0.35);
+      setWaitRange(est, n >= 3 ? 0.2 : 0.35);
+      // Rapporterna går isär (minst ett intervall emellan, t.ex. ingen kö och 25–50): intervallet täcker dem alla. Förut
+      // blev 0 och 60 medianen 30, "25–50 personer", som ingen rapporterat och som såg lika säker ut som två som var överens.
+      var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
+      if (AHEAD_BUCKETS.indexOf(aheadBucket(hi)) - AHEAD_BUCKETS.indexOf(aheadBucket(lo)) >= 2) {
+        est.conflict = { low: lo, high: hi };
+        est.low = Math.min(est.low, Math.round(lo / rate / 5) * 5);
+        est.high = Math.max(est.high, Math.round(hi / rate / 5) * 5);
+      }
+      return est;
     }
 
     function setWaitRange(est, spread) {
@@ -1106,7 +1120,10 @@ import './style.css';
           return r.people_ahead != null && Date.now() - new Date(r.created_at).getTime() < 20 * 60 * 1000;
         }).length;
         // Antalet bara när det säger något nytt — vid ingen kö står "Ingen kö" redan i siffran ovanför.
-        if (est.ahead) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
+        if (est.conflict) {
+          subParts.push('rapporterna går isär: ' + (est.conflict.low ? aheadBucket(est.conflict.low).label : 'ingen kö') +
+            ' till ' + aheadBucket(est.conflict.high).label + ' personer');
+        } else if (est.ahead) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
         subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
       }
       if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('uppskattning');
@@ -1314,12 +1331,21 @@ import './style.css';
       }, 200);
     }
 
+    // Pil upp/ned väljer en träff (aria-activedescendant, så skärmläsaren läser den), Enter öppnar den. Utan vald träff
+    // vinner ett område först i listan: Enter på "söder" visar Södermalm.
+    var _mapActive = -1;
     function onMapSearchKey(e) {
+      var rows = document.querySelectorAll('#map-search-results .msearch-row');
       if (e.key === 'Escape') {
         clearMapSearch();
         document.getElementById('map-search-input').blur();
+      } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && rows.length) {
+        e.preventDefault();
+        _mapActive = e.key === 'ArrowDown' ? (_mapActive + 1) % rows.length : (_mapActive <= 0 ? rows.length : _mapActive) - 1;
+        rows.forEach(function(r, i) { r.classList.toggle('is-active', i === _mapActive); r.setAttribute('aria-selected', i === _mapActive); });
+        e.target.setAttribute('aria-activedescendant', rows[_mapActive].id);
       } else if (e.key === 'Enter') {
-        // Ett område först i listan (renderMapSearchResults satte _mapAreaHits) vinner: Enter på "söder" visar Södermalm.
+        if (_mapActive >= 0 && rows[_mapActive]) { rows[_mapActive].dispatchEvent(new MouseEvent('mousedown')); return; }
         if (_mapAreaHits.length) { selectMapSearchArea(0); return; }
         var first = venueSearch(e.target.value.trim(), VENUES)[0];
         if (first) selectMapSearchVenue(first.id);
@@ -1338,6 +1364,11 @@ import './style.css';
       var resultsEl = document.getElementById('map-search-results');
       var floatEl = document.getElementById('map-search-float');
       if (!resultsEl) return;
+      // Ny lista: ingen vald träff, och skärmläsaren får veta om listan är öppen.
+      var inp = document.getElementById('map-search-input');
+      _mapActive = -1;
+      inp.removeAttribute('aria-activedescendant');
+      inp.setAttribute('aria-expanded', query.length > 0 ? 'true' : 'false');
 
       if (query.length < 1) {
         resultsEl.style.display = 'none';
@@ -1375,6 +1406,7 @@ import './style.css';
           '<div class="msearch-meta">' + v.area + ' · ' + typeLabel + '</div>' +
           '</div>';
       }).join('');
+      resultsEl.querySelectorAll('.msearch-row').forEach(function(r, i) { r.id = 'msr-' + i; r.setAttribute('role', 'option'); });
     }
     var _mapSuggestion = null;
     function useMapSuggestion() {
@@ -2157,7 +2189,7 @@ import './style.css';
       return typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? query.abortSignal(AbortSignal.timeout(15000)) : query;
     }
     // De kolumner andra får läsa. user_id får inte läsas (det är nyckeln till din data); reporter är sha256 av det.
-    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, comment, created_at, expires_at, reporter';
+    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, comment, near_venue, created_at, expires_at, reporter';
     // Svaret ger reporter, som känner igen dina egna rapporter (spärren, historiken). Ett avbrutet svar kan ändå ha
     // sparats: läs om, så att spärren mot dubbletter ser det innan nästa tryck.
     async function insertReport(row) {
@@ -2631,7 +2663,9 @@ import './style.css';
       var insertObj = {
         venue_id: venueId, venue_name: venueName, queue_status: queueStatus, user_id: userId,
         people_ahead: peopleAhead, report_type: 'initial', queue_session: newQueueSessionId(),
-        expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString()
+        expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString(),
+        // Utan position vet vi inte (null, räknas som på plats); långt ifrån väger bara när ingen på plats rapporterat.
+        near_venue: window._userPos ? !isFarFrom(venue) : null
       };
       if (comment) insertObj.comment = comment;
       await insertReport(insertObj);
@@ -4281,14 +4315,44 @@ import './style.css';
       var n = Object.keys(queues).length;
       sr.textContent = n;
       text.textContent = n === 0 ? 'Du har inte rapporterat någon kö än.' : n === 1 ? 'kö du har hjälpt andra med' : 'köer du har hjälpt andra med';
+      // Senaste kömätningen kan ångras medan den syns i appen. Fel antal, fel ställe, tryckt av misstag.
+      var last = lastUndoableReport(), box = document.getElementById('pf-last');
+      if (box) box.hidden = !last;
+      if (last) {
+        var lv = getVenueById(last.venue_id);
+        document.getElementById('pf-last-text').textContent = (lv ? lv.name : last.venue_name) + ' · ' +
+          (last.people_ahead ? aheadBucket(last.people_ahead).label + ' i kö' : 'ingen kö') + ' · ' + timeAgo(last.created_at);
+      }
+    }
+    function lastUndoableReport() {
+      return userHistory.filter(function(r) {
+        return isQueueReport(r) && Date.now() - new Date(r.created_at).getTime() < 45 * 60 * 1000;
+      })[0] || null;
+    }
+    // delete_my_report tar bort rapporten och resten av dess kö-session, bara om den är din och under 45 min gammal.
+    async function undoLastReport() {
+      var last = lastUndoableReport();
+      if (!last || !supabase) return;
+      try {
+        var res = await timed(supabase.rpc('delete_my_report', { p_user_id: getUserId(), p_report_id: last.id }));
+        if (res.error) throw res.error;
+        if (!res.data) showToast('Rapporten är för gammal för att ångras.');
+        else {
+          var s = getQueueSession();
+          if (s && s.id === last.queue_session) endQueueSession();
+          showToast('Rapporten är borttagen.');
+        }
+      } catch (e) { showToast(reportErrorText(e)); }
+      loadReports();
+      loadUserHistory();
     }
 
     async function loadUserHistory() {
       try {
         if (!supabase) throw new Error('Supabase är inte tillgänglig');
-        // reporter sparas från första rapporten (rememberReporter); utan den finns inga egna rapporter att visa.
+        // reporter sparas från svaret på första rapporten (insertReport); utan den finns inga egna rapporter att visa.
         var me = localStorage.getItem('qb_reporter');
-        var result = me ? await supabase.from('reports').select('id, queue_session, report_type, created_at')
+        var result = me ? await supabase.from('reports').select('id, venue_id, venue_name, people_ahead, queue_session, report_type, created_at')
           .eq('reporter', me).order('created_at', { ascending: false }) : { data: [] };
         if (result.error) throw result.error;
         userHistory = result.data || [];
@@ -4299,10 +4363,6 @@ import './style.css';
         if (_historyState !== 'ok') _historyState = 'error';
       }
       updateProfileStats();
-    }
-
-    function showPrivacyPolicy() {
-      alert('Integritetspolicy\n\nQbar sparar ett anonymt ID och dina kö-rapporter (ställe, antal i kö, tid, ev. kommentar).\nNär du trycker "Gå hit" sparas vart du är på väg och när du beräknas vara framme, tills du kommit fram eller avbryter.\nDin position stannar på din enhet. Favoriterna också, utom när notiser är på: då sparas de och telefonens notisadress tills du stänger av notiserna.\nVi säljer aldrig din data.\nSupabase (EU) används som databas.\nMapbox används för kartan.\n\nKontakt: support@queuebar.se');
     }
 
     function confirmDelete() {
@@ -4355,13 +4415,13 @@ Object.assign(window, {
   setVenueType,
   shareVenue,
   showCommentField,
-  showPrivacyPolicy,
   showScreen,
   toggleLiveVenue,
   togglePushNotifications,
   setMapStyle,
   toggleMapStyleMenu,
   toggleVcReports,
+  undoLastReport,
   useListSuggestion,
   useMapSuggestion,
   vcShare,

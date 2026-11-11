@@ -89,6 +89,7 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 | `queue_session` | **ja** | ja | `'qs-<base36>-<slump>'`. Binder ihop en persons mätpunkter i samma kö. |
 | `expires_at` | ja, men skrivs över | ja (filter) | `created_at + 45 min`, satt av `reports_guard`. `loadReports` filtrerar på den. |
 | `comment` | ja, om ifylld | ja | Max 80 tecken (CHECK i databasen). **Escapas** vid rendering. |
+| `near_venue` | ja | ja | `true` inom 300 m (med GPS-osäkerheten), `false` längre bort, `null` utan position. Långt ifrån räknas bara när ingen på plats rapporterat (`estimateWait`). |
 
 Begränsningar i databasen: `people_ahead` 0–200, `queue_status` och `report_type` bara de kända värdena, `comment` ≤ 80.
 `reports_guard` (BEFORE INSERT, security definer) spärrar en ny `initial` inom 20 min från samma `user_id`
@@ -225,6 +226,8 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 5. **Radera min data** är ett anrop: `delete_my_data(p_user_id)` (security definer) raderar dina rader i `reports` och
    `push_subscriptions`. Bara vid svar utan fel rensas `localStorage`. Låst fast av "5. Radera min data" i
    `e2e/app.spec.js`. Förut stoppade `stop_on_my_way` (som inte finns) och den saknade delete-policyn varje radering.
+   **Ångra** din senaste kömätning: `delete_my_report(p_user_id, p_report_id)`, bara din egen, bara `initial` under 45 min,
+   och resten av kö-sessionen följer med (`supabase/migrations/20261111050000_delete_my_report.sql`).
 
 6. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
    Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och

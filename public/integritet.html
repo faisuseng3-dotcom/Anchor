@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0D">
+<title>Integritet och villkor · Qbar</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0B0B0D; color: #F5F5F4; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom)); }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 32px 0 8px; }
+  p, li { color: #D6D6D2; }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+  .meta { color: #85858A; font-size: 14px; margin: 0 0 24px; }
+  a { color: #5B9BFF; }
+  .back { display: inline-block; margin-bottom: 24px; min-height: 44px; line-height: 44px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Till Qbar</a>
+  <h1>Integritet och villkor</h1>
+  <p class="meta">Gäller från 11 november 2026. Frågor: <a href="mailto:support@queuebar.se">support@queuebar.se</a></p>
+
+  <h2>Kort</h2>
+  <p>Qbar har inga konton. Din telefon får ett slumpat id, och det id:t är din nyckel till det du skickat. Din position
+  lämnar aldrig telefonen. Vi säljer ingen data och visar ingen reklam. Allt kan raderas under Profil → Radera min data.</p>
+
+  <h2>Det som sparas på servern</h2>
+  <ul>
+    <li><b>Dina kö-rapporter:</b> ställe, hur många som stod framför dig (ett intervall, t.ex. 10–25), tiden, en kommentar
+      om du skrev en (högst 80 tecken) och om du var vid stället när du rapporterade (ja, nej eller okänt). Rapporten bär
+      ditt slumpade id. Andra kan läsa rapporten, men inte id:t; de ser bara en hash av det (en kod som inte går att räkna
+      tillbaka), så att appen kan se att två rapporter kom från samma telefon.</li>
+    <li>Rapporter syns i appen i 45 minuter. Därefter sparas de för att räkna hur snabbt köer brukar röra sig samma
+      veckodag och tid (appen använder de senaste 8 veckorna). Det finns i dag ingen automatisk gallring; Radera min data
+      tar bort dem.</li>
+    <li><b>"Gå hit":</b> vilket ställe du är på väg till och när du beräknas vara framme. Raden försvinner 15 minuter efter
+      beräknad ankomst, eller när du avbryter. Andra ser bara hur många som är på väg, och först från tre personer.</li>
+    <li><b>Notiser, om du slår på dem:</b> telefonens notisadress, de nycklar notisen krypteras med och dina favoriter.
+      Tas bort när du stänger av notiserna.</li>
+  </ul>
+
+  <h2>Det som bara finns på telefonen</h2>
+  <p>Ditt id, dina favoriter (utom kopian för notiser), kartläge, en pågående kö och "på väg". Din position används för
+  avstånd, gångtid och för att avgöra om du är vid stället; den skickas aldrig.</p>
+
+  <h2>Tjänster vi använder</h2>
+  <ul>
+    <li><b>Supabase</b> (databas, Stockholm): allt som står under "på servern".</li>
+    <li><b>Vercel</b> (driften av appen): ser din IP-adress när sidan hämtas.</li>
+    <li><b>Mapbox</b> (kartan): ser din IP-adress och vilket kartområde som hämtas.</li>
+    <li><b>Fontshare och Google Fonts</b> (typsnitt): ser din IP-adress.</li>
+    <li><b>Google Maps</b>, bara när du trycker på Vägbeskrivning eller Gå hit: får ställets namn och adress som mål.</li>
+    <li><b>Apple eller Google</b>, bara med notiser på: levererar notisen till telefonen.</li>
+  </ul>
+
+  <h2>Dina rättigheter</h2>
+  <p>Radera min data under Profil tar bort dina rapporter, notiser och "på väg" från servern och allt Qbar sparat på
+  telefonen. Vill du veta vad som finns om dig, eller har frågor, skriv till
+  <a href="mailto:support@queuebar.se">support@queuebar.se</a>. Du kan också klaga hos Integritetsskyddsmyndigheten (IMY).</p>
+
+  <h2>Villkor</h2>
+  <ul>
+    <li>Köerna i Qbar kommer från andra besökares rapporter. Väntetiderna är uppskattningar, och vi kan inte lova att de
+      stämmer. Öppettider kommer från OpenStreetMap och kan vara fel.</li>
+    <li>Rapportera bara den kö du faktiskt ser. Rapporter som uppenbart är falska eller kränkande kan tas bort.</li>
+    <li>Kommentarer får inte innehålla personuppgifter om andra, hot eller reklam.</li>
+    <li>Qbar är gratis och tillhandahålls som det är. Vi ansvarar inte för väntetid, insläpp eller annat som händer vid
+      dörren.</li>
+  </ul>
+</main>
+</body>
+</html>

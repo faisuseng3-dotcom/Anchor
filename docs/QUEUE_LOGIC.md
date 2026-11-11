@@ -44,8 +44,10 @@ Användaren trycker på ett intervall, inte en siffra. Det lagrade `people_ahead
 
 1. Ta alla rapporter för stället där `report_type` är `'initial'` (eller saknas), `people_ahead`
    finns, och åldern är **0–45 minuter**.
-2. Finns några under **20 minuter** gamla: använd **medianen** av dem.
-3. Annars: använd **enbart den senaste** rapporten.
+2. Finns några under **20 minuter** gamla: använd **medianen** av dem. Rapporter **långt från stället**
+   (`near_venue === false`, mer än 300 m bort när de skickades) räknas bara när ingen på plats har rapporterat.
+   Okänd plats (`null`) räknas som på plats.
+3. Annars: använd **enbart den senaste** rapporten (den senaste på plats, om det finns någon).
 4. Finns ingen rapport inom 45 minuter: returnera `null` → stället visas som "ingen data".
 
 Median, inte medelvärde. En avvikande rapport bland tre kan därför inte dra iväg siffran.
@@ -162,6 +164,11 @@ Gränserna avrundas till närmaste 5 minuter. `formatWait` väljer text:
 
 **Det visas aldrig en naken siffra utan osäkerhetsmarkering.** Antingen ett intervall, ett `~`,
 ett `<` eller ett `+`.
+
+**Rapporterna går isär** (de färska ligger minst ett intervall ifrån varandra, t.ex. "Ingen kö" och "25–50"): då
+breddas intervallet så att det täcker både den lägsta och den högsta rapporten (`est.conflict`), och kortet säger
+"rapporterna går isär: ingen kö till 50+ personer". Medianen styr fortfarande status och färg. Förut blev 0 och 60
+medianen 30, "25–50 personer", som ingen rapporterat och som visades lika säkert som två rapporter som var överens.
 
 ### "Fullt"
 
