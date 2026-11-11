@@ -85,6 +85,8 @@ check('Font: Satoshi loaded', html.includes('satoshi'));
 check('Font var: --font-base Satoshi', css.includes("--font-base: 'Satoshi'"));
 check('Karttyp: Mapbox Standard som utbytbar import (natt, ljus, satellit)', js.includes("imports: [{ id: 'basemap'") && js.includes("map.addImport({ id: 'basemap'") && js.includes("mapbox://styles/mapbox/standard-satellite"));
 check('Supabase npm import', js.includes('supabase-js'));
+// black-translucent gör iOS hemskärmsapp statusradens höjd för kort: svart fält under menyn som sidan inte kan nå.
+check('iOS: ingen black-translucent statusrad (svart fält nertill i hemskärmsappen)', !html.includes('black-translucent'));
 
 // ── Security ──────────────────────────────────────────────────────────────────
 const hasEnvFile = fs.existsSync(path.join(root, '.env'));

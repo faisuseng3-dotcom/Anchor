@@ -393,10 +393,11 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   Datan och listan väntar inte på det: på 4G syns datan efter ~0,8 s i stället för ~2,8 s. `mapboxgl` är `null` tills
   biblioteket är laddat, men bara kartkod som körs efter `map` finns använder det
 - Inga `backdrop-filter` över kartan: oskärpan räknas om i varje bildruta kartan ritar
-- **Hemskärmsappen på iPhone når skärmens nederkant via `--vp-gap`.** Med genomskinlig statusrad gör iOS sidan
-  statusradens höjd (59 pt) för kort: en svart ruta under menyn. Skriptet i `<head>` mäter skillnaden mot skärmen
-  (`clientHeight`, inte `innerHeight` som tangentbordet ändrar; 0 i webbläsare och iPad delad vy) och `body`,
-  samtyckesrutan och snabbrapportens ark förlängs med den. `#app` är `height: 100%` av `body`, inte `100dvh`
+- **Ingen `black-translucent` statusrad.** Med den lägger iOS 26+ hemskärmsappens webbvy vid skärmens överkant men
+  gör den statusradens höjd (59 pt) för kort: ett svart fält över menyn och kartan nertill. Fältet ligger utanför
+  webbvyn, så ingen CSS eller JS kan nå det (det försökte `--vp-gap`, som bara förlängde sidan ut i det osynliga;
+  WebKit bug 313800, Apple: läget är föråldrat). Utan nyckeln börjar sidan under statusraden, som får `theme-color`.
+  `check.js` stoppar att den läggs tillbaka. `#app` är `height: 100%` av `body`, inte `100dvh`
 - **Menyn flyter** (`#bottom-nav`): en kapsel 12 px från kanterna och `--nav-bottom` från nederkanten (22 px över
   hemindikatorn på iPhone, 12 px annars), 64 px hög; kartan och listorna syns runt och under den. Allt som ska ligga
   ovanför menyn (Bäst nu, Mapbox-loggan, toasten, testetiketten, listornas sista rad) räknas från `var(--nav-bottom)`
