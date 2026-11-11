@@ -2,7 +2,7 @@
 
 ## Vad projektet är
 
-Mobil webbapp som visar köstatus och uppskattad väntetid för **294 barer, pubar och nattklubbar** i
+Mobil webbapp som visar köstatus och uppskattad väntetid för **290 barer, pubar och nattklubbar** i
 Stockholm (alla som finns i OpenStreetMap, se `VENUES`). All data kommer från användarnas egna rapporter — det finns ingen extern
 datakälla för kölängder.
 
@@ -50,7 +50,7 @@ Allt ligger i **en fil**: `src/main.js`. Dela inte upp den utan att fråga förs
 ```
 index.html  →  <script type="module" src="/src/main.js">
                ↓
-VENUES (310 hårdkodade objekt, 294 synliga)  +  allReports (från Supabase)
+VENUES (310 hårdkodade objekt, 290 synliga)  +  allReports (från Supabase)
                ↓
 estimateWait()  →  formatWait()  →  venueWaitText()
                ↓
@@ -74,7 +74,7 @@ blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
 | Vad | Funktioner |
 |---|---|
 | **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
-| Venue-data | `VENUES` — 310 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 2 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården); 16 dolda via `HIDDEN_VENUES`. **Inte i databasen** — ändring = deploy |
+| Venue-data | `VENUES` — 310 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 2 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården); 20 dolda via `HIDDEN_VENUES`. **Inte i databasen** — ändring = deploy |
 | Supabase-läsning | `loadReports` — alla icke-utgångna rapporter (≤45 min, tak 1000) |
 | Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
 | Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
@@ -484,6 +484,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   högsta, kortet säger "rapporterna går isär: ingen kö till 50+ personer". **Långt ifrån** (`near_venue` false, >300 m)
   räknas bara när ingen på plats rapporterat. Låst av `tests/wait.test.js`
 - Kartans sök är en combobox: pil upp/ned väljer träff (`_mapActive`, `aria-activedescendant`), Enter öppnar den
+- `public/sw.js` cachar fortfarande ingenting, men en sidladdning utan nät får en egen sida ("Ingen internetanslutning",
+  Försök igen) i stället för webbläsarens fel. Rapporter äldre än 90 dagar raderas varje natt (pg_cron `qbar-gallring`);
+  historiken läser 8 veckor. Ändras gränsen: ändra `public/integritet.html` också
 - `forecastWait()` visas bara med ≥3 initial-rapporter från ≥2 personer på 30 min över ≥10 min. Trenden är lutningen
   över alla rapporter, med tak ±0,5 personer/min — inte första mot sista rapport
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.

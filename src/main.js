@@ -452,7 +452,11 @@ import './style.css';
       'riche-fenix': 'Oklart, ingen aktuell källa',
       'southside-pub': 'Oklart, ingen aktuell källa',
       'stigbergets-fot': 'Oklart, ingen aktuell källa',
-      'soder-bar': 'Oklart, ingen aktuell källa'
+      'soder-bar': 'Oklart, ingen aktuell källa',
+      'fou': 'Oklart: fouclub.com är en casinosida sedan domänen släpptes (2026-11-11)',
+      'rose': 'Oklart: roseclub.se svarar 410 Gone (2026-11-11)',
+      'corner-club': 'Oklart: cornerclub.se är parkerad hos Loopia (2026-11-11)',
+      'corner-bar': 'Oklart: cornerbar.se är inte kopplad till någon sida (2026-11-11)'
     };
     for (var _hv = VENUES.length - 1; _hv >= 0; _hv--) if (HIDDEN_VENUES[VENUES[_hv].id]) VENUES.splice(_hv, 1);
     // Uppslag per id: getVenueById körs tusentals gånger per omritning, VENUES.find gick igenom ~300 ställen varje gång.
@@ -897,6 +901,8 @@ import './style.css';
       var body = rows.map(function(r) {
         var ago = Math.max(0, Math.floor((now - new Date(r.created_at)) / 60000));
         var what = r.people_ahead != null ? (r.people_ahead ? aheadBucket(r.people_ahead).label + ' i kö' : 'Ingen kö') : (label[r.queue_status] || 'Kö') + ' · ej mätt';
+        // Skickad långt från stället: syns som det, eftersom den bara räknas när ingen på plats har rapporterat.
+        if (r.near_venue === false) what += ' · på avstånd';
         return '<li class="vc-rep"><span class="vc-rep-dot" style="background:' + getStatusColor(r.queue_status) + '"></span>' +
           '<span class="vc-rep-time">' + clockOfIso(r.created_at) + '</span>' +
           '<span class="vc-rep-what">' + what + '</span>' +

@@ -14,6 +14,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | `user_id` oläsbart för anon, gamla id bytta, `delete_push_subscriptions` borttagen | `migrations/20261111030000_hide_user_id.sql` | samma, körd 2026-11-11 efter att klienten med `REPORT_COLUMNS` driftsatts (den gamla läste `select('*')`) |
 | Tabell `on_my_way` + `start_on_my_way`, `stop_on_my_way`, `on_my_way_counts`; `delete_my_data` tar även "på väg" | `migrations/20261111040000_on_my_way.sql` | samma, körd 2026-11-11 |
 | `delete_my_report` (Ångra i Profil) | `migrations/20261111050000_delete_my_report.sql` | samma, körd 2026-11-11 |
+| Gallring: pg_cron-jobbet `qbar-gallring` (03:30 UTC) raderar rapporter över 90 dagar och utgångna "på väg"; död `delete_expired_reports` borttagen | `migrations/20261111060000_retention.sql` | samma, körd 2026-11-11 |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.

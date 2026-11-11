@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test';
 import { report, mockSupabase, skipOnboarding, openApp, goToScreen } from './support.js';
 // Synliga ställen i VENUES (låst i tests/venues.test.js). Harnessen går inte att importera här: Playwright laddar den som CJS.
-const ALLA = 294;
+const ALLA = 290;
 
 // En kväll med tre ställen som har rapporter.
 const KVALL = [
