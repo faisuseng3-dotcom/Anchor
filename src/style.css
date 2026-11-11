@@ -253,6 +253,8 @@
     .map-style-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; }
     .map-style-btn[aria-expanded="true"] { border-color: var(--text-primary); }
     .map-style-btn:active { transform: scale(var(--press-scale)); }
+    .locate-btn { top: calc(12px + 48px + 8px + 40px + 8px + 44px + 8px + env(safe-area-inset-top) + var(--banner-h, 0px)); }
+    .locate-btn svg { stroke-linecap: round; }
     /* Menyn: en rad med förhandsbilder, valt läge med vit ram. Fäller ut under knappen, till vänster om den. */
     .map-style-menu {
       position: absolute; z-index: 6; right: 12px;
@@ -1039,6 +1041,7 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       height: 100%; gap: 8px; pointer-events: none;
     }
+    .map-error-inner .explore-err-btn { pointer-events: auto; font-family: var(--font-base); min-height: 44px; }
     .map-error-inner span { font-size: 15px; font-weight: 500; color: var(--text-secondary); }
     .map-error-inner small { font-size: 12px; color: var(--text-muted); }
 

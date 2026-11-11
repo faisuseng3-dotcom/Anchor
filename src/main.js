@@ -59,6 +59,7 @@ import './style.css';
       if (name === 'home') setTimeout(function() { if (map) map.resize(); }, 50);
       if (name === 'profile') { loadUserHistory(); renderPushUI(); }
       if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
+        startLocation(); // listan sorteras på avstånd, och en rapport långt ifrån ska inte starta en kö-session
         selectedRV = null;
         rsStep(1);
         filterReportList();
@@ -123,7 +124,7 @@ import './style.css';
     const VENUES = [
       { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.333343, lng: 18.076189, closing: '03:00', pace: 'fast' },
       { id: 'akkurat', name: 'Akkurat Bar & Restaurang', address: 'Hornsgatan 18', area: 'Slussen', type: 'bar', lat: 59.319809, lng: 18.068854, closing: ['00:00', '00:00', '01:00', '01:00', '01:00', '01:00', '23:00'], pace: 'fast' },
-      { id: 'tjoget', name: 'Tjoget', address: 'Hornsbruksgatan 24', area: 'Hornstull', type: 'bar', lat: 59.3157, lng: 18.0348, closing: '01:00', pace: 'fast' },
+      { id: 'tjoget', name: 'Tjoget', address: 'Hornsbruksgatan 24', area: 'Södermalm', type: 'bar', lat: 59.3157, lng: 18.0348, closing: '01:00', pace: 'fast' },
       { id: 'sturehof', name: 'Sturehof', address: 'Stureplan 2', area: 'Östermalm', type: 'bar', lat: 59.3361, lng: 18.0733, closing: '02:00', pace: 'fast' },
       { id: 'pelikan', name: 'Pelikan', address: 'Blekingegatan 40', area: 'Södermalm', type: 'bar', lat: 59.31057, lng: 18.076172, closing: '01:00', pace: 'fast' },
       { id: 'morfar-ginko', name: 'Morfar Ginko', address: 'Swedenborgsgatan 13', area: 'Södermalm', type: 'bar', lat: 59.315791, lng: 18.064245, closing: ['01:00', '01:00', '01:00', '01:00', '01:00', '01:00', false], pace: 'fast' },
@@ -143,7 +144,7 @@ import './style.css';
       { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.337163, lng: 18.067552, closing: '03:00', pace: 'normal' },
       { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00', pace: 'normal' },
       { id: 'patricia', name: 'Patricia', address: 'Söder Mälarstrand', area: 'Södermalm', type: 'klubb', lat: 59.321397, lng: 18.052765, closing: [false, false, '00:00', '00:00', '05:00', '05:00', '05:00'], pace: 'normal' },
-      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Hornstull', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00', pace: 'normal' },
+      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Södermalm', type: 'klubb', lat: 59.3162, lng: 18.0370, closing: '05:00', pace: 'normal' },
       { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00', pace: 'fast' },
       { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.330711, lng: 18.067169, closing: '02:00', pace: 'fast' },
       { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00', pace: 'slow' },
@@ -156,7 +157,7 @@ import './style.css';
       { id: 'amici-nostri', name: 'Amici Nostri', address: 'Ringvägen 104', area: 'Södermalm', type: 'bar', lat: 59.307606, lng: 18.077191, closing: null, pace: 'fast' },
       { id: 'backdoor', name: 'Backdoor', address: 'Arenavägen 69', area: 'Johanneshov', type: 'klubb', lat: 59.290819, lng: 18.083944, closing: null, pace: 'normal' },
       { id: 'backstreet', name: 'Backstreet', address: 'Konstgjutarvägen 42', area: 'Johanneshov', type: 'bar', lat: 59.294714, lng: 18.073593, closing: null, pace: 'fast' },
-      { id: 'bagpipers-s-inn', name: "Bagpipers's Inn", address: 'Rörstrandsgatan 21', area: 'Vasastan', type: 'bar', lat: 59.340356, lng: 18.031135, closing: ['23:00', '00:00', '01:00', '01:00', '01:00', '01:00', '23:00'], pace: 'fast' },
+      { id: 'bagpipers-s-inn', name: 'Bagpipers Inn', address: 'Rörstrandsgatan 21', area: 'Vasastan', type: 'bar', lat: 59.340356, lng: 18.031135, closing: ['23:00', '00:00', '01:00', '01:00', '01:00', '01:00', '23:00'], pace: 'fast' },
       { id: 'balthazar', name: 'Balthazar', address: 'Högbergsgatan 33', area: 'Södermalm', type: 'bar', lat: 59.316572, lng: 18.072775, closing: '01:00', pace: 'fast' },
       { id: 'bar-a-vins', name: 'Bar à Vins', address: 'Narvavägen 34', area: 'Östermalm', type: 'bar', lat: 59.33675, lng: 18.09109, closing: [false, '23:00', '23:00', '23:00', '23:00', '23:00', false], pace: 'fast' },
       { id: 'bar-abrovinsch', name: 'Bar Abrovinsch', address: 'Inedalsgatan 15', area: 'Kungsholmen', type: 'bar', lat: 59.335389, lng: 18.036058, closing: null, pace: 'fast' },
@@ -201,7 +202,7 @@ import './style.css';
       { id: 'combo-vinbaren', name: 'Combo vinbaren', address: 'Odengatan 52', area: 'Vasastan', type: 'bar', lat: 59.343984, lng: 18.054758, closing: [false, '22:00', '22:00', '22:00', '23:00', '23:00', false], pace: 'fast' },
       { id: 'compagniet-bar', name: 'Compagniet Bar', address: 'Katarinavägen 18', area: 'Södermalm', type: 'bar', lat: 59.318891, lng: 18.074193, closing: '00:30', pace: 'fast' },
       { id: 'continental-bar', name: 'Continental Bar', address: 'Nytorgsgatan 33', area: 'Södermalm', type: 'bar', lat: 59.31296, lng: 18.082728, closing: '01:00', pace: 'fast' },
-      { id: 'coquetel-social', name: 'Coquetel social', address: 'Birger Jarlsgatan 20', area: 'Norrmalm', type: 'bar', lat: 59.336602, lng: 18.07204, closing: '03:00', pace: 'fast' },
+      { id: 'coquetel-social', name: 'Coquetel social', address: 'Birger Jarlsgatan 20', area: 'Östermalm', type: 'bar', lat: 59.336602, lng: 18.07204, closing: '03:00', pace: 'fast' },
       { id: 'cork', name: 'Cork', address: 'Stora Nygatan 20', area: 'Gamla Stan', type: 'bar', lat: 59.324499, lng: 18.068642, closing: '00:00', pace: 'fast' },
       { id: 'corner-bar', name: 'Corner Bar', address: 'Västerlånggatan 66', area: 'Gamla Stan', type: 'bar', lat: 59.323235, lng: 18.071865, closing: null, pace: 'fast' },
       { id: 'corner-club', name: 'Corner Club', address: 'Lilla Nygatan 16', area: 'Gamla Stan', type: 'bar', lat: 59.323281, lng: 18.069327, closing: [false, '00:00', '01:00', '01:00', '01:00', '01:00', '01:00'], pace: 'fast' },
@@ -290,7 +291,7 @@ import './style.css';
       { id: 'local-pub-och-eatery', name: 'Local Pub & Eatery', address: 'Ynglingagatan 24', area: 'Vasastan', type: 'bar', lat: 59.348597, lng: 18.045132, closing: null, pace: 'fast' },
       { id: 'loch-ness-taverna', name: 'Loch Ness Taverna', address: 'Wollmar Yxkullsgatan 5B', area: 'Södermalm', type: 'bar', lat: 59.316871, lng: 18.064201, closing: ['23:00', '00:00', '00:00', '00:00', '00:00', '00:00', false], pace: 'fast' },
       { id: 'loulou', name: 'Loulou', address: 'Katarinavägen 3', area: 'Södermalm', type: 'bar', lat: 59.319626, lng: 18.07304, closing: null, pace: 'fast' },
-      { id: 'lucy-s-flower-shop', name: 'Lucy’s Flower Shop', address: 'Birger Jarlsgatan 20', area: 'Norrmalm', type: 'bar', lat: 59.336632, lng: 18.071957, closing: null, pace: 'fast' },
+      { id: 'lucy-s-flower-shop', name: 'Lucy’s Flower Shop', address: 'Birger Jarlsgatan 20', area: 'Östermalm', type: 'bar', lat: 59.336632, lng: 18.071957, closing: null, pace: 'fast' },
       { id: 'mackinlay-s-inn', name: "MacKinlay's Inn", address: 'Fleminggatan 85', area: 'Kungsholmen', type: 'bar', lat: 59.334431, lng: 18.031795, closing: ['23:00', '00:00', '00:00', '00:00', '01:00', '01:00', '22:00'], pace: 'fast' },
       { id: 'map-petite-maison', name: 'MAP Petite Maison', address: 'Vasagatan 38', area: 'Norrmalm', type: 'bar', lat: 59.33287, lng: 18.057633, closing: ['23:00', '23:00', '23:00', '01:00', '01:00', '01:00', '23:00'], pace: 'fast' },
       { id: 'medis-kok-och-bar', name: 'Medis kök & bar', address: 'Noe Arksfaret 1', area: 'Södermalm', type: 'bar', lat: 59.315373, lng: 18.071747, closing: ['00:00', '00:00', '00:00', '00:00', '01:30', '01:30', '00:00'], pace: 'fast' },
@@ -1416,7 +1417,7 @@ import './style.css';
     // kartan, filtrerar inget: en kortare kö fem minuter bort, i grannområdet, ska fortfarande synas.
     function flyToArea(area) {
       if (!map) return;
-      var inArea = VENUES.filter(function(v) { return v.area === area; });
+      var inArea = VENUES.filter(function(v) { return v.area === area || placeOf(v) === area; });
       var shown = inArea.filter(venueTypeMatches);
       if (!inArea.length) return;
       var bounds = new mapboxgl.LngLatBounds();
@@ -1561,7 +1562,10 @@ import './style.css';
       mapEl.style.alignItems = 'center';
       mapEl.style.justifyContent = 'center';
       mapEl.style.background = 'var(--surface)';
-      mapEl.innerHTML = '<div class="map-error-inner"><span>' + (msg || 'Kartan kunde inte laddas') + '</span><small>Övriga funktioner fungerar normalt</small></div>';
+      // Kartan går inte att starta om på plats (biblioteket eller stilen saknas); en omladdning gör det, och listan och
+      // rapporterna fungerar under tiden.
+      mapEl.innerHTML = '<div class="map-error-inner"><span>' + (msg || 'Kartan kunde inte laddas') + '</span><small>Listan och rapporterna fungerar ändå</small>' +
+        '<button class="explore-err-btn" onclick="location.reload()">Försök igen</button></div>';
     }
 
     // Kartan startar när introts ring har fyllts. Ringen ritas om på huvudtråden i varje bildruta, och kartans start
@@ -2090,7 +2094,7 @@ import './style.css';
       }
     }, function(err) {
       console.error('[QueueBar] Mapbox laddades inte:', err);
-      showMapError('Mapbox GL JS laddades inte');
+      showMapError('Kartan kunde inte laddas');
     });
 
     // ── Supabase-funktioner ──────────────────────────────────────────────────
@@ -2183,9 +2187,6 @@ import './style.css';
         if (result.data && result.count > result.data.length) {
           console.warn('[QueueBar] loadReports: ' + result.count + ' aktiva rapporter men bara ' + result.data.length + ' lästa — äldsta saknas');
         }
-        console.log('[QueueBar] loadReports råsvar — status:', result.status, result.statusText,
-          '| count:', result.count, '| rader:', result.data ? result.data.length : 'null',
-          '| error:', result.error || 'ingen');
         if (result.error) {
           console.error('[QueueBar] loadReports Supabase-fel (fullt objekt):', JSON.stringify(result.error));
           _loadState = 'error';
@@ -2776,6 +2777,7 @@ import './style.css';
     function onPosition(pos) {
       window._userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy || 0 };
       updateMeOnMap();
+      if (_flyToMe) { _flyToMe = false; flyToMe(); }
       // Ny omritning efter ≥25 m förflyttning, eller när noggrannheten ändrats lika mycket — samma plats med 10 m i
       // stället för 100 m osäkerhet kan flytta dig från "vid stället" till "Gå hit".
       var acc = Math.min(window._userPos.acc, 100);
@@ -2790,8 +2792,30 @@ import './style.css';
       if (currentScreen === 'explore' && Date.now() - _listIntroAt > 3000) renderExploreVenues();
       if (currentScreen === 'report' && document.getElementById('rs1').style.display !== 'none') filterReportList();
     }
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(onPosition, function() {}, { timeout: 20000, maximumAge: 60000 });
+    // Frågan om plats kommer när den behövs (positionsknappen, Rapportera), inte vid start ovanpå samtyckesrutan. Har du
+    // redan sagt ja startar den direkt; då visas ingen fråga. Nekad plats sägs vid trycket i stället för att tyst ge
+    // en karta utan avstånd.
+    var _geoWatch = null, _flyToMe = false;
+    function startLocation(userAsked) {
+      if (!navigator.geolocation || _geoWatch != null) return;
+      _geoWatch = navigator.geolocation.watchPosition(onPosition, function(err) {
+        if (err.code !== 1) return; // tidsgräns eller ingen GPS-signal: watchPosition försöker själv igen
+        navigator.geolocation.clearWatch(_geoWatch);
+        _geoWatch = null;
+        if (userAsked) showToast('Platsen är avstängd. Slå på den för Safari i telefonens inställningar.');
+      }, { timeout: 20000, maximumAge: 60000 });
+    }
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function(s) { if (s.state === 'granted') startLocation(); }, function() {});
+    }
+    function flyToMe() {
+      var p = window._userPos;
+      if (map && p) map.flyTo({ center: [p.lng, p.lat], zoom: Math.max(15, map.getZoom()), duration: _reduceMotion ? 0 : 800 });
+    }
+    function locateMe() {
+      if (window._userPos) return flyToMe();
+      _flyToMe = true;
+      startLocation(true);
     }
 
     function meGeoJSON() {
@@ -3173,6 +3197,16 @@ import './style.css';
     function _searchCompact(s, keepSwedish) { return _searchNorm(s, keepSwedish).replace(/\s/g, ''); }
     // Typord man skriver i en sökning: "nattklubb" ska hitta klubbarna, "berns bar" ska hitta Berns.
     var TYPE_WORDS = { bar: ['bar', 'barer'], klubb: ['klubb', 'klubbar', 'nattklubb', 'nattklubbar', 'club'] };
+    // Platser folk söker på som inte är stadsdelar. Ställena inom radien hör dit i sökningen och kartans områdessök:
+    // "Stureplan" hittade förut bara Sturehof och Drama (via adressen), inte Sturecompagniet eller Spy Bar.
+    var PLACES = { Stureplan: { lat: 59.33555, lng: 18.07375, km: 0.16 }, Hornstull: { lat: 59.3157, lng: 18.0335, km: 0.23 } };
+    function placeOf(v) {
+      for (var name in PLACES) {
+        var p = PLACES[name];
+        if (Math.hypot((v.lat - p.lat) * 111, (v.lng - p.lng) * 111 * Math.cos(p.lat * Math.PI / 180)) <= p.km) return name;
+      }
+      return null;
+    }
 
     function venueScore(query, v) {
       var sw = /[åäö]/i.test(query);
@@ -3182,7 +3216,7 @@ import './style.css';
 
       var name  = _searchNorm(v.name, sw).replace(/,/g, '');
       var namec = _searchCompact(v.name, sw).replace(/,/g, '');
-      var area  = _searchNorm(v.area, sw);
+      var area  = _searchNorm(v.area + (placeOf(v) ? ' ' + placeOf(v) : ''), sw);
       var addr  = _searchNorm(v.address, sw);
 
       if (name === q)              return 100;
@@ -3232,7 +3266,11 @@ import './style.css';
       var q = _searchNorm(query || '');
       if (q.length < 3) return [];
       var count = {};
-      venues.forEach(function(v) { count[v.area] = (count[v.area] || 0) + 1; });
+      venues.forEach(function(v) {
+        count[v.area] = (count[v.area] || 0) + 1;
+        var p = placeOf(v);
+        if (p) count[p] = (count[p] || 0) + 1;
+      });
       return Object.keys(count)
         .filter(function(a) { return _searchNorm(a).indexOf(q) === 0; })
         .sort(function(a, b) { return count[b] - count[a]; })
@@ -4295,6 +4333,7 @@ Object.assign(window, {
   flyToAreaChip,
   getVenueById,
   loadReports,
+  locateMe,
   onMyWayArrived,
   onMyWayReport,
   onMapSearchBlur,

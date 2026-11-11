@@ -90,6 +90,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5L12 3Z"/><path d="M2.5 12 12 17l9.5-5"/><path d="M2.5 16 12 21l9.5-5"/></svg>
       </button>
       <div id="map-style-menu" class="map-style-menu" role="group" aria-labelledby="msm-title" hidden></div>
+      <!-- Min position: frågar om plats först här (eller i Rapportera), inte vid start. -->
+      <button id="locate-btn" class="map-style-btn locate-btn" onclick="locateMe()" aria-label="Min position">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3 3 7.5L21 3Z"/></svg>
+      </button>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
         <span class="err-toast-msg">Ingen kontakt med servern</span>

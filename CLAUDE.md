@@ -95,7 +95,7 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 153 enhetstester (Vitest)
+npm test                   # 154 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
@@ -352,8 +352,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   Live-flödet och sökningen filtreras inte. Ett tryck på den valda typen igen tar bort valet
 - **Områden** (`flyToArea`): knappar efter Alla · Barer · Klubbar i samma rad (rullar i sidled), en per område med
   ≥10 ställen, störst först (`renderAreaChips`, räknas ur `VENUES`). Kartans sök visar också områden från 3 tecken
-  (`areaHits`: "söder" → Södermalm · Område · 104 ställen). Båda **flyttar bara kartan** (`mapViewPadding`, samma ram
-  som startvyn) och filtrerar inget, så en kortare kö i grannområdet syns fortfarande. Inget kort öppnas
+  (`areaHits`: "söder" → Södermalm · Område · 106 ställen). **Platser** som inte är stadsdelar (`PLACES`: Stureplan,
+  Hornstull) räknas som områden i sökningen: ställena inom radien hittas av "stureplan" (`placeOf`). Båda **flyttar
+  bara kartan** (`mapViewPadding`, samma ram som startvyn) och filtrerar inget, så en kortare kö i grannområdet syns
+  fortfarande. Inget kort öppnas
   Valt område (`_selectedArea`, `selectArea`) är vitt som typknapparna och gäller samtidigt med Alla/Barer/Klubbar:
   byts typen ramas samma område in för den nya typen. Ett nytt tryck på området tar bort valet
 - Grundkartan är **Mapbox Standard**: riktiga 3D-byggnader, landmärken (Slottet, kyrkorna, Berns) och ljus, men **inga
@@ -438,8 +440,11 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   inte); den döljs bara när huvudknappen redan är "Vägbeskrivning"
 - `renderVenueCard` ritar innehållet, `openVenueCard` öppnar. Ett öppet kort ritas om vid ny data och ny position
   (`refreshVenueCard`). All omritning efter läsning, fel och väckning går genom `renderReports()`
-- Positionen följer med (`watchPosition`, omritning efter ≥25 m). `loadReports` har löpnummer (ett äldre svar skriver
-  aldrig över ett nyare) och 15 s tidsgräns; `visibilitychange` ritar om direkt när telefonen väcks
+- Positionen följer med (`watchPosition`, omritning efter ≥25 m), men frågan om plats kommer först när den behövs:
+  positionsknappen under karttypsknappen (`locateMe`, flyger till dig) eller Rapportera (`startLocation`). Har du redan
+  sagt ja startar den vid start (Permissions API). Nekad plats ger en toast vid trycket. `loadReports` har löpnummer
+  (ett äldre svar skriver aldrig över ett nyare) och 15 s tidsgräns; `visibilitychange` ritar om direkt när telefonen
+  väcks
 - "Bäst nu" rangordnar efter **tid tills du är inne**: promenad + kö (+5 min om datan är 15–30 min). Över 40 min
   promenad räknas inte, och stället måste ha ≥45 min kvar när du är framme
 - Avstånd och gångtid: `distanceKmTo` / `walkMinutesTo` (5 km/h fågelvägen) / `formatDistance` — samma siffror i
