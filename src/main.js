@@ -2695,6 +2695,7 @@ import './style.css';
       if (err && err.userText) return err.userText;
       var msg = (err && err.message) || '';
       if (msg.indexOf('rate_limited') >= 0) return 'Du har redan rapporterat nyss. Vänta en stund.';
+      if (msg.indexOf('ip_limited') >= 0) return 'Många rapporter från samma nät just nu. Försök igen om en stund.';
       if (msg.indexOf('too_soon') >= 0) return 'Vänta några minuter innan du uppdaterar igen';
       if (msg.indexOf('session_') >= 0) return 'Din kö-rapport har gått ut. Rapportera på nytt.';
       return 'Något gick fel. Försök igen.';
@@ -3819,7 +3820,7 @@ import './style.css';
       // Hjälten är rapporterat antal; "framför" som enhet. Ren text (t.ex. "Kort kö") får ingen enhet.
       var hasCount = r.people_ahead != null && r.people_ahead > 0;
       var heroText = hasCount ? aheadBucket(r.people_ahead).label : (r.people_ahead === 0 ? 'Ingen kö' : descriptor);
-      var heroSmall = !hasCount ? ' style="color:' + color + ';font-size:18px;letter-spacing:-0.03em"' : ' style="color:' + color + '"';
+      var heroSmall = !hasCount ? ' style="color:' + color + ';font-size:calc(18 * var(--u));letter-spacing:-0.03em"' : ' style="color:' + color + '"';
       var subParts = [timeAgo(r.created_at)];
       if (nowWait) subParts.push('nu ' + nowWait);
       var olderBtn = '';

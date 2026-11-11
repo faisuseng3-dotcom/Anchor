@@ -234,6 +234,9 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 
 ## Viktiga CSS-klasser
 
+- **Textstorlek skrivs `calc(N * var(--u))`, aldrig `Npx`** (`font-size` och `font`-förkortningen). `--u` är 1 px som
+  standard och växer med iPhonens textstorlek (Dynamic Type, högst 1,5 gånger). En ny `font-size: 15px` växer inte
+  med. Undantag: splash-loggan (`.splash-row`, `.splash-slogan`), vars geometri bygger på em
 - `.erow` — venue-rad i Utforska · `.erow--empty` — ingen data · `.erow--stale` — 15–45 min · `.erow--closed` — stängt.
   Raden är neutral: statusen syns bara i den färgade siffran till höger. Ingen färgad kant, ingen tonad bakgrund
 - `.erow-pulse-dot` — blinkande röd punkt vid lång kö

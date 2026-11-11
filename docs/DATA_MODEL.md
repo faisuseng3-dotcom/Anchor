@@ -219,8 +219,9 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    (`supabase/migrations/20261111030000_hide_user_id.sql`, körd 2026-11-11 efter att klienten driftsatts). De gamla
    "user-…"-id:na, som var läsbara, byttes på servern mot nya som ingen känner till; klienten byter själv ut ett
    "user-…"-id (`getUserId`).
-2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`, per `user_id`). Den som rensar
-   `localStorage` får ett nytt id och är fri igen; det finns inget konto att spärra.
+2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`): 20 min per `user_id`, och högst 10 kömätningar
+   i timmen per nät (IP-adressen hashad med hemligt salt, sparad en timme i `report_ip_log`). Ett nytt id räcker alltså
+   inte för att fylla ett ställe; ett nytt nät gör det. Mer kräver inloggning eller captcha.
 3. **`expires_at` och `created_at` sätts av servern.**
 4. **`queue_status` beräknas i klienten** och skickas med. Den kan sättas till vilket känt värde som helst
    oberoende av `people_ahead`.

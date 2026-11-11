@@ -87,6 +87,11 @@ check('Karttyp: Mapbox Standard som utbytbar import (natt, ljus, satellit)', js.
 check('Supabase npm import', js.includes('supabase-js'));
 // black-translucent gör iOS hemskärmsapp statusradens höjd för kort: svart fält under menyn som sidan inte kan nå.
 check('iOS: ingen black-translucent statusrad (svart fält nertill i hemskärmsappen)', !html.includes('black-translucent'));
+// Text i px växer inte med iPhonens textstorlek. Allt skrivs calc(N * var(--u)); bara splash-loggan (em-geometri) är px.
+const pxFonts = (css.replace(/\.splash-row \{[^}]*\}|\.splash-slogan \{[^}]*\}/g, '') + js)
+  .match(/font-size: *\d+(\.\d+)?px|font: *\d{3} \d+(\.\d+)?px/g) || [];
+check('Textstorlek följer iOS Dynamic Type (ingen font-size i px)', pxFonts.length === 0);
+if (pxFonts.length) console.error('   ' + pxFonts.join(', '));
 
 // ── Security ──────────────────────────────────────────────────────────────────
 const hasEnvFile = fs.existsSync(path.join(root, '.env'));
