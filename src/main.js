@@ -2657,9 +2657,9 @@ import './style.css';
       var userId = getUserId();
       var now = new Date();
       var me = localStorage.getItem('qb_reporter');
-      var recent = allReports.filter(function(r) { return me && r.reporter === me && isQueueReport(r) && (now - new Date(r.created_at)) < 20 * 60 * 1000; });
+      var recent = allReports.filter(function(r) { return me && r.reporter === me && isQueueReport(r) && (now - new Date(r.created_at)) < 5 * 60 * 1000; });
       if (recent.length > 0) {
-        var wait = Math.ceil(20 - (now - new Date(recent[0].created_at)) / 60000);
+        var wait = Math.ceil(5 - (now - new Date(recent[0].created_at)) / 60000);
         throw userError('Vänta ' + wait + (wait === 1 ? ' minut' : ' minuter') + ' innan du rapporterar igen (gäller alla ställen)');
       }
       var draft = { venue_id: venueId, people_ahead: peopleAhead, report_type: 'initial', created_at: now.toISOString() };

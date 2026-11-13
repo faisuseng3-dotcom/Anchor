@@ -16,6 +16,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | `delete_my_report` (Ångra i Profil) | `migrations/20261111050000_delete_my_report.sql` | samma, körd 2026-11-11 |
 | Gallring: pg_cron-jobbet `qbar-gallring` (03:30 UTC) raderar rapporter över 90 dagar och utgångna "på väg"; död `delete_expired_reports` borttagen | `migrations/20261111060000_retention.sql` | samma, körd 2026-11-11 |
 | Spärr per nät: högst 10 kömätningar i timmen per IP (`reports_guard`, `ip_limited`), hashad med salt i `app_secrets`, logg i `report_ip_log` som jobbet `qbar-iplogg` rensar | `migrations/20261111070000_ip_limit.sql` | samma, körd 2026-11-11 |
+| Spärren per `user_id` mellan kömätningar 20 → 5 min (`reports_guard`, `rate_limited`) | `migrations/20261113000000_report_cooldown.sql` | samma, körd 2026-11-13 |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.

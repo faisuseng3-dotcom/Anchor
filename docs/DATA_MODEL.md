@@ -93,7 +93,7 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 | `near_venue` | ja | ja | `true` inom 300 m (med GPS-osäkerheten), `false` längre bort, `null` utan position. Långt ifrån räknas bara när ingen på plats rapporterat (`estimateWait`). |
 
 Begränsningar i databasen: `people_ahead` 0–200, `queue_status` och `report_type` bara de kända värdena, `comment` ≤ 80.
-`reports_guard` (BEFORE INSERT, security definer) spärrar en ny `initial` inom 20 min från samma `user_id`
+`reports_guard` (BEFORE INSERT, security definer) spärrar en ny `initial` inom 5 min från samma `user_id`
 (`rate_limited`) och kräver att uppföljningar hör till en egen, öppen session (`session_*`, `too_soon` under 3 min).
 
 ### Så här används `people_ahead`
@@ -219,7 +219,7 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    (`supabase/migrations/20261111030000_hide_user_id.sql`, körd 2026-11-11 efter att klienten driftsatts). De gamla
    "user-…"-id:na, som var läsbara, byttes på servern mot nya som ingen känner till; klienten byter själv ut ett
    "user-…"-id (`getUserId`).
-2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`): 20 min per `user_id`, och högst 10 kömätningar
+2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`): 5 min per `user_id`, och högst 10 kömätningar
    i timmen per nät (IP-adressen hashad med hemligt salt, sparad en timme i `report_ip_log`). Ett nytt id räcker alltså
    inte för att fylla ett ställe; ett nytt nät gör det. Mer kräver inloggning eller captcha.
 3. **`expires_at` och `created_at` sätts av servern.**
