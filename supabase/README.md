@@ -5,6 +5,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 
 | Del | Fil | Hur den kom på plats |
 |---|---|---|
+| Baslinje: `reports`, `favorites`, `user_profiles`, `report_votes` som de skapades i webbgränssnittet, med de första policyerna, den första `reports_guard` och realtid för `reports` | `migrations/20260901000000_baseline.sql` | körs **inte** mot produktionen (allt finns redan där); bara mot en tom databas |
 | Tabell `push_subscriptions` + RPC:erna `save_push_subscription`, `delete_push_subscription`, `delete_push_subscriptions` | `migrations/20261111000000_push_subscriptions.sql` | `db query --remote -f` |
 | Edge Function `notify-favorites` | `functions/notify-favorites/` | `functions deploy notify-favorites --no-verify-jwt --use-api` |
 | Hemligheter `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `WEBHOOK_SECRET` | nyckelfilen | `secrets set --env-file` |
@@ -16,6 +17,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | `delete_my_report` (Ångra i Profil) | `migrations/20261111050000_delete_my_report.sql` | samma, körd 2026-11-11 |
 | Gallring: pg_cron-jobbet `qbar-gallring` (03:30 UTC) raderar rapporter över 90 dagar och utgångna "på väg"; död `delete_expired_reports` borttagen | `migrations/20261111060000_retention.sql` | samma, körd 2026-11-11 |
 | Spärr per nät: högst 10 kömätningar i timmen per IP (`reports_guard`, `ip_limited`), hashad med salt i `app_secrets`, logg i `report_ip_log` som jobbet `qbar-iplogg` rensar | `migrations/20261111070000_ip_limit.sql` | samma, körd 2026-11-11 |
+| Index på `reports (user_id, created_at)` och `reports (reporter, created_at desc)` | `migrations/20261112000000_reports_indexes.sql` | samma, körd 2026-11-12 |
 | Spärren per `user_id` mellan kömätningar 20 → 5 min (`reports_guard`, `rate_limited`) | `migrations/20261113000000_report_cooldown.sql` | samma, körd 2026-11-13 |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga

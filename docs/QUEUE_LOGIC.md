@@ -306,16 +306,24 @@ dokumentation av varför, inget sätt att se om de stämmer, och ingen automatik
 mätdata finns. Givet B-01 är detta **den enskilt mest inflytelserika odokumenterade siffran i
 appen**.
 
-### B-03 — Ingen åldersdegradering av statusfärgen
+### ~~B-03 — Ingen åldersdegradering av statusfärgen~~ — åtgärdat
 
-En rapport 44 minuter gammal ger exakt samma färg och samma text som en 2 minuter gammal. Åldern
-syns bara som text ("44 min sedan"). Projektets egen princip säger att gammal data ska se gammal ut.
+Data som är 15–45 min gammal ser gammal ut överallt:
 
-### B-04 — `source` visas inte konsekvent
+| Var | Hur |
+|---|---|
+| Kortet | siffran tonas (`vc--aging`) och undertexten säger "kan vara gammal" |
+| Listan | siffran tonas (`erow--stale`) och åldern får "· äldre" |
+| Kartan | pill och namn tonas till 0,6, glöden blir svagare |
+| "Bäst nu" | siffran tonas (`bn-card--aging`) |
+| Live | siffran tonas (`lv-row--aging`) bredvid "N min sedan" |
 
-`estimateWait` returnerar `source: 'live' | 'history' | 'estimate'`, men gränssnittet visar bara
-"≈ uppskattning" i vissa vyer. En användare kan inte se skillnad på en siffra som vilar på kvällens
-mätningar och en som vilar på en handsatt gissning.
+### ~~B-04 — `source` visas inte konsekvent~~ — åtgärdat
+
+`estimateWait` returnerar `source: 'live' | 'history' | 'estimate'`. När siffran inte vilar på kvällens mätningar säger
+kortet "enligt tidigare kvällar" (`history`: samma veckodag och tid) eller "uppskattning" (`estimate`: handsatt `pace`),
+och listan "≈ tidigare kvällar" eller "≈ uppskattning". Kartans pill visar bara siffran: den har inte plats för mer, och
+källan står ett tryck bort i kortet.
 
 ### ~~B-05 — `limit(100)` kan tysta hastighetsmätningen~~ — åtgärdat
 
