@@ -106,8 +106,11 @@ npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar 
 **iOS-appen** (App Store) är Capacitor runt samma bygge: `capacitor.config.json` (bundle-id `se.queuebar.qbar`) och
 `ios/`. Bara iPhone, bara stående, alltid mörkt läge; platstexten står i `ios/App/App/Info.plist`. Ikonen är
 `favicon.svg` utan rundade hörn, 1024 px utan alfakanal. `IS_NATIVE_APP` i `src/main.js` döljer det som bara gäller
-webben. Länkar med `target="_blank"` öppnas av iOS utanför appen och fungerar inte för egna sidor
-(`capacitor://localhost/...`): länka egna sidor utan `_blank`.
+webben. Platsen går i appen via `@capacitor/geolocation` (`startLocation`): WebKits `navigator.geolocation` frågade
+en gång till efter iOS, som "localhost vill använda din nuvarande plats". Länkar med `target="_blank"` öppnas av iOS
+utanför appen och fungerar inte för egna sidor (`capacitor://localhost/...`): länka egna sidor utan `_blank`. Externa
+adresser i appen: `location.href` (Capacitor skickar dem till Safari/Google Maps); `window.open` fungerar bara i ett
+tryck. "Dela" delar `QBAR_URL`, inte `location.origin` (som i appen är `capacitor://localhost`)
 
 `npm run verify` är `vitest run && node scripts/check.js && vite build`. Kör det, inte delarna var
 för sig.
@@ -190,8 +193,9 @@ Två regler som följer av det:
   för att en enda pollning missade är sämre än att visa den med en varning. `showExploreError()`
   körs bara när `allReports` är tom.
 
-**Testdata:** `?testdata=true` i URL:en, eller **Alt + 2** (Option + 2 på Mac; ignoreras i
-textfält där det skriver "@"). Växlar `qb_testdata` i localStorage och laddar om. Av som standard —
+**Testdata:** `?testdata=true` i URL:en, **Alt + 2** (Option + 2 på Mac; ignoreras i textfält där det skriver "@")
+eller **fem snabba tryck på rubriken "Profil"** (telefoner och App Store-granskaren, som saknar båda). Växlar
+`qb_testdata` i localStorage och laddar om. Av som standard —
 produktionen visar aldrig falska rapporter. **Verifiera alltid med testdata innan arbete
 rapporteras klart.**
 

@@ -1,5 +1,6 @@
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createClient } from '@supabase/supabase-js';
+import { Geolocation } from '@capacitor/geolocation';
 import './style.css';
 
     // Capacitor-skalet (App Store) sätter window.Capacitor. Där finns ingen hemskärm, ingen webbpush och inget Safari.
@@ -783,6 +784,8 @@ import './style.css';
     }
 
     // ── Dela (Share) ─────────────────────────────────────────────────────────────
+    // Länken som delas. I iOS-appen är window.location.origin capacitor://localhost, som ingen annan kan öppna.
+    var QBAR_URL = 'https://anchor-queuebar.vercel.app';
     function shareVenue(venueId) {
       var venue = getVenueById(venueId);
       if (!venue) return;
@@ -798,10 +801,10 @@ import './style.css';
         navigator.share({
           title: 'Qbar',
           text: statusText,
-          url: window.location.origin
+          url: QBAR_URL
         }).catch(function() {});
       } else {
-        var full = statusText + '\n' + window.location.origin;
+        var full = statusText + '\n' + QBAR_URL;
         navigator.clipboard.writeText(full).then(function() {
           showToast('Kopierat till urklipp');
         }).catch(function() {
@@ -1274,7 +1277,10 @@ import './style.css';
     function openDirections() {
       if (!activeVenue) return;
       var to = activeVenue.name + ', ' + activeVenue.address + ', Stockholm';
-      window.open('https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + encodeURIComponent(to), '_blank');
+      var url = 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + encodeURIComponent(to);
+      // I iOS-appen skickar Capacitor en navigering till en annan värd vidare till Google Maps eller Safari; window.open
+      // gör det bara inuti ett tryck.
+      if (IS_NATIVE_APP) location.href = url; else window.open(url, '_blank');
     }
 
     // Kartans enda kort: svaret på "vart går vi nu?". Visar bara färsk data (computeBestNow: ≤30 min). Följer samma
@@ -2505,7 +2511,7 @@ import './style.css';
       });
     }
 
-    // Testdata visas bara med ?testdata=true eller efter den hemliga växlingen Alt + 2.
+    // Testdata visas bara med ?testdata=true, Alt + 2 eller fem snabba tryck på rubriken i Profil.
     var TESTDATA_KEY = 'qb_testdata';
 
     function testDataEnabled() {
@@ -2548,6 +2554,15 @@ import './style.css';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       e.preventDefault();
       toggleTestData();
+    });
+
+    // Fem snabba tryck på rubriken "Profil": samma växling på en telefon, som saknar Alt + 2 och adressfält (iOS-appen,
+    // App Store-granskaren). Står i granskningsanteckningarna.
+    var _titleTaps = 0, _titleTapTimer = null;
+    document.querySelector('#screen-profile h1').addEventListener('click', function() {
+      clearTimeout(_titleTapTimer);
+      _titleTapTimer = setTimeout(function() { _titleTaps = 0; }, 1500);
+      if (++_titleTaps === 5) toggleTestData();
     });
 
     function injectTestData() {
@@ -2619,10 +2634,10 @@ import './style.css';
     // Fel som användaren ska läsa som de står (spärrar, testläge, stängt). Allt annat blir en allmän text.
     function userError(text) { var e = new Error(text); e.userText = text; return e; }
 
-    // Testläget (?testdata=true / Alt + 2) visar påhittade köer. Inget därifrån får nå de riktiga tabellerna: en
-    // provrapport syntes annars hos alla, räknad med testdatans påhittade takter.
+    // Testläget (?testdata=true / Alt + 2 / fem tryck på Profil) visar påhittade köer. Inget därifrån får nå de riktiga
+    // tabellerna: en provrapport syntes annars hos alla, räknad med testdatans påhittade takter.
     function assertNotTestMode() {
-      if (testDataEnabled()) throw userError('Testläge: inget skickas. Stäng av med Alt + 2.');
+      if (testDataEnabled()) throw userError('Testläge: inget skickas.');
     }
 
     // Långt från stället: över 300 m, med GPS:ens osäkerhet (högst 100 m) till din fördel. Utan position antar vi att
@@ -2838,16 +2853,38 @@ import './style.css';
     // redan sagt ja startar den direkt; då visas ingen fråga. Nekad plats sägs vid trycket i stället för att tyst ge
     // en karta utan avstånd.
     var _geoWatch = null, _flyToMe = false;
-    function startLocation(userAsked) {
-      if (!navigator.geolocation || _geoWatch != null) return;
-      _geoWatch = navigator.geolocation.watchPosition(onPosition, function(err) {
-        if (err.code !== 1) return; // tidsgräns eller ingen GPS-signal: watchPosition försöker själv igen
-        navigator.geolocation.clearWatch(_geoWatch);
-        _geoWatch = null;
-        if (userAsked) showToast('Platsen är avstängd. Slå på den för ' + (IS_NATIVE_APP ? 'Qbar' : 'Safari') + ' i telefonens inställningar.');
-      }, { timeout: 20000, maximumAge: 60000 });
+    var GEO_OPTS = { timeout: 20000, maximumAge: 60000 };
+    function stopLocation(userAsked) {
+      if (_geoWatch == null) return;
+      if (!IS_NATIVE_APP) navigator.geolocation.clearWatch(_geoWatch);
+      else if (typeof _geoWatch === 'string') Geolocation.clearWatch({ id: _geoWatch });
+      _geoWatch = null;
+      if (userAsked) showToast('Platsen är avstängd. Slå på den för ' + (IS_NATIVE_APP ? 'Qbar' : 'Safari') + ' i telefonens inställningar.');
     }
-    if (navigator.permissions && navigator.permissions.query) {
+    function startLocation(userAsked) {
+      if (_geoWatch != null) return;
+      if (IS_NATIVE_APP) {
+        // I iOS-appen via Capacitor: WebKits navigator.geolocation frågade en gång till efter iOS, som "localhost".
+        _geoWatch = true; // tills watchPosition ger sitt id
+        // rejected: watchen startade aldrig, så nästa tryck ska kunna försöka igen även när platsen inte är nekad.
+        var onErr = function(rejected) {
+          Geolocation.checkPermissions().then(function(p) {
+            if (p.location === 'denied') stopLocation(userAsked);
+            else if (rejected) stopLocation(false);
+          }, function() { if (rejected) stopLocation(false); });
+        };
+        Geolocation.watchPosition(GEO_OPTS, function(pos, err) { if (pos) onPosition(pos); else if (err) onErr(false); })
+          .then(function(id) { if (_geoWatch === true) _geoWatch = id; }, function() { onErr(true); });
+        return;
+      }
+      if (!navigator.geolocation) return;
+      _geoWatch = navigator.geolocation.watchPosition(onPosition, function(err) {
+        if (err.code === 1) stopLocation(userAsked); // annars tidsgräns eller ingen GPS-signal: watchPosition försöker igen
+      }, GEO_OPTS);
+    }
+    if (IS_NATIVE_APP) {
+      Geolocation.checkPermissions().then(function(p) { if (p.location === 'granted') startLocation(); }, function() {});
+    } else if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then(function(s) { if (s.state === 'granted') startLocation(); }, function() {});
     }
     function flyToMe() {
@@ -3100,7 +3137,7 @@ import './style.css';
       if (st === 'on') return disablePushNotifications();
       if (st === 'install') { showToast('Lägg till Qbar på hemskärmen först: Dela, sedan "Lägg till på hemskärmen".'); return; }
       if (st === 'unsupported') { showToast('Den här webbläsaren kan inte visa notiser.'); return; }
-      if (testDataEnabled()) { showToast('Testläge: inget skickas. Stäng av med Alt + 2.'); return; }
+      if (testDataEnabled()) { showToast('Testläge: inget skickas.'); return; }
       if (!supabase) { showToast('Ingen kontakt med servern. Försök igen.'); return; }
       try {
         var perm = await Notification.requestPermission(); // först, medan trycket räknas (krav i Safari)

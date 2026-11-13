@@ -19,6 +19,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | Spärr per nät: högst 10 kömätningar i timmen per IP (`reports_guard`, `ip_limited`), hashad med salt i `app_secrets`, logg i `report_ip_log` som jobbet `qbar-iplogg` rensar | `migrations/20261111070000_ip_limit.sql` | samma, körd 2026-11-11 |
 | Index på `reports (user_id, created_at)` och `reports (reporter, created_at desc)` | `migrations/20261112000000_reports_indexes.sql` | samma, körd 2026-11-12 |
 | Spärren per `user_id` mellan kömätningar 20 → 5 min (`reports_guard`, `rate_limited`) | `migrations/20261113000000_report_cooldown.sql` | samma, körd 2026-11-13 |
+| Kommentarer nollas (`reports_no_comment`), push bara till webbläsarnas push-tjänster (`save_push_subscription`) | `migrations/20261112010000_launch_hardening.sql` | samma, körd 2026-11-13; `notify-favorites` driftsatt samma dag (titel ur `venue-names.js`) |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.
