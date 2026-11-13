@@ -1,5 +1,7 @@
 // Notistexten för en ny rapport. Ren funktion utan Deno eller nätverk, så att den går att testa i Node
 // (tests/notify.test.js). Intervallen är desamma som AHEAD_BUCKETS i src/main.js; testet larmar om de glider isär.
+import { VENUE_NAMES } from './venue-names.js';
+
 const AHEAD_TEXT = [
   [60, 'Över 50 personer i kö'],
   [37, '25–50 personer i kö'],
@@ -9,10 +11,11 @@ const AHEAD_TEXT = [
 ];
 
 // r: raden ur reports. sessionStartedAt: första rapporten i samma kö-session (bara för 'entered').
-// null = ingen notis: uppföljningar, rapporter utan antal och "inne" som inte går att mäta.
+// null = ingen notis: uppföljningar, rapporter utan antal, okända ställen och "inne" som inte går att mäta.
 export function notificationFor(r, sessionStartedAt) {
-  if (!r || !r.venue_id || !r.venue_name) return null;
-  const base = { title: r.venue_name, tag: 'venue-' + r.venue_id, url: '/?venue=' + encodeURIComponent(r.venue_id) };
+  const name = r && VENUE_NAMES[r.venue_id];
+  if (!name) return null;
+  const base = { title: name, tag: 'venue-' + r.venue_id, url: '/?venue=' + encodeURIComponent(r.venue_id) };
   if (r.report_type === 'entered') {
     if (!sessionStartedAt) return null;
     const mins = Math.round((new Date(r.created_at) - new Date(sessionStartedAt)) / 60000);

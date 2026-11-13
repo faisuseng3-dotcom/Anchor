@@ -4,10 +4,10 @@ Verifierad mot koden 2026-10-18 på grenen `redesign` (HEAD `28040f2`).
 
 > ## Var schemat finns
 >
-> Policyer, funktioner, triggrar och begränsningar lästes ur produktionen 2026-11-11
-> (`npx supabase db query --remote=awwmfsjsrjktekmbgadx --read-only`). Ändringar sedan dess ligger i
-> `supabase/migrations/`. Tabellerna `reports`, `favorites`, `user_profiles` och `report_votes` skapades i webbgränssnittet
-> och har ingen `create table` i repot; avsnitten nedan beskriver dem som de såg ut då.
+> Hela schemat ligger i `supabase/migrations/`. Tabellerna `reports`, `favorites`, `user_profiles` och `report_votes`
+> skapades i webbgränssnittet; `20260901000000_baseline.sql` återger dem som de var innan migreringarna 2026-11-11 (läst ur
+> produktionen med `npx supabase db query --remote=awwmfsjsrjktekmbgadx --read-only`), och migreringarna efter den är
+> ändringarna sedan dess.
 
 Inga nycklar, lösenord eller produktionsdata återges i detta dokument. Supabase-URL och den publika
 anon-nyckeln ligger i klartext i `src/main.js`; se säkerhetsavsnittet längst ned.
@@ -78,7 +78,7 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 
 | Kolumn | Skrivs av klienten | Läses | Innehåll |
 |---|---|---|---|
-| `id` | nej | nej | **OVERIFIERAT** — antas primärnyckel satt av databasen |
+| `id` | nej | nej | uuid, primärnyckel, `gen_random_uuid()` |
 | `created_at` | **nej** | ja, överallt | Sätts av triggern `reports_guard` (`now()`), oavsett vad klienten skickar. All färskhetslogik bygger på den. |
 | `venue_id` | **ja** | ja | Matchar `VENUES[].id`. Hamnar i `onclick` — se XSS-noten nedan. |
 | `venue_name` | **ja** | ja (reserv) | Denormaliserat namn. Escapas vid rendering. |
@@ -89,12 +89,14 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 | `report_type` | **ja** | ja | `'initial'` \| `'followup'` \| `'entered'`. Saknas på äldre rader → behandlas som `'initial'`. |
 | `queue_session` | **ja** | ja | `'qs-<base36>-<slump>'`. Binder ihop en persons mätpunkter i samma kö. |
 | `expires_at` | ja, men skrivs över | ja (filter) | `created_at + 45 min`, satt av `reports_guard`. `loadReports` filtrerar på den. |
-| `comment` | ja, om ifylld | ja | Max 80 tecken (CHECK i databasen). **Escapas** vid rendering. |
+| `comment` | nej | nej | Borttagen 2026-11-12: fri text som andra ser kräver filter, anmälan och blockering (App Store 1.2). Triggern `reports_no_comment` sätter den till `null`; kolumnen och läsrätten står kvar för gamla flikar. |
 | `near_venue` | ja | ja | `true` inom 300 m (med GPS-osäkerheten), `false` längre bort, `null` utan position. Långt ifrån räknas bara när ingen på plats rapporterat (`estimateWait`). |
 
-Begränsningar i databasen: `people_ahead` 0–200, `queue_status` och `report_type` bara de kända värdena, `comment` ≤ 80.
+Begränsningar i databasen: `people_ahead` 0–200, `queue_status` och `report_type` bara de kända värdena.
 `reports_guard` (BEFORE INSERT, security definer) spärrar en ny `initial` inom 5 min från samma `user_id`
 (`rate_limited`) och kräver att uppföljningar hör till en egen, öppen session (`session_*`, `too_soon` under 3 min).
+Index: `created_at`, `expires_at`, `venue_id`, `(venue_id, created_at desc)`, `(user_id, created_at)` (spärren,
+raderingen) och `(reporter, created_at desc)` (profilens historik).
 
 ### Så här används `people_ahead`
 
@@ -242,12 +244,11 @@ Stängd för databastext, men beroendet är indirekt och värt att skydda:
 
 | Fält | Skydd |
 |---|---|
-| `comment` | `escapeHtml()`  |
 | `venue_name` | `escapeHtml()` |
 | `venue_id` | **Inget escapande.** Säkert bara därför att `loadReports` filtrerar bort okända venue_id, så värdet alltid är ett av de kända i `VENUES` (bara `[a-z0-9-]`, låst av test). Tas filtret bort öppnas en injektionsväg via `onclick`-attributet. |
 | `user_id` | Renderas aldrig, och kan inte läsas |
 
 ### Vad som inte kunnat verifieras
 
-- `create table` för `reports`, `favorites`, `user_profiles` och `report_votes` (finns bara i produktionen)
-- Index
+- Baslinjen är inte körd mot ett riktigt Supabase-projekt, bara mot en tom Postgres med stubbar för `anon`,
+  `authenticated`, realtidsflödet och `pg_cron`

@@ -2,6 +2,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { createClient } from '@supabase/supabase-js';
 import './style.css';
 
+    // Capacitor-skalet (App Store) sätter window.Capacitor. Där finns ingen hemskärm, ingen webbpush och inget Safari.
+    var IS_NATIVE_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
     // ── PWA install prompt ───────────────────────────────────────────────────
     var _deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', function(e) {
@@ -14,7 +17,7 @@ import './style.css';
     function maybeShowInstallPrompt() {
       var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-      if (standalone || (!_deferredInstallPrompt && !ios)) return;
+      if (IS_NATIVE_APP || standalone || (!_deferredInstallPrompt && !ios)) return;
       try { if (localStorage.getItem('qb_install_dismissed')) return; } catch(e) {}
       var card = document.getElementById('install-prompt');
       if (!card) return;
@@ -1132,7 +1135,7 @@ import './style.css';
         } else if (est.ahead) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
         subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
       }
-      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push('uppskattning');
+      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push(est.source === 'history' ? 'enligt tidigare kvällar' : 'uppskattning');
       if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
       document.getElementById('vc-sub').textContent = closed ? closedText(venue)
         : waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
@@ -1633,8 +1636,9 @@ import './style.css';
           dragRotate: false,
           logoPosition: 'bottom-right',
           // Högst 2×: på en iPhone (3×) ritade kartan 2,25 gånger fler pixlar per bildruta än vid 2×, med knappt synlig skillnad.
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-          attributionControl: false
+          pixelRatio: Math.min(window.devicePixelRatio || 1, 2)
+          // Ingen attributionControl: false. © Mapbox © OpenStreetMap krävs av Mapbox villkor och OSM:s licens; under 640 px
+          // bred karta är rutan kompakt, ett (i) som fälls ut.
         });
         map.touchZoomRotate.disableRotation();
 
@@ -2195,7 +2199,7 @@ import './style.css';
       return typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? query.abortSignal(AbortSignal.timeout(15000)) : query;
     }
     // De kolumner andra får läsa. user_id får inte läsas (det är nyckeln till din data); reporter är sha256 av det.
-    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, comment, near_venue, created_at, expires_at, reporter';
+    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, near_venue, created_at, expires_at, reporter';
     // Svaret ger reporter, som känner igen dina egna rapporter (spärren, historiken). Ett avbrutet svar kan ändå ha
     // sparats: läs om, så att spärren mot dubbletter ser det innan nästa tryck.
     async function insertReport(row) {
@@ -2558,7 +2562,6 @@ import './style.css';
         var rep = { id: 'test-' + venueId + '-' + minsAgo + '-' + type, venue_id: venueId, people_ahead: ahead,
                     report_type: type, queue_session: opts.session || null,
                     created_at: ago(minsAgo), expires_at: ago(minsAgo - 45), reporter: _testUsers[_tIdx++ % _testUsers.length] };
-        if (opts.comment) rep.comment = opts.comment;
         var v = getVenueById(venueId);
         rep.queue_status = waitToStatus({ ahead: ahead, mins: ahead / PACE_RATE[v.pace], full: false });
         return rep;
@@ -2566,7 +2569,7 @@ import './style.css';
       var testReports = [
         // spy-bar — långsam dörr, uppmätt: 25–50 → 10–25 på 25 min
         r('spy-bar', 40, 17), r('spy-bar', 30, 37, { session: 'ts-spy' }), r('spy-bar', 5, 17, { session: 'ts-spy', type: 'followup' }), r('spy-bar', 2, 0, { session: 'ts-spy', type: 'entered' }),
-        r('spy-bar', 4, 37, { comment: 'VIP-kö öppen' }),
+        r('spy-bar', 4, 37),
         // under-bron — snabb dörr, uppmätt: 25–50 → 1–10 på 10 min
         r('under-bron', 14, 37, { session: 'ts-ub' }), r('under-bron', 4, 5, { session: 'ts-ub', type: 'followup' }), r('under-bron', 8, 17),
         // drama — fullt: två sessioner står kvar nära dörren (1–10) i ~20 min
@@ -2574,7 +2577,7 @@ import './style.css';
         r('drama', 22, 5, { session: 'ts-dr2' }), r('drama', 1, 5, { session: 'ts-dr2', type: 'followup' }),
         r('drama', 6, 37),
         // uppskattning från dörrtakt (inga sessioner)
-        r('kristall', 35, 37), r('kristall', 10, 60), r('kristall', 2, 60, { comment: 'Fri entré t.o.m. 23:30' }),
+        r('kristall', 35, 37), r('kristall', 10, 60), r('kristall', 2, 60),
         r('berns', 28, 17), r('berns', 15, 37), r('berns', 3, 37),
         r('sturecompagniet', 40, 17), r('sturecompagniet', 20, 37), r('sturecompagniet', 5, 37),
         r('sturehof', 30, 5), r('sturehof', 10, 17),
@@ -2629,13 +2632,13 @@ import './style.css';
       return km !== null && km - Math.min(window._userPos.acc || 0, 100) / 1000 > 0.3;
     }
 
-    async function submitReport(venueId, venueName, peopleAhead, comment) {
+    async function submitReport(venueId, venueName, peopleAhead) {
       if (!supabase) throw new Error('Supabase är inte tillgänglig');
       assertNotTestMode();
       var venue = getVenueById(venueId);
       if (isClosed(venue)) throw userError(venueName + ' har stängt');
       // Står du redan i kön här blir rapporten en del av samma session — med samma regler som bannern: ett sent "inne"
-      // frågar först, uppföljningar kräver ≥4 min mellanrum och högst fyra stycken, och kommentaren följer med. Långt
+      // frågar först och uppföljningar kräver ≥4 min mellanrum och högst fyra stycken. Långt
       // ifrån, för tätt eller efter fyra uppföljningar blir det en vanlig ny rapport (med 20-minutersspärren).
       var s = getQueueSession();
       if (s && s.venueId === venueId && !isFarFrom(venue)) {
@@ -2650,7 +2653,7 @@ import './style.css';
           return true;
         }
         if (since >= QS_MIN_GAP && s.followups < QS_MAX_FOLLOWUPS) {
-          await recordFollowup(peopleAhead, comment);
+          await recordFollowup(peopleAhead);
           return true;
         }
       }
@@ -2673,7 +2676,6 @@ import './style.css';
         // Utan position vet vi inte (null, räknas som på plats); långt ifrån väger bara när ingen på plats rapporterat.
         near_venue: window._userPos ? !isFarFrom(venue) : null
       };
-      if (comment) insertObj.comment = comment;
       await insertReport(insertObj);
       // Den som rapporterar vid stället är framme: "På väg" är över, och en kö-session startar om det finns en kö att stå
       // i. Långt ifrån (vidarebefordrat sms, gissning) räknas rapporten, men ingen "I kön" och ingen ändring av "På väg"
@@ -2728,7 +2730,7 @@ import './style.css';
       updateOnMyWayUI();
     }
 
-    async function submitSessionReport(type, peopleAhead, comment) {
+    async function submitSessionReport(type, peopleAhead) {
       var s = getQueueSession();
       if (!s) throw new Error('session_expired');
       if (!supabase) throw new Error('Supabase är inte tillgänglig');
@@ -2742,7 +2744,6 @@ import './style.css';
         people_ahead: peopleAhead, report_type: type, queue_session: s.id,
         expires_at: new Date(now.getTime() + 45 * 60 * 1000).toISOString()
       };
-      if (comment) row.comment = comment;
       await insertReport(row);
       return { session: s, at: now.getTime() };
     }
@@ -2759,8 +2760,8 @@ import './style.css';
     }
 
     // En mätpunkt till i samma kö. Kastar vid fel — anroparen visar texten.
-    async function recordFollowup(peopleAhead, comment) {
-      var res = await submitSessionReport('followup', peopleAhead, comment);
+    async function recordFollowup(peopleAhead) {
+      var res = await submitSessionReport('followup', peopleAhead);
       var s = res.session;
       s.lastAhead = peopleAhead; s.lastAt = res.at; s.followups++;
       try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
@@ -2843,7 +2844,7 @@ import './style.css';
         if (err.code !== 1) return; // tidsgräns eller ingen GPS-signal: watchPosition försöker själv igen
         navigator.geolocation.clearWatch(_geoWatch);
         _geoWatch = null;
-        if (userAsked) showToast('Platsen är avstängd. Slå på den för Safari i telefonens inställningar.');
+        if (userAsked) showToast('Platsen är avstängd. Slå på den för ' + (IS_NATIVE_APP ? 'Qbar' : 'Safari') + ' i telefonens inställningar.');
       }, { timeout: 20000, maximumAge: 60000 });
     }
     if (navigator.permissions && navigator.permissions.query) {
@@ -3143,6 +3144,8 @@ import './style.css';
     function renderPushUI() {
       var el = document.getElementById('pf-push-sub'), st = pushState();
       if (el) el.textContent = st === 'on' && !favorites.length ? 'På · spara ett ställe med stjärnan' : PUSH_SUB_TEXT[st];
+      // shortcut: webbpush finns inte i appskalet, så raden döljs där; visa den igen när APNs är på plats.
+      if (el && IS_NATIVE_APP) el.closest('.pf-card').style.display = 'none';
     }
 
     // Efter en ny favorit, tills notiserna är på eller rutan stängts med ×. false = ingen ruta, visa toasten.
@@ -3542,14 +3545,10 @@ import './style.css';
       var patLabels = { long: 'Brukar vara lång kö nu', medium: 'Brukar vara medellång kö nu', short: 'Brukar vara kort kö nu', none: 'Brukar inte vara kö nu' };
       // Historiskt mönster visas bara när färsk data saknas — annars konkurrerar det med verkligheten
       var patHtml = (!hasData && pat && patLabels[pat.level]) ? '<span class="hist-chip hist-chip--' + pat.level + '">' + patLabels[pat.level] + '</span>' : '';
-      var recentWithComment = venueReports.filter(function(r) {
-        return r.comment && nowMs - new Date(r.created_at).getTime() < 30 * 60 * 1000;
-      })[0];
-      var commentHtml = recentWithComment ? '<div class="erow-comment">"' + escapeHtml(recentWithComment.comment) + '"</div>' : '';
       var minsLeft = minutesToClose(venue);
       var closingSoonHtml = minsLeft !== null && minsLeft > 0 && minsLeft <= 90
         ? '<span class="erow-tertiary-sep">·</span><span class="erow-closing">Stänger ' + closingTonight(venue) + '</span>' : '';
-      var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ uppskattning</span>' : '';
+      var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ ' + (est.source === 'history' ? 'tidigare kvällar' : 'uppskattning') + '</span>' : '';
       var tertiaryHtml = hasData
         ? '<div class="erow-tertiary">' +
             '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
@@ -3578,7 +3577,7 @@ import './style.css';
               (isFavorite(venue.id) ? '<svg class="erow-fav" viewBox="0 0 24 24" aria-label="Favorit"><path d="' + STAR_PATH + '"/></svg>' : '') +
             '</div>' +
             '<div class="erow-meta">' + metaText + '</div>' +
-            tertiaryHtml + commentHtml +
+            tertiaryHtml +
           '</div>' +
           '<div class="erow-right">' +
             '<span class="erow-hero' + (_listIntro ? ' erow-hero--animate' : '') + '" style="color:' + heroColor + '">' + waitRollHtml('list', venue.id, heroText, heroColor) + '</span>' +
@@ -3810,8 +3809,7 @@ import './style.css';
       var clock = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       if (isSub) {
         return '<div class="lv-old"><span class="lv-old-time">' + clock + '</span>' +
-          '<span class="lv-old-val" style="color:' + color + '">' + descriptor + '</span>' +
-          (r.comment ? '<span class="lv-old-note">"' + escapeHtml(r.comment) + '"</span>' : '') + '</div>';
+          '<span class="lv-old-val" style="color:' + color + '">' + descriptor + '</span></div>';
       }
       var venue = getVenueById(r.venue_id);
       var name = venue ? venue.name : escapeHtml(r.venue_name || r.venue_id);
@@ -3832,11 +3830,12 @@ import './style.css';
           '<span>' + (open ? 'Dölj' : '+' + olderCount + ' tidigare') + '</span>' +
           '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>';
       }
-      return '<div class="lv-row" data-venue="' + r.venue_id + '" role="button" tabindex="0" aria-expanded="false" onclick="openVenueCard(getVenueById(\'' + r.venue_id + '\'), \'live\', this)">' +
+      // Samma åldrande som kortet och listan: en rapport som är 15 min eller äldre tonas.
+      var aging = Date.now() - d.getTime() >= 15 * 60 * 1000;
+      return '<div class="lv-row' + (aging ? ' lv-row--aging' : '') + '" data-venue="' + r.venue_id + '" role="button" tabindex="0" aria-expanded="false" onclick="openVenueCard(getVenueById(\'' + r.venue_id + '\'), \'live\', this)">' +
         '<div class="lv-inner"><div class="lv-body">' +
           '<div class="lv-name">' + name + '</div>' +
           (area ? '<div class="lv-meta">' + area + '</div>' : '') +
-          (r.comment ? '<div class="lv-comment">"' + escapeHtml(r.comment) + '"</div>' : '') +
           '<div class="lv-sub">' + subParts.join(' · ') + '</div>' +
         '</div>' +
         '<div class="lv-right"><span class="lv-hero"' + heroSmall + '>' + heroText + '</span>' +
@@ -4167,16 +4166,11 @@ import './style.css';
       }).join('');
     }
 
-    // Visar ett av de tre stegen. Kommentaren börjar hopfälld i varje ny rapport: frågan och svarsknapparna först.
+    // Visar ett av de tre stegen.
     function rsStep(n) {
       document.getElementById('rs1').style.display = n === 1 ? 'block' : 'none';
       document.getElementById('rs2').style.display = n === 2 ? 'flex' : 'none';
       document.getElementById('rs3').style.display = n === 3 ? 'flex' : 'none';
-      var comment = document.getElementById('rs-comment');
-      if (n === 2 && comment && !comment.value) {
-        comment.hidden = true;
-        document.getElementById('rs-add-comment').hidden = false;
-      }
       // Bekräftelsen ritas om varje gång steg 3 visas: klassen tas bort, layouten tvingas, och sätts på igen
       var icon = document.getElementById('rs-success-icon');
       if (icon) {
@@ -4203,13 +4197,6 @@ import './style.css';
       rsStep(1);
     }
 
-    function showCommentField() {
-      document.getElementById('rs-add-comment').hidden = true;
-      var input = document.getElementById('rs-comment');
-      input.hidden = false;
-      input.focus();
-    }
-
     // Raden för ett ställe lyser till en kort stund efter att användaren rapporterat: "din rapport landade här".
     // Anropas efter submitReport, som redan har laddat om rapporterna, så raden visar det nya värdet.
     function flashVenueRow(venueId) {
@@ -4231,11 +4218,8 @@ import './style.css';
     async function pickAhead(peopleAhead) {
       if (!selectedRV || _reportSending) return;
       _reportSending = true;
-      var commentEl = document.getElementById('rs-comment');
-      var comment = commentEl ? commentEl.value.trim().slice(0, 80) : '';
       try {
-        await submitReport(selectedRV.id, selectedRV.name, peopleAhead, comment);
-        if (commentEl) commentEl.value = '';
+        await submitReport(selectedRV.id, selectedRV.name, peopleAhead);
         maybeShowInstallPrompt();
         rsStep(3);
         var nextEl = document.querySelector('#rs3 .rs-next');
@@ -4421,7 +4405,6 @@ Object.assign(window, {
   setExploreFilter,
   setVenueType,
   shareVenue,
-  showCommentField,
   showScreen,
   toggleLiveVenue,
   togglePushNotifications,

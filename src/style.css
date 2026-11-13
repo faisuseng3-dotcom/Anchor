@@ -723,7 +723,6 @@
     .erow-trend { font-size: calc(13 * var(--u)); font-weight: 700; line-height: 1; white-space: nowrap; }
     .erow-trend--up     { color: var(--status-medium); }
     .erow-trend--down   { color: var(--status-free); }
-    .erow-comment { font-size: calc(13 * var(--u)); color: var(--text-secondary); padding-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Färskhetsrad (ovanför listan) ──────────────────────────────────── */
     .exsum-line { padding: 4px 2px 0; font-size: calc(13 * var(--u)); font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; line-height: 1.4; }
@@ -832,10 +831,10 @@
     }
     .lv-meta { font-size: calc(13 * var(--u)); font-weight: 500; color: var(--text-secondary); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lv-sub { font-size: calc(13 * var(--u)); font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lv-comment { font-size: calc(13 * var(--u)); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lv-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; flex-shrink: 0; align-self: stretch; }
     .lv-right .lv-more { margin-top: auto; }
     .lv-hero { font-family: var(--font-mono); font-size: calc(24 * var(--u)); font-weight: 700; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+    .lv-row--aging .lv-hero { opacity: 0.75; }
     .lv-unit { font-size: calc(13 * var(--u)); font-weight: 500; color: var(--text-muted); line-height: 1; }
 
     .lv-entered { display: flex; align-items: center; gap: 12px; padding: 0 16px 12px 20px; font-size: calc(15 * var(--u)); font-weight: 600; color: var(--text-primary); }
@@ -850,7 +849,6 @@
     .lv-old + .lv-old { border-top: 1px solid var(--border); }
     .lv-old-time { font-family: var(--font-mono); font-weight: 600; width: 40px; flex-shrink: 0; }
     .lv-old-val { font-family: var(--font-mono); font-weight: 700; font-size: calc(15 * var(--u)); }
-    .lv-old-note { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
     /* Liten knapp inuti kortet, under värdet — 44px tryckyta via osynlig padding */
     .lv-more {
       position: relative; display: inline-flex; align-items: center; gap: 2px;
@@ -894,13 +892,6 @@
     #rs3 { align-items: center; text-align: center; margin-top: 40px; padding: 0 var(--space-2); }
     #rs-vname { font-size: calc(24 * var(--u)); font-weight: 700; letter-spacing: -0.03em; color: var(--text-primary); margin-bottom: 4px; line-height: 1.15; }
     .rs-question { font-size: calc(17 * var(--u)); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-2); line-height: 1.3; }
-    .rs-comment {
-      width: 100%; box-sizing: border-box; margin-bottom: var(--space-2);
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
-      padding: 12px 16px; font-size: calc(16 * var(--u)); color: var(--text-primary); font-family: var(--font-base); outline: none;
-    }
-    .rs-comment:focus { border-color: var(--accent); }
-    .rs-comment::placeholder { color: var(--text-muted); }
     .rs-next { font-size: calc(15 * var(--u)); color: var(--text-secondary); line-height: 1.5; margin-top: var(--space-2); max-width: 300px; }
 
     /* Köval-knappar */

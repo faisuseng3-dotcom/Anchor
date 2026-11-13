@@ -10,7 +10,7 @@ const ALLA = 290;
 const KVALL = [
   report('kristall', 3, 37, { venueName: 'Kristall' }),
   report('spy-bar', 6, 5, { venueName: 'Spy Bar' }),
-  report('berns', 12, 17, { venueName: 'Berns', comment: 'Fri entré före 23' })
+  report('berns', 12, 17, { venueName: 'Berns' })
 ];
 
 test.describe('1. Appen startar och Utforska renderar', () => {

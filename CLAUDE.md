@@ -100,7 +100,14 @@ npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
+npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
 ```
+
+**iOS-appen** (App Store) är Capacitor runt samma bygge: `capacitor.config.json` (bundle-id `se.queuebar.qbar`) och
+`ios/`. Bara iPhone, bara stående, alltid mörkt läge; platstexten står i `ios/App/App/Info.plist`. Ikonen är
+`favicon.svg` utan rundade hörn, 1024 px utan alfakanal. `IS_NATIVE_APP` i `src/main.js` döljer det som bara gäller
+webben. Länkar med `target="_blank"` öppnas av iOS utanför appen och fungerar inte för egna sidor
+(`capacitor://localhost/...`): länka egna sidor utan `_blank`.
 
 `npm run verify` är `vitest run && node scripts/check.js && vite build`. Kör det, inte delarna var
 för sig.
@@ -474,7 +481,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - **Notiser om favoriter** (`togglePushNotifications`, profilen och rutan efter en ny favorit): Edge Function
   `supabase/functions/notify-favorites` körs av en databas-webhook vid varje ny rapport och skickar till alla med stället
   i `push_subscriptions.venue_ids`. Uppföljningar och den egna rapporten ger ingen notis; samma ställe ersätter förra
-  notisen (`tag`). Texten byggs i `notify.js` (låst av `tests/notify.test.js` mot `AHEAD_BUCKETS`), aldrig kommentaren.
+  notisen (`tag`). Texten byggs i `notify.js` (låst av `tests/notify.test.js` mot `AHEAD_BUCKETS`). Titeln tas ur
+  `venue-names.js` (genererad ur `VENUES`: `node scripts/venue-names.mjs`, testet larmar vid skillnad), aldrig ur
+  rapportens `venue_name`, som är fri text från klienten. Prenumerationer tas bara emot till webbläsarnas push-tjänster.
   Tryck öppnar stället i Lista (`?venue=`, `openVenueFromNotification`). iPhone kräver hemskärmsappen. Servern
   sätts upp enligt `supabase/README.md`; nycklarna finns inte i repot (`PUSH_PUBLIC_KEY` i main.js är den publika)
 - Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
@@ -500,8 +509,7 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 
 Dokumenterad i [docs/](docs/). De allvarligaste:
 
-1. **Tabellerna saknar `create table` i repot** — policyer, funktioner och triggrar är granskade och ändringarna ligger i
-   `supabase/migrations/`, men själva tabellerna skapades i webbgränssnittet
+1. *(åtgärdad, se nedan)*
 2. *(åtgärdad, se nedan)*
 3. *(åtgärdad, se nedan)*
 4. Täta kvarter (Stureplan, Gamla stan) har ställen några meter isär. Utzoomat visar Stureplan en pill med "+N"; Hell's
@@ -564,8 +572,16 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
 - Granskningen av "AI-utseende" 2026-11-02: introduktionsrundturen borttagen (samtycket är den enda rutan vid första
   start); färgad vänsterkant och tonad bakgrund borta från Lista, Live och "Bäst nu"; inga tankstreck i synlig text
   (korta meningar i stället); rubriker i vanlig skrift, ingen "Färska rapporter 17" (färskhetsraden säger det); steg 2
-  utan gråa staplar, stegräknare och monospace, kommentaren hopfälld; samtycket är två meningar och en länk; Live-ikonen
+  utan gråa staplar, stegräknare och monospace; samtycket är två meningar och en länk; Live-ikonen
   är en aktivitetslinje, inte wifi; testlägets etikett ligger under kort och ark
+- Tabellerna har `create table` i repot: `supabase/migrations/20260901000000_baseline.sql` (läst ur produktionen
+  2026-11-12). Hela kedjan av migreringar går igenom mot en tom Postgres. `reports` har index på `(user_id, created_at)`
+  för `reports_guard` och på `(reporter, created_at)` för profilens historik (`20261112000000_reports_indexes.sql`)
+- Inför App Store 2026-11-12 (`20261112010000_launch_hardening.sql`): kommentarerna borta (fri text kräver filter,
+  anmälan och blockering, regel 1.2; `reports_no_comment` nollar dem på servern); notisens titel ur `venue-names.js`
+  i stället för rapportens `venue_name`; push-prenumerationer bara till webbläsarnas push-tjänster; kartans
+  © Mapbox © OpenStreetMap påslagen igen; `IS_NATIVE_APP` (Capacitor) döljer hemskärmsrutan, notisraden och "Safari".
+  Lägger du till kommentarer igen: bygg filter, anmälan och blockering först
 
 ## Vidare läsning
 

@@ -1,0 +1,9 @@
+{
+  "appId": "se.queuebar.qbar",
+  "appName": "Qbar",
+  "webDir": "dist",
+  "backgroundColor": "#0B0B0D",
+  "ios": {
+    "contentInset": "never"
+  }
+}

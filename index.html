@@ -168,8 +168,6 @@
         <div id="rs-vname"></div>
         <div id="rs-far" class="rs-far" hidden></div>
         <div class="rs-question">Hur många står framför dig?</div>
-        <button id="rs-add-comment" class="rs-back" onclick="showCommentField()">+ Kommentar (valfritt)</button>
-        <input id="rs-comment" class="rs-comment" type="text" maxlength="80" placeholder="Fri entré, dresscode, VIP-kö…" aria-label="Kommentar, högst 80 tecken" hidden />
         <button class="q-btn q-btn-count" onclick="pickAhead(0)"><span class="q-btn-num">0</span><span class="q-btn-sub">Ingen kö, gå rakt in</span></button>
         <button class="q-btn q-btn-count" onclick="pickAhead(5)"><span class="q-btn-num">1–10</span><span class="q-btn-sub">personer framför</span></button>
         <button class="q-btn q-btn-count" onclick="pickAhead(17)"><span class="q-btn-num">10–25</span><span class="q-btn-sub">personer framför</span></button>
@@ -222,7 +220,7 @@
         <div class="pf-card" style="padding-top:0;padding-bottom:0">
           <a class="pf-row" href="mailto:support@queuebar.se"><span>Skriv till oss<small>support@queuebar.se</small></span></a>
           <a class="pf-row" href="mailto:hello@queuebar.se"><span>För krogar och klubbar<small>hello@queuebar.se</small></span></a>
-          <a class="pf-row" href="/integritet.html" target="_blank" rel="noopener"><span>Integritet och villkor</span></a>
+          <a class="pf-row" href="/integritet.html"><span>Integritet och villkor</span></a>
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span></button>
         </div>
       </div>
@@ -297,7 +295,7 @@
     <div class="consent-card">
       <div class="consent-title" id="consent-title">Anonymt, utan konto</div>
       <p class="consent-text">Qbar sparar ett slumpat ID, dina kö-rapporter och, när du trycker "Gå hit", vart du är på väg. Din position lämnar aldrig telefonen. Allt kan raderas under Profil.</p>
-      <a class="consent-policy" href="/integritet.html" target="_blank" rel="noopener">Läs integritetspolicyn</a>
+      <a class="consent-policy" href="/integritet.html">Läs integritetspolicyn</a>
       <button class="consent-accept" onclick="acceptConsent()">Jag förstår</button>
     </div>
   </div>

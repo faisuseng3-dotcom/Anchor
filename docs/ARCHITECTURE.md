@@ -255,7 +255,7 @@ tillstånd (allReports, VENUES, localStorage)
 **Två regler som följer av mönstret:**
 
 1. All text som kommer från databasen måste gå genom `escapeHtml()` innan den hamnar i en
-   HTML-sträng. Det gäller idag `comment` och `venue_name` (`src/main.js`).
+   HTML-sträng. Det gäller idag `venue_name` (`src/main.js`).
 2. `venue_id` placeras oescapat i `onclick`-attribut. Det är säkert **endast** därför att
    `loadReports` filtrerar bort rapporter för okända ställen (`src/main.js`). Tas det filtret
    bort öppnas en XSS-väg. Filtret är en säkerhetsmekanism, inte en städning.

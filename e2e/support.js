@@ -25,7 +25,6 @@ export function report(venueId, minsAgo, peopleAhead, opts = {}) {
     report_type: opts.type || 'initial',
     queue_session: opts.session || null,
     queue_status: opts.status || (peopleAhead === 0 ? 'none' : peopleAhead > 25 ? 'long' : 'short'),
-    comment: opts.comment || null,
     created_at: at(minsAgo),
     expires_at: at(minsAgo - 45)
   };

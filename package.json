@@ -11,14 +11,18 @@
     "verify": "vitest run && node scripts/check.js && vite build",
     "prepare": "husky",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "ios": "vite build && cap sync ios && cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
     "@frontman-ai/vite": "^2.0.1",
     "@supabase/supabase-js": "^2.45.4",
     "mapbox-gl": "^3.9.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@playwright/test": "^1.56.1",
     "husky": "^9.1.7",
     "vite": "^6.0.0",

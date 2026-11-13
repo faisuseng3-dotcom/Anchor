@@ -141,7 +141,6 @@ check('All 17 testdata venues present and visible in VENUES', missingVenues.leng
 if (missingVenues.length > 0) console.error('   Missing or hidden: ' + missingVenues.join(', '));
 
 // ── XSS ───────────────────────────────────────────────────────────────────────
-check('XSS: report comments escaped before HTML', js.includes('escapeHtml(recentWithComment.comment)') && !js.includes("'\"' + recentWithComment.comment"));
 check('XSS: reports for unknown venues dropped on load', js.includes('result.data.filter(function(r) { return getVenueById(r.venue_id); })'));
 
 // ── Väntetidsmodell ───────────────────────────────────────────────────────────

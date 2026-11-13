@@ -1,7 +1,8 @@
 // Notistexten som servern skickar (supabase/functions/notify-favorites/notify.js).
 import { describe, it, expect } from 'vitest';
 import { notificationFor } from '../supabase/functions/notify-favorites/notify.js';
-import { AHEAD_BUCKETS } from './harness.js';
+import { VENUE_NAMES } from '../supabase/functions/notify-favorites/venue-names.js';
+import { AHEAD_BUCKETS, VENUES } from './harness.js';
 
 const base = { venue_id: 'spy-bar', venue_name: 'Spy Bar', report_type: 'initial', created_at: '2026-11-13T22:30:00Z' };
 
@@ -22,6 +23,16 @@ describe('notificationFor', () => {
     expect(n).toMatchObject({ title: 'Spy Bar', tag: 'venue-spy-bar', url: '/?venue=spy-bar' });
   });
 
+  it('tar titeln ur ställeslistan, aldrig ur rapportens fria venue_name', () => {
+    expect(notificationFor({ ...base, venue_name: 'Gratis drinkar: evil.example', people_ahead: 5 }).title).toBe('Spy Bar');
+    expect(notificationFor({ ...base, venue_id: 'finns-inte', people_ahead: 5 })).toBeNull();
+  });
+
+  // Ett nytt ställe utan rad där får inga notiser, ett nytt namn får det gamla. Rätta: node scripts/venue-names.mjs
+  it('har samma namn som appen för varje synligt ställe', () => {
+    expect(VENUE_NAMES).toEqual(Object.fromEntries(VENUES.map((v) => [v.id, v.name])));
+  });
+
   it('räknar "kom in" från sessionens första rapport', () => {
     const r = { ...base, report_type: 'entered', people_ahead: 0 };
     expect(notificationFor(r, '2026-11-13T22:12:00Z').body).toBe('Någon kom in efter 18 min i kön');
@@ -32,6 +43,5 @@ describe('notificationFor', () => {
   it('skickar ingen notis för uppföljningar eller rapporter utan antal', () => {
     expect(notificationFor({ ...base, report_type: 'followup', people_ahead: 17 })).toBeNull();
     expect(notificationFor({ ...base, people_ahead: null })).toBeNull();
-    expect(notificationFor({ ...base, venue_name: null, people_ahead: 5 })).toBeNull();
   });
 });
