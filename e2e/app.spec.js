@@ -255,6 +255,33 @@ test.describe('4. Rapportera en kö', () => {
     expect(inserts[1].queue_session).toBe(inserts[0].queue_session);
     await expect(banner).toBeHidden();
   });
+
+  test('utan täckning sparas rapporten och skickas när nätet kommer tillbaka', async ({ page }) => {
+    // Källarklubb: första försöket når inte fram. Förut stod bara "Något gick fel" och rapporten var borta.
+    await skipOnboarding(page);
+    const inserts = [];
+    let tackning = false;
+    await mockSupabase(page, [], { onInsert: (row) => inserts.push(row) });
+    await page.route('**/*.supabase.co/rest/v1/reports**', (route) => {
+      if (route.request().method() === 'POST' && !tackning) return route.abort('internetdisconnected');
+      return route.fallback();
+    });
+    await openApp(page);
+    await goToScreen(page, 'report');
+    await page.locator('#rs-search').fill('kristall');
+    await page.waitForTimeout(500);
+    await page.locator('.rs-item').first().click();
+    await page.waitForTimeout(400);
+    await page.locator('#rs2 .q-btn').nth(2).click();
+    await expect(page.locator('.toast').last()).toContainText('Ingen täckning');
+    expect(inserts).toHaveLength(0);
+
+    tackning = true;
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(page.locator('.toast').last()).toContainText('är skickad');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].venue_id).toBe('kristall');
+  });
 });
 
 test.describe('5. Radera min data', () => {

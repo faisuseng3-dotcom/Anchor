@@ -2265,10 +2265,10 @@ import './style.css';
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') return;
       renderReports();
-      if (supabase) loadReports();
+      if (supabase) { loadReports(); sendPendingReport(); }
     });
     // Nätet kommer ofta tillbaka först några sekunder efter väckningen; läs då direkt i stället för att vänta på pollningen.
-    window.addEventListener('online', function() { if (supabase) loadReports(); });
+    window.addEventListener('online', function() { if (supabase) { loadReports(); sendPendingReport(); } });
 
     // Texten på pillen: samma källa som listan och kortet (venueWaitText), men korta former så pillen håller sig smal.
     // "Ingen kö" blir "Fri", som i listan. Tom text = vi vet inget, och då ritas ingen pill.
@@ -3122,6 +3122,7 @@ import './style.css';
       // telefonen tappat nätet, och "Ingen kontakt" stod då kvar i upp till två minuter.
       setInterval(function() {
         if (_loadState === 'error' || !_realtimeLive || Date.now() - _lastLoadAt >= 2 * 60 * 1000) loadReports();
+        sendPendingReport();
       }, 30000);
     } else {
       updateConnectionToast();
@@ -4327,7 +4328,7 @@ import './style.css';
           // Markeringen sker först när raden syns, annars har den spelats färdigt bakom tacksidan
           if (dest === 'explore') flashVenueRow(reportedId);
         }, 2800);
-      } catch(err) { showToast(reportErrorText(err)); }
+      } catch(err) { if (!holdReport(err, selectedRV.id, selectedRV.name, peopleAhead)) showToast(reportErrorText(err)); }
       finally { _reportSending = false; }
     }
 
@@ -4372,7 +4373,45 @@ import './style.css';
         flashVenueRow(v.id);
         showToast('Rapport skickad.');
       } catch(e) {
-        showToast(reportErrorText(e));
+        if (mode === 'followup' || !holdReport(e, v.id, v.name, peopleAhead)) showToast(reportErrorText(e));
+      } finally { _reportSending = false; }
+    }
+
+    // Ingen täckning (källarklubbar): rapporten sparas på telefonen och skickas när nätet kommer tillbaka, men bara inom
+    // 3 min. Servern sätter tiden när rapporten kommer fram, så en äldre mätning skulle se färsk ut för alla andra.
+    var PENDING_KEY = 'qb_pending_report', PENDING_MAX = 3 * 60 * 1000;
+    function isNetworkError(err) {
+      return /Load failed|Failed to fetch|NetworkError|network connection|TimeoutError|AbortError/i.test((err && err.message) || '');
+    }
+    function readPendingReport() {
+      try { return JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch(e) { return null; }
+    }
+    function holdReport(err, venueId, venueName, peopleAhead) {
+      if (!isNetworkError(err)) return false;
+      var p = readPendingReport();
+      // Samma rapport igen: behåll första tiden, annars höll nya tryck en gammal mätning vid liv.
+      var at = p && p.venueId === venueId && p.peopleAhead === peopleAhead ? p.at : Date.now();
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify({ venueId: venueId, venueName: venueName, peopleAhead: peopleAhead, at: at })); } catch(e) {}
+      showToast('Ingen täckning. Rapporten skickas när du får nät igen.');
+      return true;
+    }
+    async function sendPendingReport() {
+      var p = readPendingReport();
+      if (!p || _reportSending) return;
+      if (Date.now() - p.at > PENDING_MAX) {
+        localStorage.removeItem(PENDING_KEY);
+        showToast('Rapporten om ' + p.venueName + ' hann bli för gammal och skickades inte.');
+        return;
+      }
+      _reportSending = true;
+      try {
+        await submitReport(p.venueId, p.venueName, p.peopleAhead);
+        localStorage.removeItem(PENDING_KEY);
+        flashVenueRow(p.venueId);
+        showToast('Din rapport om ' + p.venueName + ' är skickad.');
+      } catch(err) {
+        // Fortfarande ingen täckning: försök igen vid nästa tillfälle. Annat fel (spärren, stängt): säg det och släpp.
+        if (!isNetworkError(err)) { localStorage.removeItem(PENDING_KEY); showToast(reportErrorText(err)); }
       } finally { _reportSending = false; }
     }
 

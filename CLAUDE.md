@@ -32,7 +32,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 511 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
+| Kod | `src/main.js` (4 550 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Ljus eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -97,7 +97,7 @@ reserv för gamla rapporter utan `people_ahead`.
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
 npm test                   # 162 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
-npm run e2e                # 14 webbläsartester (Playwright) — kräver en webbläsare, se nedan
+npm run e2e                # 15 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
@@ -482,6 +482,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   Båda avslutar sessionen på servern. Förut skickade krysset inget, och appen lärde sig bara av dem som kom in.
   **Påminnelse** (`scheduleQueueReminder`, bara iOS-appen via `@capacitor/local-notifications`): 5 min efter senaste
   punkten "Hur många är framför dig nu?", en per punkt, borttagen när kön avslutas; tryck öppnar uppdateringen
+- **Utan täckning** (`holdReport`, `sendPendingReport`): en rapport som inte når fram (nätfel, inte serverns nej) sparas i
+  `qb_pending_report` och skickas vid `online`, väckning och pollning, **bara inom 3 min**: servern sätter tiden när den
+  kommer fram, så en äldre mätning skulle se färsk ut. Uppföljningar sparas inte
 - Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned. Stängning räknas
   mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min

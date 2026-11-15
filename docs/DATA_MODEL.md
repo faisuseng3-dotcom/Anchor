@@ -208,6 +208,7 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 | `qb_user_id` | `'user-<tid>-<slump>'`, skapas vid första besöket | **All historik, alla poäng och all raderingsmöjlighet tappas permanent** |
 | `qb_queue_session` | Aktiv kö-session: id, ställe, senaste antal, antal uppföljningar | Sessionen kan inte följas upp eller avslutas |
 | `qb_on_my_way` | Aktivt "På väg"-läge | Bannern försvinner, servern har kvar posten tills den löper ut |
+| `qb_pending_report` | Rapport som inte nådde fram (ingen täckning): ställe, antal, när. Skickas vid `online`, väckning och pollning, bara inom 3 min | Rapporten skickas inte |
 | `qb_favorites` | Array med venue-id | Favoriterna försvinner (de läses inte från databasen) |
 | `qb_testdata` | `'1'` = testdata på (Alt + 2) | — |
 | `qb_consent` | `'true'` när informationsrutan bekräftats ("Jag förstår"); inget annat värde sätts | Informationsrutan visas igen |
