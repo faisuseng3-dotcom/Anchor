@@ -18,6 +18,7 @@
     "@capacitor/core": "^8.6.2",
     "@capacitor/geolocation": "^8.2.4",
     "@capacitor/ios": "^8.6.2",
+    "@capacitor/local-notifications": "^8.3.1",
     "@frontman-ai/vite": "^2.0.1",
     "@supabase/supabase-js": "^2.45.4",
     "mapbox-gl": "^3.9.4"

@@ -44,4 +44,12 @@ describe('notificationFor', () => {
     expect(notificationFor({ ...base, report_type: 'followup', people_ahead: 17 })).toBeNull();
     expect(notificationFor({ ...base, people_ahead: null })).toBeNull();
   });
+
+  it('surrar bara när kön bytt status; samma status ersätter förra notisen tyst', () => {
+    const r = { ...base, people_ahead: 17, queue_status: 'short' };
+    expect(notificationFor(r, null, null).renotify).toBe(true); // första rapporten ikväll
+    expect(notificationFor(r, null, 'long').renotify).toBe(true);
+    expect(notificationFor(r, null, 'short').renotify).toBe(false);
+    expect(notificationFor({ ...base, report_type: 'entered', people_ahead: 0 }, '2026-11-13T22:12:00Z').renotify).toBe(false);
+  });
 });

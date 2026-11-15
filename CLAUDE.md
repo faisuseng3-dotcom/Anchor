@@ -32,7 +32,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 101 rader), `src/style.css` (1 164 rader), `index.html` (298 rader) |
+| Kod | `src/main.js` (4 511 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Ljus eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -95,9 +95,9 @@ reserv för gamla rapporter utan `people_ahead`.
 
 ```bash
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
-npm test                   # 157 enhetstester (Vitest)
+npm test                   # 162 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
-npm run e2e                # 12 webbläsartester (Playwright) — kräver en webbläsare, se nedan
+npm run e2e                # 14 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
@@ -141,7 +141,7 @@ De tre kontrollerna gör olika saker och ersätter inte varandra:
   bara syns i DOM: att listan renderar, att feltillstånden ser olika ut, att sök och venue-kort
   fungerar, och att en rapport skickas med rätt fält.
 
-**Ingen linter finns.** ESLint på en 4 101-radersfil i ES5-stil skulle ge hundratals varningar och
+**Ingen linter finns.** ESLint på en 4 500-radersfil i ES5-stil skulle ge hundratals varningar och
 kräva konfigurationsbeslut som ingen tagit. Det är medvetet uppskjutet, inte förbisett.
 
 Se [docs/TESTING.md](docs/TESTING.md).
@@ -478,7 +478,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   uppföljning. "Jag är inne" >20 min efter senaste punkten frågar "Kom du in nyss?" — "Tidigare" skickar inget.
   Krysset frågar "Varför lämnar du kön?": **"Kom inte in"** (`refused`, 0 framför: nådde dörren, mäter takten och
   kalibreringen som "inne"; sent tryck skickas utan antal) eller **"Gav upp"** (`left`, utan antal, ingen mätpunkt).
-  Båda avslutar sessionen på servern. Förut skickade krysset inget, och appen lärde sig bara av dem som kom in
+  Båda avslutar sessionen på servern. Förut skickade krysset inget, och appen lärde sig bara av dem som kom in.
+  **Påminnelse** (`scheduleQueueReminder`, bara iOS-appen via `@capacitor/local-notifications`): 5 min efter senaste
+  punkten "Hur många är framför dig nu?", en per punkt, borttagen när kön avslutas; tryck öppnar uppdateringen
 - Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned. Stängning räknas
   mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min
@@ -489,7 +491,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - **Notiser om favoriter** (`togglePushNotifications`, profilen och rutan efter en ny favorit): Edge Function
   `supabase/functions/notify-favorites` körs av en databas-webhook vid varje ny rapport och skickar till alla med stället
   i `push_subscriptions.venue_ids`. Uppföljningar och den egna rapporten ger ingen notis; samma ställe ersätter förra
-  notisen (`tag`). Texten byggs i `notify.js` (låst av `tests/notify.test.js` mot `AHEAD_BUCKETS`). Titeln tas ur
+  notisen (`tag`) och **surrar bara när kön bytt status** mot förra kömätningen (`renotify`, annars tyst ersättning).
+  Texten byggs i `notify.js` (låst av `tests/notify.test.js` mot `AHEAD_BUCKETS`). Titeln tas ur
   `venue-names.js` (genererad ur `VENUES`: `node scripts/venue-names.mjs`, testet larmar vid skillnad), aldrig ur
   rapportens `venue_name`, som är fri text från klienten. Prenumerationer tas bara emot till webbläsarnas push-tjänster.
   Tryck öppnar stället i Lista (`?venue=`, `openVenueFromNotification`). iPhone kräver hemskärmsappen. Servern

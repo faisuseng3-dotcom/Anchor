@@ -1,6 +1,7 @@
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createClient } from '@supabase/supabase-js';
 import { Geolocation } from '@capacitor/geolocation';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import './style.css';
 
     // Capacitor-skalet (App Store) sätter window.Capacitor. Där finns ingen hemskärm, ingen webbpush och inget Safari.
@@ -2738,14 +2739,32 @@ import './style.css';
       _qsAskWhen = false; _qsAskLeave = false; // en obesvarad fråga om förra kön gäller inte den nya
       var s = { id: r.id, venueId: r.venueId, venueName: r.venueName, startedAt: r.at, lastAhead: r.ahead, lastAt: r.at, followups: 0 };
       try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
+      scheduleQueueReminder(s);
       updateOnMyWayUI();
     }
 
     function endQueueSession() {
       try { localStorage.removeItem(QS_KEY); } catch(e) {}
       _qsAskWhen = false; _qsAskLeave = false;
+      scheduleQueueReminder(null);
       updateOnMyWayUI();
     }
+
+    // Påminnelse 5 min efter senaste mätpunkten: "Hur många är framför dig nu?". Utan den glömde de flesta att
+    // uppdatera, och då mättes ingen takt. Bara i iOS-appen: en webbsida i fickan kan inte schemalägga en notis.
+    // En påminnelse per punkt; utan svar kommer ingen till. Tryck öppnar uppdateringen (lyssnaren nedan).
+    var QS_REMINDER_ID = 1;
+    function scheduleQueueReminder(s) {
+      if (!IS_NATIVE_APP) return;
+      LocalNotifications.cancel({ notifications: [{ id: QS_REMINDER_ID }] }).catch(function() {});
+      if (!s || s.followups >= QS_MAX_FOLLOWUPS) return;
+      LocalNotifications.requestPermissions().then(function(p) {
+        if (p.display !== 'granted') return;
+        return LocalNotifications.schedule({ notifications: [{ id: QS_REMINDER_ID, title: 'I kön · ' + s.venueName,
+          body: 'Hur många är framför dig nu?', schedule: { at: new Date(s.lastAt + 5 * 60 * 1000) } }] });
+      }).catch(function(err) { console.warn('[QueueBar] påminnelse:', err); });
+    }
+    if (IS_NATIVE_APP) LocalNotifications.addListener('localNotificationActionPerformed', function() { queueSessionUpdate(); });
 
     async function submitSessionReport(type, peopleAhead) {
       var s = getQueueSession();
@@ -2783,6 +2802,7 @@ import './style.css';
       var s = res.session;
       s.lastAhead = peopleAhead; s.lastAt = res.at; s.followups++;
       try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
+      scheduleQueueReminder(s);
       updateOnMyWayUI();
       loadReports();
     }

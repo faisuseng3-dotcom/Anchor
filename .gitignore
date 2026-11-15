@@ -5,3 +5,6 @@ data/osm_raw.json
 test-results/
 playwright-report/
 .playwright-cache/
+
+# Supabase CLI:ns lokala länk till projektet
+supabase/.temp/

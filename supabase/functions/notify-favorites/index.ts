@@ -18,7 +18,14 @@ Deno.serve(async (req) => {
       .eq('queue_session', r.queue_session).order('created_at').limit(1);
     startedAt = data?.[0]?.created_at ?? null;
   }
-  const n = notificationFor(r, startedAt);
+  let prevStatus = null;
+  if (r?.report_type === 'initial') {
+    const { data } = await db.from('reports').select('queue_status').eq('venue_id', r.venue_id).eq('report_type', 'initial')
+      .lt('created_at', r.created_at).gt('created_at', new Date(Date.parse(r.created_at) - 45 * 60000).toISOString())
+      .order('created_at', { ascending: false }).limit(1);
+    prevStatus = data?.[0]?.queue_status ?? null;
+  }
+  const n = notificationFor(r, startedAt, prevStatus);
   if (!n) return new Response('ingen notis');
 
   const { data: subs, error } = await db.from('push_subscriptions').select('endpoint, p256dh, auth')

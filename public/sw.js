@@ -23,7 +23,7 @@ self.addEventListener('push', function(e) {
   try { n = e.data && e.data.json(); } catch (err) {}
   n = n || { title: 'Qbar', body: 'Ny rapport från en favorit' };
   e.waitUntil(self.registration.showNotification(n.title, {
-    body: n.body, tag: n.tag, renotify: !!n.tag, // samma ställe: den nya ersätter den förra, men surrar ändå
+    body: n.body, tag: n.tag, renotify: !!n.tag && n.renotify !== false, // samma ställe: den nya ersätter den förra; surrar bara när servern säger att kön ändrats
     icon: '/icons/icon-192.png', data: { url: n.url || '/' }
   }));
 });
