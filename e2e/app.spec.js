@@ -26,9 +26,10 @@ test.describe('1. Appen startar och Utforska renderar', () => {
     // Tre ställen har rapporter; nämnaren är de öppna klockan 23 (E2E_NOW), och då har några barer stängt.
     await expect(page.locator('#exsum-line')).toContainText(/^3 av \d+ öppna ställen har färsk rapport/);
 
-    // Ett ställe med rapport visar ett intervall, aldrig en naken siffra.
+    // Ett ställe med rapport visar ett intervall, aldrig en naken siffra. En person räcker inte för minuter: då visas
+    // det hon rapporterade ("25–50 i kö").
     const kristall = page.locator('.erow', { hasText: 'Kristall' }).first();
-    await expect(kristall.locator('.erow-hero')).toHaveText(/min|Fullt|Ingen kö/);
+    await expect(kristall.locator('.erow-hero')).toHaveText(/min|Fullt|Ingen kö|i kö$/);
 
     expect(errors, 'inga JS-fel vid start').toEqual([]);
   });

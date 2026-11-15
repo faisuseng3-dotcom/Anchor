@@ -33,6 +33,7 @@
       --status-short:    #FFD23F;
       --status-medium:   #FF8A3D;
       --status-long:     #FF4D5E;
+      --status-few:      #B79CFF; /* rapporter finns, men färre än 3 personer är överens: ingen väntetid */
       --status-unknown:  #55555B;
       --overlay-surface: #151517;
       --danger:          #FF4D5E;

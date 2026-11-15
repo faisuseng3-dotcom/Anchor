@@ -32,7 +32,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 567 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
+| Kod | `src/main.js` (4 586 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Ljus eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -99,7 +99,7 @@ npm test                   # 162 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 16 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
-npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
+npm run dev + ?testdata=true   # med 52 testrapporter för 17 ställen (5 med minuter, resten lila)
 npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
 ```
 
@@ -238,6 +238,7 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 | `short` | `#FFD23F` | under 18 min |
 | `medium` | `#FF8A3D` | 18–30 min |
 | `long` | `#FF4D5E` | över 30 min, eller "Fullt" |
+| `few` | `#B79CFF` | rapporter finns, men färre än 3 personer är överens: "10–25 i kö", inga minuter |
 | `unknown` | `#55555B` | ingen data |
 
 **`getStatusColor()` är enda källan i JS** och har samma värden som CSS `--status-*`. `STATUS_COLORS` är borta;

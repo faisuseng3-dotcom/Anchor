@@ -488,6 +488,10 @@ import './style.css';
       { mid: 37, width: 25, label: '25–50' },
       { mid: 60, width: 30, label: '50+' }
     ];
+    // Minuter visas först när så många olika personer rapporterat samma intervall (senaste 45 min). Färre: appen visar
+    // vad de rapporterade ("10–25 i kö") i färgen för få rapporter, aldrig en uträknad väntetid. En enda person (eller
+    // en som ljuger) kan då aldrig ensam bestämma minuterna alla ser.
+    var CONFIRM_PEOPLE = 3;
 
     function aheadBucket(n) {
       for (var i = AHEAD_BUCKETS.length - 1; i >= 0; i--) {
@@ -594,6 +598,10 @@ import './style.css';
       var rate = n ? (n * measuredRate + 2 * prior) / (n + 2) : prior;
 
       var est = { ahead: ahead, rate: rate, source: n ? 'live' : hist ? 'history' : 'estimate', full: false, mins: 0, low: 0, high: 0 };
+      var same = {};
+      counted.forEach(function(r) { if (aheadBucket(r.people_ahead) === aheadBucket(ahead)) same[r.reporter || r.id] = true; });
+      est.agree = Object.keys(same).length;
+      est.confirmed = est.agree >= CONFIRM_PEOPLE;
       if (ahead === 0) return est;
       est.full = n >= 2 && measuredRate < 0.3 && ahead >= 10;
       est.mins = ahead / rate;
@@ -621,7 +629,7 @@ import './style.css';
     // mellan två oense personer avgjorde allt. Taket ±0,5 personer/min hindrar en enskild avvikare från att fördubbla kön.
     function forecastWait(venueId, minsAhead, othersOnWay) {
       var est = estimateWait(venueId, allReports);
-      if (!est || est.full || minsAhead < 5) return null;
+      if (!est || !est.confirmed || est.full || minsAhead < 5) return null;
       var now = Date.now();
       var recent = allReports.filter(function(r) {
         return r.venue_id === venueId && isQueueReport(r) && r.people_ahead != null &&
@@ -689,16 +697,22 @@ import './style.css';
     function venueWaitText(venueId) {
       if (isClosed(getVenueById(venueId))) return '';
       var est = estimateWait(venueId, allReports);
-      if (est) return formatWait(est);
+      if (est) return est.confirmed ? formatWait(est) : reportedText(est);
       return getStatusLabel(computeStatus(venueId, allReports));
+    }
+
+    // För få personer för minuter: det de rapporterade, i antal personer. Oense (ingen kö och 25–50) säger det.
+    function reportedText(est) {
+      if (est.conflict) return 'Går isär';
+      return est.ahead === 0 ? 'Ingen kö' : aheadBucket(est.ahead).label + ' i kö';
     }
 
     // Siffran är hjälten, enheten är underordnad ("20–30" stort, "min" litet). Ren text ("Fri", "Fullt") lämnas orörd.
     // Texten kommer från formatWait/getStatusLabel, aldrig från användare, så ingen escaping behövs.
     function waitHtml(text) {
-      var m = /^(.*?)\s*(min)$/.exec(text || '');
+      var m = /^(.*?)\s*(min|i kö)$/.exec(text || '');
       if (!m || !m[1]) return text || '';
-      return m[1] + '<span class="wait-unit"> min</span>';
+      return m[1] + '<span class="wait-unit"> ' + m[2] + '</span>';
     }
 
     // Väntetiden rullar när den ändras — som ett saldo som uppdateras. Minnet är per yta och ställe, utanför DOM,
@@ -739,7 +753,7 @@ import './style.css';
     function computeStatus(venueId, reports) {
       if (isClosed(getVenueById(venueId))) return 'unknown';
       var est = estimateWait(venueId, reports);
-      if (est) return waitToStatus(est);
+      if (est) return est.confirmed ? waitToStatus(est) : 'few';
       // Rapporter utan antal (äldre klienter): vanligaste status bland dem från de senaste 45 min. Äldre än så är ingen
       // data — samma gräns som estimateWait och listan, annars visade kartan "30+ min" där listan sa "–".
       var freshCutoff = Date.now() - 45 * 60 * 1000;
@@ -757,9 +771,10 @@ import './style.css';
       return { none: 'Ingen kö', short: '~15 min', medium: '~25 min', long: '30+ min', unknown: '' }[status] || '';
     }
 
-    // Enda källan till statusfärger i JS. Samma värden som --status-* i style.css.
+    // Enda källan till statusfärger i JS. Samma värden som --status-* i style.css. 'few': rapporter finns, men färre än
+    // CONFIRM_PEOPLE personer är överens, så ingen väntetid.
     function getStatusColor(status) {
-      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E' }[status] || '#55555B';
+      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', few: '#B79CFF' }[status] || '#55555B';
     }
 
     function getStatusClass(status) {
@@ -1145,10 +1160,13 @@ import './style.css';
         if (est.conflict) {
           subParts.push('rapporterna går isär: ' + (est.conflict.low ? aheadBucket(est.conflict.low).label : 'ingen kö') +
             ' till ' + aheadBucket(est.conflict.high).label + ' personer');
-        } else if (est.ahead) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
-        subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
+        } else if (est.ahead && est.confirmed) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
+        // Färre än CONFIRM_PEOPLE överens: säg hur långt det är kvar till en väntetid (färgen för få rapporter), inte
+        // att siffran är osäker. Antal i kö står redan stort ovanför.
+        if (!est.confirmed) { if (!est.conflict) subParts.push(est.agree + ' av ' + CONFIRM_PEOPLE + ' rapporter för väntetid'); }
+        else subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
       }
-      if (est && !est.full && est.ahead && est.source !== 'live') subParts.push(est.source === 'history' ? 'enligt tidigare kvällar' : 'uppskattning');
+      if (est && est.confirmed && !est.full && est.ahead && est.source !== 'live') subParts.push(est.source === 'history' ? 'enligt tidigare kvällar' : 'uppskattning');
       if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
       document.getElementById('vc-sub').textContent = closed ? closedText(venue)
         : waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
@@ -1660,7 +1678,7 @@ import './style.css';
 
         // Statusfärger för kartnålar (hero-färger från CLAUDE.md)
         var PIN_STATUS_COLORS = {
-          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), unknown: getStatusColor('unknown')
+          none: getStatusColor('free'), short: getStatusColor('short'), medium: getStatusColor('medium'), long: getStatusColor('long'), few: getStatusColor('few'), unknown: getStatusColor('unknown')
         };
 
         // Ikoner i 24×24-viewBox. Bar = cocktailglas, klubb = musiknot.
@@ -1751,7 +1769,7 @@ import './style.css';
           var color = PIN_STATUS_COLORS[status] || PIN_STATUS_COLORS.unknown;
           var PR = 2, H = 28, OUT = 2, PAD = 9, GLYPH = 13, GAP = 5;
           var FONT = '700 13px Satoshi, system-ui, sans-serif', UNIT_FONT = '600 10px Satoshi, system-ui, sans-serif';
-          var hasUnit = /\d/.test(text);
+          var hasUnit = /\d/.test(text) && !/kö$/.test(text); // "10–25 i kö" (få rapporter) är personer, inte minuter
 
           var meas = document.createElement('canvas').getContext('2d');
           meas.font = FONT; var tw = meas.measureText(text).width;
@@ -1795,7 +1813,7 @@ import './style.css';
           var text = name.slice(name.indexOf('|') + 1);
           var PR = 2, H = 28, OUT = 2, PAD = 9, GLYPH = 13, GAP = 5, EXTRA = 6;
           var FONT = '700 13px Satoshi, system-ui, sans-serif', UNIT_FONT = '600 10px Satoshi, system-ui, sans-serif';
-          var hasUnit = /\d/.test(text);
+          var hasUnit = /\d/.test(text) && !/kö$/.test(text);
           var meas = document.createElement('canvas').getContext('2d');
           meas.font = FONT; var tw = meas.measureText(text).width;
           meas.font = UNIT_FONT; var uw = hasUnit ? meas.measureText('min').width + 2 : 0;
@@ -1854,7 +1872,7 @@ import './style.css';
             filter: ['all', ['!=', ['get', 'status'], 'unknown'], ['!=', ['get', 'hidden'], 1]],
             paint: {
               'circle-color': ['match', ['get', 'status'],
-                'long', getStatusColor('long'), 'medium', getStatusColor('medium'), 'short', getStatusColor('short'), getStatusColor('free')],
+                'long', getStatusColor('long'), 'medium', getStatusColor('medium'), 'short', getStatusColor('short'), 'few', getStatusColor('few'), getStatusColor('free')],
               // Lite större än pillen, inte mer: en stor glöd gjorde kartan suddig och flöt ihop till en dimma vid Stureplan.
               'circle-radius': ['interpolate', ['exponential', 1.6], ['zoom'], 11, 22, 13, 32, 16, 64],
               'circle-blur': 1,
@@ -2345,7 +2363,7 @@ import './style.css';
     // skymmer; de andra döljs tills man zoomat in så långt att de får plats. Räknas här i stället för av Mapbox kollision,
     // så att "+N" och det som döljs alltid är samma sak. Körs efter ny data, nytt val och varje kartrörelse (moveend).
     var _livePills = [], _declutterDone = null, _declutterSel;
-    var DECLUTTER_RANK = { long: 4, medium: 3, short: 2, none: 1 };
+    var DECLUTTER_RANK = { long: 4, medium: 3, short: 2, none: 1, few: 0.5 };
     function declutterPills() {
       if (!map || !map.getSource('venues')) return;
       var sel = activeVenue ? activeVenue.id : null, z = map.getZoom(), low = z < PILL_MIN;
@@ -2611,20 +2629,21 @@ import './style.css';
         r('drama', 20, 5, { session: 'ts-dr1' }), r('drama', 2, 5, { session: 'ts-dr1', type: 'followup' }),
         r('drama', 22, 5, { session: 'ts-dr2' }), r('drama', 1, 5, { session: 'ts-dr2', type: 'followup' }),
         r('drama', 6, 37),
-        // uppskattning från dörrtakt (inga sessioner)
-        r('kristall', 35, 37), r('kristall', 10, 60), r('kristall', 2, 60),
-        r('berns', 28, 17), r('berns', 15, 37), r('berns', 3, 37),
+        // uppskattning från dörrtakt (inga sessioner). Kristall, Berns, Soap Bar, Tjoget och Morfar Ginko har tre personer
+        // i samma intervall och visar minuter; övriga har färre och visar vad som rapporterats (CONFIRM_PEOPLE).
+        r('kristall', 35, 37), r('kristall', 10, 60), r('kristall', 6, 60), r('kristall', 2, 60),
+        r('berns', 28, 17), r('berns', 15, 37), r('berns', 8, 37), r('berns', 3, 37),
         r('sturecompagniet', 40, 17), r('sturecompagniet', 20, 37), r('sturecompagniet', 5, 37),
         r('sturehof', 30, 5), r('sturehof', 10, 17),
-        r('soap-bar', 40, 5), r('soap-bar', 15, 17), r('soap-bar', 3, 17),
+        r('soap-bar', 40, 5), r('soap-bar', 15, 17), r('soap-bar', 9, 17), r('soap-bar', 3, 17),
         r('pelikan', 35, 17), r('pelikan', 12, 37),
         r('akkurat', 20, 5), r('akkurat', 6, 17),
         r('neu', 35, 5), r('neu', 18, 17), r('neu', 4, 37),
         r('tak', 30, 37), r('tak', 12, 37), r('tak', 4, 17),
         r('pharmarium', 15, 17), r('pharmarium', 1, 5),
         // ingen kö
-        r('tjoget', 25, 0), r('tjoget', 8, 0),
-        r('morfar-ginko', 30, 0), r('morfar-ginko', 10, 0),
+        r('tjoget', 25, 0), r('tjoget', 14, 0), r('tjoget', 8, 0),
+        r('morfar-ginko', 30, 0), r('morfar-ginko', 20, 0), r('morfar-ginko', 10, 0),
         r('solidaritet', 30, 0), r('solidaritet', 10, 0),
         // gammal data (25 min) — visas som "kan vara gammal"
         r('nalen', 40, 5), r('nalen', 25, 0)
@@ -3650,7 +3669,7 @@ import './style.css';
       var minsLeft = minutesToClose(venue);
       var closingSoonHtml = minsLeft !== null && minsLeft > 0 && minsLeft <= 90
         ? '<span class="erow-tertiary-sep">·</span><span class="erow-closing">Stänger ' + closingTonight(venue) + '</span>' : '';
-      var estHtml = est && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ ' + (est.source === 'history' ? 'tidigare kvällar' : 'uppskattning') + '</span>' : '';
+      var estHtml = est && est.confirmed && est.ahead && !est.full && est.source !== 'live' ? '<span class="erow-tertiary-sep">·</span><span class="erow-est-label">≈ ' + (est.source === 'history' ? 'tidigare kvällar' : 'uppskattning') + '</span>' : '';
       var tertiaryHtml = hasData
         ? '<div class="erow-tertiary">' +
             '<span>' + reportCount + ' rapport' + (reportCount === 1 ? '' : 'er') + '</span>' +
@@ -3793,7 +3812,7 @@ import './style.css';
       //   No query  → färska först, kortast kö överst (frågan är "vart går vi?"), sedan nyast rapport; utan färsk data
       //               sist i bokstavsordning
       //   Query set → relevance score first; within same score bucket: fresh, then shortest queue
-      var QUEUE_RANK = { none: 0, short: 1, medium: 2, long: 3 };
+      var QUEUE_RANK = { none: 0, short: 1, medium: 2, long: 3, few: 3.5 };
       function queueRank(v) {
         var r = QUEUE_RANK[computeStatus(v.id, allReports)];
         return r === undefined ? 4 : r;

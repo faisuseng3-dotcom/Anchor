@@ -200,6 +200,26 @@ Samma kölängd (37) ger 10–15 min eller 25–50 min beroende på dörren. Det
 
 ---
 
+## Minst 3 personer för minuter
+
+`estimateWait` räknar ut minuterna som förut, men sätter också `est.agree`: hur många **olika personer** (`reporter`)
+som rapporterat samma intervall som siffran de senaste 45 min. `est.confirmed` är `agree >= CONFIRM_PEOPLE` (3).
+
+| Läge | Väntetidstext (`venueWaitText`) | Status (`computeStatus`) | Färg |
+|---|---|---|---|
+| 3+ personer i samma intervall | minuter ("10–15 min", "Fullt") | `none`/`short`/`medium`/`long` | statusfärgen |
+| 1–2 personer, eller ingen majoritet | det som rapporterades ("10–25 i kö", "Ingen kö", "Går isär") | `few` | `#B79CFF` (lila) |
+
+Samma person tre gånger räknas som en. Med `few` blir ett ställe aldrig "Bäst nu", får ingen prognos (`forecastWait`)
+och räknas inte i filterchipsen. Kortet säger "1 av 3 rapporter för väntetid"; rapporterna syns under Visa rapporter.
+Låst av `tests/status.test.js` ("minst 3 personer för en väntetid") och `tests/bestnow.test.js`.
+
+Varför: med 1–2 rapporter kunde en enda person (eller en som ljuger) bestämma minuterna alla såg. Varför inte dölja
+allt: databasen hade 7 rapporter totalt 2026-11-15 och aldrig 3 personer på samma ställe inom 45 min, så kartan hade
+varit tom.
+
+---
+
 ## 6. Från väntetid till status och färg
 
 `waitToStatus` gör om minuter till en nivå:

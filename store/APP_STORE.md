@@ -35,7 +35,7 @@ Qbar visar hur lång kön är på barer, pubar och nattklubbar i Stockholm, just
 Köerna rapporteras av folk som står i dem. Två tryck räcker: välj stället och hur många som står framför dig. Qbar räknar om det till en väntetid och visar den för alla.
 
 • Karta och lista över 290 ställen, från Stureplan till Södermalm
-• Väntetid i minuter, inte bara "lång" eller "kort"
+• Väntetid i minuter när tre personer rapporterat samma kö; innan dess ser du vad de rapporterat, i lila
 • "Bäst nu": stället där du kommer in snabbast, räknat med promenaden dit
 • Live: de senaste rapporterna från hela stan
 • Gammal data ser gammal ut, och saknas data säger appen det

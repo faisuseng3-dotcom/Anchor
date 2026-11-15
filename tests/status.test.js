@@ -1,7 +1,7 @@
 // computeStatus och forecastWait — gränserna som avgör vad kartan, listan och kortet visar.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { computeStatus, forecastWait, estimateWait, setTestReports, report, NOW } from './harness.js';
+import { computeStatus, forecastWait, estimateWait, venueWaitText, setTestReports, report, agreed, NOW } from './harness.js';
 
 afterEach(() => { vi.useRealTimers(); setTestReports([]); });
 
@@ -18,8 +18,43 @@ describe('computeStatus — bara färsk data', () => {
   });
 
   it('1–10 personer är kort kö, inte "Ingen kö"', () => {
-    expect(computeStatus('tjoget', [report('tjoget', 2, 5)])).toBe('short');
-    expect(computeStatus('tjoget', [report('tjoget', 2, 0)])).toBe('none');
+    expect(computeStatus('tjoget', agreed('tjoget', 2, 5))).toBe('short');
+    expect(computeStatus('tjoget', agreed('tjoget', 2, 0))).toBe('none');
+  });
+});
+
+describe('minst 3 personer för en väntetid', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
+  const p = (id, mins, ahead, user) => report(id, mins, ahead, { userId: user });
+
+  it('1–2 personer: det de rapporterade, i färgen för få rapporter, aldrig minuter', () => {
+    const tva = [p('kristall', 5, 17, 'a'), p('kristall', 3, 17, 'b')];
+    setTestReports(tva);
+    expect(computeStatus('kristall', tva)).toBe('few');
+    expect(venueWaitText('kristall')).toBe('10–25 i kö');
+    setTestReports([p('kristall', 5, 0, 'a')]);
+    expect(venueWaitText('kristall')).toBe('Ingen kö');
+  });
+
+  it('samma person tre gånger räknas som en', () => {
+    const en = [p('kristall', 15, 17, 'a'), p('kristall', 9, 17, 'a'), p('kristall', 3, 17, 'a')];
+    expect(computeStatus('kristall', en)).toBe('few');
+  });
+
+  it('tre personer i olika intervall räcker inte', () => {
+    const oense = [p('kristall', 5, 5, 'a'), p('kristall', 4, 17, 'b'), p('kristall', 3, 37, 'c')];
+    expect(computeStatus('kristall', oense)).toBe('few');
+  });
+
+  it('tre personer i samma intervall: minuter', () => {
+    setTestReports(agreed('kristall', 5, 17));
+    expect(computeStatus('kristall', agreed('kristall', 5, 17))).not.toBe('few');
+    expect(venueWaitText('kristall')).toMatch(/min$/);
+  });
+
+  it('två oense personer: "Går isär"', () => {
+    setTestReports([p('kristall', 5, 0, 'a'), p('kristall', 3, 37, 'b')]);
+    expect(venueWaitText('kristall')).toBe('Går isär');
   });
 });
 
@@ -29,9 +64,9 @@ describe('computeStatus — stängda ställen', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 17, 1, 30));
     const now = Date.now();
-    const fresh = (id) => ({ ...report(id, 0, 0), created_at: new Date(now - 5 * 60000).toISOString() });
-    expect(computeStatus('akkurat', [fresh('akkurat')])).toBe('unknown');
-    expect(computeStatus('spy-bar', [fresh('spy-bar')])).toBe('none');
+    const fresh = (id) => [1, 2, 3].map((i) => ({ ...report(id, 0, 0), reporter: 'p' + i, created_at: new Date(now - 5 * 60000).toISOString() }));
+    expect(computeStatus('akkurat', fresh('akkurat'))).toBe('unknown');
+    expect(computeStatus('spy-bar', fresh('spy-bar'))).toBe('none');
   });
 });
 
@@ -44,7 +79,8 @@ describe('forecastWait — trenden', () => {
   ];
 
   it('en avvikare kan inte fördubbla kön: tillväxten är högst 0,5 personer/min', () => {
-    const reps = three(5, 17, 60);
+    // Tre överens (10–25) och en avvikare på 50+ sist: prognosen visas, men avvikaren får inte dra iväg den.
+    const reps = [...three(17, 17, 60), report('kristall', 10, 17, { userId: 'u4' })];
     setTestReports(reps);
     const now = estimateWait('kristall', reps);
     const fc = forecastWait('kristall', 15, 0);

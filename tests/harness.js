@@ -64,7 +64,7 @@ const exported = [
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
   'getVenueById', '_searchNorm', 'venueScore', 'venueSearch', 'areaHits', 'didYouMean',
-  'exsumText', 'exsumTimeSince', 'computeBestNow', 'setTestReports', 'closingTonight', 'isClosed'
+  'exsumText', 'exsumTimeSince', 'computeBestNow', 'setTestReports', 'closingTonight', 'isClosed', 'venueWaitText'
 ];
 
 const box = {};
@@ -83,7 +83,7 @@ export const {
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
   getVenueById, _searchNorm, venueScore, venueSearch, areaHits, didYouMean,
-  exsumText, exsumTimeSince, computeBestNow, setTestReports, closingTonight, isClosed
+  exsumText, exsumTimeSince, computeBestNow, setTestReports, closingTonight, isClosed, venueWaitText
 } = box;
 
 // ── Testdatabyggare ─────────────────────────────────────────────────────────
@@ -119,6 +119,11 @@ export function session(venueId, id, points, opts = {}) {
     session: id,
     type: i === 0 ? 'initial' : (ahead === 0 && opts.entered ? 'entered' : 'followup')
   }));
+}
+
+/** Samma rapport från tre olika personer: så många som krävs för att appen ska visa minuter (CONFIRM_PEOPLE). */
+export function agreed(venueId, minsAgo, peopleAhead, opts = {}) {
+  return ['p1', 'p2', 'p3'].map((userId) => report(venueId, minsAgo, peopleAhead, { ...opts, userId }));
 }
 
 /** Väntetiden som texten visas, eller null när ingen skattning finns. */
