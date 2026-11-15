@@ -2266,6 +2266,8 @@ import './style.css';
       renderReports();
       if (supabase) loadReports();
     });
+    // Nätet kommer ofta tillbaka först några sekunder efter väckningen; läs då direkt i stället för att vänta på pollningen.
+    window.addEventListener('online', function() { if (supabase) loadReports(); });
 
     // Texten på pillen: samma källa som listan och kortet (venueWaitText), men korta former så pillen håller sig smal.
     // "Ingen kö" blir "Fri", som i listan. Tom text = vi vet inget, och då ritas ingen pill.
@@ -3071,10 +3073,11 @@ import './style.css';
     setInterval(function() { loadHistoricalPatterns(); loadHistoricalRates(); }, 30 * 60 * 1000);
     subscribeToReports();
     if (supabase) {
-      // Reserv: var 30 s utan realtime, annars varannan minut så att utgångna rapporter försvinner och missade händelser
-      // fångas upp.
+      // Reserv: var 30 s utan realtime eller efter ett fel, annars varannan minut så att utgångna rapporter försvinner och
+      // missade händelser fångas upp. Efter ett fel räknas inte realtime: kanalen säger SUBSCRIBED långt efter att
+      // telefonen tappat nätet, och "Ingen kontakt" stod då kvar i upp till två minuter.
       setInterval(function() {
-        if (!_realtimeLive || Date.now() - _lastLoadAt >= 2 * 60 * 1000) loadReports();
+        if (_loadState === 'error' || !_realtimeLive || Date.now() - _lastLoadAt >= 2 * 60 * 1000) loadReports();
       }, 30000);
     } else {
       updateConnectionToast();

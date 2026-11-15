@@ -85,7 +85,7 @@ toppnivåskript — det finns ingen `init()`-funktion och ingen `DOMContentLoade
 4. `VENUES`-arrayen definieras (`src/main.js`)
 5. Alla funktioner deklareras (hissas, så ordningen spelar ingen roll)
 6. **`loadReports().then(loadHistoricalPatterns).then(loadHistoricalRates)`** (`src/main.js`)
-7. `setInterval`: pollning av `loadReports` (var 30 s utan Realtime, varannan minut med),
+7. `setInterval`: pollning av `loadReports` (var 30 s utan Realtime eller efter ett fel, varannan minut annars; direkt vid `online`),
    `loadHistoricalPatterns` + `loadHistoricalRates` var 30 min
 8. `subscribeToReports()` — Realtime-prenumeration; en händelse ger en samlad `loadReports()` 1–4 s senare
 9. `updateProfileStats()`, `filterReportList()`, `checkConsent()`
@@ -220,7 +220,7 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 | Beroende | Används för | Vad händer om det fallerar |
 |---|---|---|
 | Supabase REST | Läsa och skriva rapporter | `_loadState` sätts till `'error'` och `renderLoadFailure()` kör, som ritar om allt via `renderReports()` så att raderna åldras under varningen. Finns rapporter kvar behålls de med varningen "siffrorna kan vara gamla"; finns inga visas felläge. `loadReports` har sekvensnummer (ett äldre svar skriver inte över ett nyare) och 15 s timeout. Se [TESTING.md](TESTING.md) avsnitt 4 |
-| Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen går då var 30 s i stället för varannan minut |
+| Supabase Realtime | Omedelbar uppdatering | Tyst. Pollningen går då var 30 s i stället för varannan minut. Efter ett läsfel pollas var 30 s även om kanalen säger SUBSCRIBED |
 | Supabase RPC `on_my_way_counts` | "På väg"-räknare | Varning i konsolen, räknaren visas inte |
 | ~~Supabase RPC `increment_points`~~ | Anropen borttagna — funktionen fanns inte. Poäng räknas klientsidan | — |
 | Mapbox Styles/Tiles | Kartan | `showMapError()` visar ett felläge. **Verifierat fungerande.** |

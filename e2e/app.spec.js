@@ -113,6 +113,27 @@ test.describe('2. Serverfel visas som fel, inte som en tyst kväll', () => {
     await expect(page.locator('.erow')).toHaveCount(ALLA);
     await expect(page.locator('.explore-error-state')).toHaveCount(0);
   });
+
+  test('felet går över av sig självt när nätet är tillbaka', async ({ page }) => {
+    // Telefonen väcks innan nätet är uppe: läsningen misslyckas. Förut stod "Ingen kontakt" kvar i upp till två minuter.
+    await skipOnboarding(page);
+    let nere = true;
+    await page.route('**/*.supabase.co/rest/**', (route) => {
+      const url = decodeURIComponent(route.request().url());
+      if (nere && !url.includes('on_my_way')) return route.abort('internetdisconnected');
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        headers: { 'content-range': '0-2/3', 'access-control-expose-headers': 'content-range' }, body: url.includes('on_my_way') ? '[]' : JSON.stringify(KVALL)
+      });
+    });
+    await page.route('**/*.mapbox.com/**', (route) => route.abort());
+    await openApp(page);
+    await expect(page.locator('#err-toast')).toHaveClass(/visible/, { timeout: 15000 });
+
+    nere = false;
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(page.locator('#err-toast')).not.toHaveClass(/visible/);
+  });
 });
 
 test.describe('3. Sök och öppna ett ställe', () => {

@@ -549,7 +549,8 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   (`STATUS_COLORS` saknade `none`)
 - `limit(100)` → `limit(1000)` (PostgREST:s tak), med varning i konsolen om `count` överstiger det lästa (B-05)
 - Realtime + pollning: en realtime-händelse ger en samlad läsning 1–4 s senare (en skur = en läsning per klient).
-  Pollningen är reserv — var 30 s utan realtime, varannan minut med. Historiken läses om var 30:e minut, inte vid
+  Pollningen är reserv — var 30 s utan realtime **eller efter ett fel** (realtime säger SUBSCRIBED långt efter att
+  telefonen tappat nätet), varannan minut annars, och direkt vid `online`. Historiken läses om var 30:e minut, inte vid
   varje insert
 - Granskningen 2026-10-30 (allt rättat):
   - "Bäst nu" valde aldrig ett ställe utan kö (`'free'` mot `'none'`) och räknade uppföljningar som färsk mätning
