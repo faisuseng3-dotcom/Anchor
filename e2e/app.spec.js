@@ -2,7 +2,7 @@
 // Allt mot mockad Supabase — inget test rör produktionsdatabasen.
 
 import { test, expect } from '@playwright/test';
-import { report, mockSupabase, skipOnboarding, openApp, goToScreen } from './support.js';
+import { report, mockSupabase, skipOnboarding, openApp, goToScreen, E2E_NOW } from './support.js';
 // Synliga ställen i VENUES (låst i tests/venues.test.js). Harnessen går inte att importera här: Playwright laddar den som CJS.
 const ALLA = 290;
 
@@ -133,6 +133,30 @@ test.describe('2. Serverfel visas som fel, inte som en tyst kväll', () => {
     nere = false;
     await page.evaluate(() => window.dispatchEvent(new Event('online')));
     await expect(page.locator('#err-toast')).not.toHaveClass(/visible/);
+  });
+
+  test('telefonens klocka går fel: en färsk rapport räknas ändå som färsk', async ({ page }) => {
+    // Telefonen går 10 min efter. Utan serverns tid såg en rapport från för 2 min sedan ut att komma från framtiden
+    // och räknades inte alls.
+    await skipOnboarding(page);
+    const rows = [report('kristall', 2, 17)];
+    await page.route('**/*.supabase.co/rest/**', (route) => {
+      const url = decodeURIComponent(route.request().url());
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        headers: { date: new Date(E2E_NOW).toUTCString(), 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range, date' },
+        body: url.includes('/reports') && url.includes('expires_at') ? JSON.stringify(rows) : '[]'
+      });
+    });
+    await page.route('**/*.mapbox.com/**', (route) => route.abort());
+    await page.clock.setFixedTime(E2E_NOW - 10 * 60 * 1000);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.showScreen === 'function', { timeout: 15000 });
+    await page.waitForTimeout(2500);
+    await goToScreen(page, 'explore');
+    const rad = page.locator('#explore-list .erow[data-venue="kristall"]');
+    await expect(rad).not.toHaveClass(/erow--empty/);
+    await expect(rad).toContainText('2 min sedan');
   });
 });
 

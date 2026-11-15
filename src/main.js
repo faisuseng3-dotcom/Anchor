@@ -88,11 +88,22 @@ import './style.css';
     const SUPABASE_URL = 'https://awwmfsjsrjktekmbgadx.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3d21mc2pzcmprdGVrbWJnYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjMwNzIsImV4cCI6MjEwNTY5OTA3Mn0.i5kS3ipzQ0mSzvVnjPbMiotVVUDYcpdTzQ5_HdCQCqI';
 
+    // Telefonens klocka kan gå fel. Varje svar från Supabase har serverns tid (Date-huvudet, som Supabase exponerar via
+    // CORS); skillnaden används av loadReports, så att "3 min sedan" och 45-minutersgränsen stämmer ändå.
+    var _clockOffset = 0; // serverns tid minus telefonens, i ms
+    var SUPABASE_OPTIONS = {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: { fetch: function(input, init) {
+        return fetch(input, init).then(function(res) {
+          var server = Date.parse(res.headers.get('date') || '');
+          if (server) _clockOffset = server - Date.now();
+          return res;
+        });
+      } }
+    };
     var supabase = null;
     try {
-      supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-      });
+      supabase = createClient(SUPABASE_URL, SUPABASE_KEY, SUPABASE_OPTIONS);
       console.log('[QueueBar] Supabase klient skapad');
     } catch(err) {
       console.error('[QueueBar] Supabase init misslyckades:', err);
@@ -112,9 +123,7 @@ import './style.css';
         // Ny klient och ny prenumeration bara om ingen fanns. En redan ansluten kanal tål inte en andra
         // .on('postgres_changes') och kastade ett fel.
         if (!supabase) {
-          supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-          });
+          supabase = createClient(SUPABASE_URL, SUPABASE_KEY, SUPABASE_OPTIONS);
           subscribeToReports();
         }
         loadReports();
@@ -2226,7 +2235,7 @@ import './style.css';
       }
       var seq = ++_loadSeq;
       console.log('[QueueBar] loadReports startar');
-      var now = new Date().toISOString();
+      var now = new Date(Date.now() + _clockOffset).toISOString();
       try {
         // Alla icke-utgångna rapporter (≤45 min). Ett lägre tak tappade kö-sessionernas första mätpunkt en full kväll
         // och tystade takten (B-05). 1000 är PostgREST:s standardtak för max-rows. Tidsgränsen: på dåligt nät efter
@@ -2245,7 +2254,15 @@ import './style.css';
           _loadState = 'ok';
           _lastLoadAt = Date.now();
           // Bara kända ställen: venue_id hamnar i onclick-attribut och okända id:n kan inte visas meningsfullt ändå.
-          allReports = result.data.filter(function(r) { return getVenueById(r.venue_id); });
+          // Tiderna flyttas till telefonens klocka: all ålder räknas mot Date.now(). Under 30 s är bara Date-huvudets
+          // sekundupplösning och nätets fördröjning, och då rörs inget.
+          var skew = Math.abs(_clockOffset) >= 30000 ? _clockOffset : 0;
+          allReports = result.data.filter(function(r) { return getVenueById(r.venue_id); }).map(function(r) {
+            if (!skew) return r;
+            r.created_at = new Date(Date.parse(r.created_at) - skew).toISOString();
+            r.expires_at = new Date(Date.parse(r.expires_at) - skew).toISOString();
+            return r;
+          });
           console.log('[QueueBar] loadReports: ' + allReports.length + ' Supabase-rapporter inladdade');
           if (testDataEnabled()) injectTestData();
           renderReports();

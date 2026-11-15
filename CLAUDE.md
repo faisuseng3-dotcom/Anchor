@@ -32,7 +32,7 @@ de är frysta ögonblicksbilder).
 | | |
 |---|---|
 | Bygge | **Vite 6**, inget ramverk, ingen TypeScript |
-| Kod | `src/main.js` (4 550 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
+| Kod | `src/main.js` (4 567 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Ljus eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
 | Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
@@ -97,7 +97,7 @@ reserv för gamla rapporter utan `people_ahead`.
 npm run verify             # tester + kontroller + bygge — körs automatiskt före varje commit
 npm test                   # 162 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
-npm run e2e                # 15 webbläsartester (Playwright) — kräver en webbläsare, se nedan
+npm run e2e                # 16 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
 npm run dev + ?testdata=true   # med 48 testrapporter för 17 ställen
 npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
@@ -465,6 +465,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   samma ställe. Över 40 min promenad räknas inte, och stället måste ha ≥45 min kvar när du är framme
 - Avstånd och gångtid: `distanceKmTo` / `walkMinutesTo` (5 km/h fågelvägen) / `formatDistance` — samma siffror i
   kortet, "Bäst nu" och "På väg"
+- **Telefonens klocka** (`_clockOffset`, `SUPABASE_OPTIONS.global.fetch`): varje Supabase-svar ger serverns tid
+  (`Date`-huvudet). `loadReports` flyttar `created_at`/`expires_at` till telefonens klocka när skillnaden är ≥30 s, så att
+  all ålder (räknad mot `Date.now()`) stämmer. Förut räknades en färsk rapport inte alls på en telefon som gick efter
 - Startvyn (`startCamera`) ramar in ställena med färsk data och håller zoomen ≥12,4
 - Kartans rörelse (`trackMapChanges` + `stepMapMotion`, driven av kartans rAF-slinga): pillarna tonar fram längst kö
   först när introt är borta (`afterSplash`, eventet `qb:splashdone` från `index.html`); en pill som byter värde tonar in
