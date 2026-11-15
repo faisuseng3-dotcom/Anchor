@@ -208,7 +208,7 @@ som rapporterat samma intervall som siffran de senaste 45 min. `est.confirmed` �
 | Läge | Väntetidstext (`venueWaitText`) | Status (`computeStatus`) | Färg |
 |---|---|---|---|
 | 3+ personer i samma intervall | minuter ("10–15 min", "Fullt") | `none`/`short`/`medium`/`long` | statusfärgen |
-| 1–2 personer, eller ingen majoritet | det som rapporterades ("10–25 i kö", "Ingen kö", "Går isär") | `few` | `#B79CFF` (lila) |
+| 1–2 personer, eller ingen majoritet | det som rapporterades ("10–25 i kö", "Ingen kö", "Går isär") | `few` | `#FFFFFF` (helvit, fylld; ingen data är grå prickar och mörka ringar) |
 
 Samma person tre gånger räknas som en. Med `few` blir ett ställe aldrig "Bäst nu", får ingen prognos (`forecastWait`)
 och räknas inte i filterchipsen. Kortet säger "1 av 3 rapporter för väntetid"; rapporterna syns under Visa rapporter.

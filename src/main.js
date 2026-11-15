@@ -774,7 +774,7 @@ import './style.css';
     // Enda källan till statusfärger i JS. Samma värden som --status-* i style.css. 'few': rapporter finns, men färre än
     // CONFIRM_PEOPLE personer är överens, så ingen väntetid.
     function getStatusColor(status) {
-      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', few: '#B79CFF' }[status] || '#55555B';
+      return { none: '#34E07F', free: '#34E07F', short: '#FFD23F', medium: '#FF8A3D', long: '#FF4D5E', few: '#FFFFFF' }[status] || '#55555B';
     }
 
     function getStatusClass(status) {
@@ -1872,7 +1872,8 @@ import './style.css';
             filter: ['all', ['!=', ['get', 'status'], 'unknown'], ['!=', ['get', 'hidden'], 1]],
             paint: {
               'circle-color': ['match', ['get', 'status'],
-                'long', getStatusColor('long'), 'medium', getStatusColor('medium'), 'short', getStatusColor('short'), 'few', getStatusColor('few'), getStatusColor('free')],
+                // Ingen glöd för få rapporter: vit glöd ser ut som dimma, och glöden är till för det som är bekräftat.
+                'long', getStatusColor('long'), 'medium', getStatusColor('medium'), 'short', getStatusColor('short'), 'few', 'rgba(0,0,0,0)', getStatusColor('free')],
               // Lite större än pillen, inte mer: en stor glöd gjorde kartan suddig och flöt ihop till en dimma vid Stureplan.
               'circle-radius': ['interpolate', ['exponential', 1.6], ['zoom'], 11, 22, 13, 32, 16, 64],
               'circle-blur': 1,
@@ -2349,7 +2350,9 @@ import './style.css';
             focus_image: pill ? 'focus|' + text : '',
             best: id === bestId ? 1 : 0,
             closed: isClosed(getVenueById(id)) ? 1 : 0,
-            aging: pill && latestQueueAgeMin(id) >= 15 ? 1 : 0
+            // Vitt (få rapporter) tonas inte: tonat vitt blir grått och ser ut som ett ställe utan data. Åldern står i
+            // listan och kortet.
+            aging: pill && status !== 'few' && latestQueueAgeMin(id) >= 15 ? 1 : 0
           })
         });
       });

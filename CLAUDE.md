@@ -99,7 +99,7 @@ npm test                   # 162 enhetstester (Vitest)
 npm run test:watch         # kör om vid varje sparning
 npm run e2e                # 16 webbläsartester (Playwright) — kräver en webbläsare, se nedan
 npm run dev                # Vite på http://localhost:5173
-npm run dev + ?testdata=true   # med 52 testrapporter för 17 ställen (5 med minuter, resten lila)
+npm run dev + ?testdata=true   # med 52 testrapporter för 17 ställen (5 med minuter, resten vita)
 npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
 ```
 
@@ -238,7 +238,7 @@ Definierade som CSS-variabler i `src/style.css:` `--status-*`, och i JS i `getSt
 | `short` | `#FFD23F` | under 18 min |
 | `medium` | `#FF8A3D` | 18–30 min |
 | `long` | `#FF4D5E` | över 30 min, eller "Fullt" |
-| `few` | `#B79CFF` | rapporter finns, men färre än 3 personer är överens: "10–25 i kö", inga minuter |
+| `few` | `#FFFFFF` | helvit och fylld: rapporter finns, men färre än 3 personer är överens ("10–25 i kö", inga minuter). Ingen glöd och tonas inte vid ålder, för tonat vitt blir grått som "ingen data" |
 | `unknown` | `#55555B` | ingen data |
 
 **`getStatusColor()` är enda källan i JS** och har samma värden som CSS `--status-*`. `STATUS_COLORS` är borta;
