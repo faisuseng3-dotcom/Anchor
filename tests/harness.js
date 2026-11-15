@@ -53,7 +53,9 @@ const shims = `
   function getVenueById(id) { return VENUES.find(function(v) { return v.id === id; }); }
   var allReports = [];
   var window = { _userPos: null };
-  function setTestReports(reports, pos) { allReports = reports; window._userPos = pos || null; }
+  var _onMyWay = null;
+  // omw: { venueId: antal på väg } — samma form som on_my_way_counts ger (_omwCounts i modellblocket).
+  function setTestReports(reports, pos, omw) { allReports = reports; window._userPos = pos || null; _omwCounts = omw || {}; }
 `;
 
 const exported = [

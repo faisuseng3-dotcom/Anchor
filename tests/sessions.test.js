@@ -147,6 +147,19 @@ describe('sessionRates — när någon står kvar i samma intervall', () => {
     expect(rates[0].rate).toBeCloseTo(17 / 20, 5);
   });
 
+  it('"Kom inte in" mäter dörren som "inne"; "Gav upp" utan antal mäter inget', () => {
+    const nekad = sessionRates([
+      report('kristall', 20, 17, { session: 'qs-n', type: 'initial' }),
+      report('kristall', 0, 0, { session: 'qs-n', type: 'refused' })
+    ]);
+    expect(nekad).toHaveLength(1);
+    expect(nekad[0].rate).toBeCloseTo(17 / 20, 5);
+    expect(sessionRates([
+      report('kristall', 20, 17, { session: 'qs-g', type: 'initial' }),
+      report('kristall', 0, null, { session: 'qs-g', type: 'left' })
+    ])).toHaveLength(0);
+  });
+
   it('en längre stillastående session ger en lägre takt', () => {
     const kort = sessionRates(session('spy-bar', 's1', [[15, 17], [0, 17]]))[0].rate;
     const lang = sessionRates(session('spy-bar', 's2', [[45, 17], [0, 17]]))[0].rate;

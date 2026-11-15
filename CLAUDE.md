@@ -459,8 +459,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   sagt ja startar den vid start (Permissions API). Nekad plats ger en toast vid trycket. `loadReports` har löpnummer
   (ett äldre svar skriver aldrig över ett nyare) och 15 s tidsgräns; `visibilitychange` ritar om direkt när telefonen
   väcks
-- "Bäst nu" rangordnar efter **tid tills du är inne**: promenad + kö (+5 min om datan är 15–30 min). Över 40 min
-  promenad räknas inte, och stället måste ha ≥45 min kvar när du är framme
+- "Bäst nu" rangordnar efter **tid tills du är inne**: promenad + kö (+5 min om datan är 15–30 min). Andra på väg
+  (`othersOnWay`, från 3) räknas som halva antalet extra framför, som i `forecastWait`, så att alla inte skickas till
+  samma ställe. Över 40 min promenad räknas inte, och stället måste ha ≥45 min kvar när du är framme
 - Avstånd och gångtid: `distanceKmTo` / `walkMinutesTo` (5 km/h fågelvägen) / `formatDistance` — samma siffror i
   kortet, "Bäst nu" och "På väg"
 - Startvyn (`startCamera`) ramar in ställena med färsk data och håller zoomen ≥12,4
@@ -474,7 +475,10 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Kö-session i localStorage `qb_queue_session`; uppföljningar behöver ≥4 min mellanrum (server: 3). "Ingen kö" startar
   ingen session — det finns ingen kö att stå i. En rapport vid stället avslutar "På väg"; en rapport långt ifrån
   (`isFarFrom`, >300 m) tas emot men startar ingen session. Står du redan i kö på samma ställe blir en ny rapport en
-  uppföljning. "Jag är inne" >20 min efter senaste punkten frågar "Kom du in nyss?" — "Tidigare" skickar inget
+  uppföljning. "Jag är inne" >20 min efter senaste punkten frågar "Kom du in nyss?" — "Tidigare" skickar inget.
+  Krysset frågar "Varför lämnar du kön?": **"Kom inte in"** (`refused`, 0 framför: nådde dörren, mäter takten och
+  kalibreringen som "inne"; sent tryck skickas utan antal) eller **"Gav upp"** (`left`, utan antal, ingen mätpunkt).
+  Båda avslutar sessionen på servern. Förut skickade krysset inget, och appen lärde sig bara av dem som kom in
 - Testläget skickar aldrig något (rapporter, sessioner, "på väg") och syns med en etikett längst ned. Stängning räknas
   mot 23:00 i testläge (`_testNightMin`): testdatan är en kväll, och klockan 10 var annars varje testställe stängt
 - "På väg" i localStorage `qb_on_my_way`; efter ankomst frågar bannern om rapport i 30 min

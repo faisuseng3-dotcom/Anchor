@@ -40,4 +40,13 @@ describe('computeBestNow', () => {
     setTestReports([report('neu', 5, 0), report('kristall', 5, 17)], { lat: 59.334, lng: 18.062, acc: 10 });
     expect(computeBestNow().venue.id).toBe('kristall');
   });
+
+  it('folk på väg räknas in: alla skickas inte till samma ställe', () => {
+    const rapporter = [report('neu', 5, 0), report('patricia', 5, 0)];
+    setTestReports(rapporter);
+    const forst = computeBestNow().venue.id;
+    const andra = forst === 'neu' ? 'patricia' : 'neu';
+    setTestReports(rapporter, null, { [forst]: 20 });
+    expect(computeBestNow().venue.id).toBe(andra);
+  });
 });

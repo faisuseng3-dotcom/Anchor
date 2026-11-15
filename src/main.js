@@ -2735,7 +2735,7 @@ import './style.css';
     }
 
     function startQueueSession(r) {
-      _qsAskWhen = false; // en obesvarad fråga om förra kön gäller inte den nya
+      _qsAskWhen = false; _qsAskLeave = false; // en obesvarad fråga om förra kön gäller inte den nya
       var s = { id: r.id, venueId: r.venueId, venueName: r.venueName, startedAt: r.at, lastAhead: r.ahead, lastAt: r.at, followups: 0 };
       try { localStorage.setItem(QS_KEY, JSON.stringify(s)); } catch(e) {}
       updateOnMyWayUI();
@@ -2743,7 +2743,7 @@ import './style.css';
 
     function endQueueSession() {
       try { localStorage.removeItem(QS_KEY); } catch(e) {}
-      _qsAskWhen = false;
+      _qsAskWhen = false; _qsAskLeave = false;
       updateOnMyWayUI();
     }
 
@@ -2753,7 +2753,8 @@ import './style.css';
       if (!supabase) throw new Error('Supabase är inte tillgänglig');
       assertNotTestMode();
       var now = new Date();
-      var draft = { venue_id: s.venueId, people_ahead: peopleAhead, report_type: 'initial', created_at: now.toISOString() };
+      // queue_status krävs av tabellen; utan antal ("Gav upp") gäller senast kända position.
+      var draft = { venue_id: s.venueId, people_ahead: peopleAhead == null ? s.lastAhead : peopleAhead, report_type: 'initial', created_at: now.toISOString() };
       var rateContext = allReports.filter(function(r) { return r.venue_id !== s.venueId || !isQueueReport(r); });
       var row = {
         venue_id: s.venueId, venue_name: s.venueName, user_id: getUserId(),
@@ -2824,8 +2825,30 @@ import './style.css';
       finally { _reportSending = false; }
     }
 
+    // Lämna kön utan att komma in. Förut skickade krysset inget, och appen lärde sig bara av dem som kom in.
+    // "Kom inte in" (nekad i dörren) nådde dörren: 0 framför, samma mätpunkt som "inne". "Gav upp" ger ingen mätpunkt
+    // (vi vet inte var i kön du stod) men avslutar sessionen. Krysset öppnar frågan, ett tryck till stänger den.
+    var _qsAskLeave = false;
     function dismissQueueSession() {
-      endQueueSession();
+      _qsAskLeave = !_qsAskLeave;
+      updateOnMyWayUI();
+    }
+    async function queueSessionLeave(type) {
+      var s = getQueueSession();
+      if (!s || _reportSending) return;
+      _reportSending = true;
+      try {
+        // Sent tryck: tidpunkten säger inget om dörren (QS_STALE_GAP), så ingen mätpunkt.
+        await submitSessionReport(type, type === 'refused' && Date.now() - s.lastAt <= QS_STALE_GAP ? 0 : null);
+        endQueueSession();
+        loadReports();
+        showToast(type === 'refused' ? 'Tack. Det säger andra något om dörren.' : 'Tack. Kön är avslutad.');
+      } catch(err) {
+        showToast(reportErrorText(err));
+        // Stäng ändå, som krysset gjorde förut: ett fel här (testläge, utgången session, servern utan migreringen) går
+        // sällan att skicka om, och en banner som inte går att stänga är värre än en mätpunkt som saknas.
+        endQueueSession();
+      } finally { _reportSending = false; }
     }
 
     // Position som följer med när man går (watchPosition). Avstånd, "Gå hit", "Rapportera kön", "Bäst nu" och prognosen
@@ -3016,7 +3039,8 @@ import './style.css';
       history.forEach(function(r) { (bySession[r.queue_session] = bySession[r.queue_session] || []).push(r); });
       var perVenue = {};
       history.forEach(function(r) {
-        if (r.report_type !== 'entered') return;
+        // "Kom inte in" nådde också dörren: tiden dit är samma mätning. Sent tryck saknar antal och räknas inte.
+        if ((r.report_type !== 'entered' && r.report_type !== 'refused') || r.people_ahead !== 0) return;
         var start = bySession[r.queue_session].reduce(function(a, b) { return new Date(a.created_at) <= new Date(b.created_at) ? a : b; });
         if (start === r || !start.people_ahead) return;
         var startAt = new Date(start.created_at).getTime();
@@ -3651,7 +3675,10 @@ import './style.css';
         var left = minutesToClose(v);
         if (left !== null && left < 45 + (walk || 0)) return;
         var est = estimateWait(v.id, allReports);
-        var cost = (walk || 0) + (est ? est.mins : 0) + (minsAgo >= 15 ? 5 : 0);
+        // Andra på väg hamnar framför dig om de hinner först: hälften räknas, som i prognosen (forecastWait). Annars
+        // skickade "Bäst nu" alla till samma ställe, och kön där växte av appens eget råd.
+        var queueMins = est ? (est.ahead + othersOnWay(v.id) / 2) / est.rate : 0;
+        var cost = (walk || 0) + queueMins + (minsAgo >= 15 ? 5 : 0);
         if (!best || cost < best.cost) best = { venue: v, status: status, dist: distanceKmTo(v), minsAgo: minsAgo, cost: cost };
       });
       return best;
@@ -4127,11 +4154,15 @@ import './style.css';
       var ahead = aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför' : '');
       var since = timeAgo(new Date(qs.lastAt).toISOString());
       // Efter sista uppdateringen kommer knappen inte tillbaka — säg det, annars väntar man på den.
-      var sub = _qsAskWhen ? 'Kom du in nyss? Annars kan vi inte mäta kön.'
+      var sub = _qsAskLeave ? 'Varför lämnar du kön?'
+        : _qsAskWhen ? 'Kom du in nyss? Annars kan vi inte mäta kön.'
         : canUpdate ? ahead + ' · ' + since + ' · hur många nu?'
         : qs.followups >= QS_MAX_FOLLOWUPS ? ahead + ' · ' + since + ' · tryck "Jag är inne" när du kommer in'
         : ahead + ' · ' + since;
-      var actions = _qsAskWhen
+      var actions = _qsAskLeave
+        ? '<button class="qs-btn" onclick="queueSessionLeave(\'left\')">Gav upp</button>'
+          + '<button class="qs-btn" onclick="queueSessionLeave(\'refused\')">Kom inte in</button>'
+        : _qsAskWhen
         ? '<button class="qs-btn" onclick="queueSessionEntered(\'earlier\')">Tidigare</button>'
           + '<button class="qs-btn qs-btn--primary" onclick="queueSessionEntered(\'now\')">Ja, nyss</button>'
         : (canUpdate ? '<button class="qs-btn" onclick="queueSessionUpdate()">Uppdatera</button>' : '')
@@ -4141,7 +4172,7 @@ import './style.css';
         + '<div class="qs-kicker"><span class="qs-live"></span>I kön · ' + qs.venueName + '</div>'
         + '<div class="qs-title"><span class="qs-num">' + inQueue + ' min</span> <span class="qs-unit">i kön</span></div>'
         + '<div class="qs-sub">' + sub + '</div></div>'
-        + '<button class="qs-close" onclick="dismissQueueSession()" aria-label="Avsluta">×</button></div>'
+        + '<button class="qs-close" onclick="dismissQueueSession()" aria-label="' + (_qsAskLeave ? 'Tillbaka' : 'Lämna kön') + '" aria-expanded="' + _qsAskLeave + '">×</button></div>'
         + '<div class="qs-actions">' + actions + '</div>';
     }
 
@@ -4437,6 +4468,7 @@ Object.assign(window, {
   pickRV,
   qbCalibration,
   queueSessionEntered,
+  queueSessionLeave,
   queueSessionUpdate,
   quickPickAhead,
   retrySupabase,

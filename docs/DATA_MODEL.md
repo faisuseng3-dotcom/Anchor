@@ -86,7 +86,7 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 | `reporter` | nej | ja | `sha256(user_id)`, satt av `reports_guard`. Prognosens "≥2 personer", spärren och historiken. Klienten sparar sin egen från svaret på första rapporten (`qb_reporter`). |
 | `queue_status` | **ja** | ja | `'none'`\|`'short'`\|`'medium'`\|`'long'`. Beräknas i klienten med `waitToStatus()`. |
 | `people_ahead` | **ja** | ja | Heltal: knappens **mittvärde** (0, 5, 17, 37 eller 60), inte ett exakt antal. |
-| `report_type` | **ja** | ja | `'initial'` \| `'followup'` \| `'entered'`. Saknas på äldre rader → behandlas som `'initial'`. |
+| `report_type` | **ja** | ja | `'initial'` \| `'followup'` \| `'entered'` \| `'refused'` \| `'left'`. Saknas på äldre rader → behandlas som `'initial'`. |
 | `queue_session` | **ja** | ja | `'qs-<base36>-<slump>'`. Binder ihop en persons mätpunkter i samma kö. |
 | `expires_at` | ja, men skrivs över | ja (filter) | `created_at + 45 min`, satt av `reports_guard`. `loadReports` filtrerar på den. |
 | `comment` | nej | nej | Borttagen 2026-11-12: fri text som andra ser kräver filter, anmälan och blockering (App Store 1.2). Triggern `reports_no_comment` sätter den till `null`; kolumnen och läsrätten står kvar för gamla flikar. |
@@ -127,6 +127,10 @@ entered    "Jag är inne" — people_ahead = 0. Avslutar sessionen, ger den verk
            väntetiden och används för kalibrering. Ger 5 poäng. Mer än 20 min efter senaste
            punkten (QS_STALE_GAP) frågar bannern "Kom du in nyss?"; "Tidigare" avslutar
            sessionen lokalt utan att skicka (en sen tryckning gav takten 0,53 i stället för ~2,5).
+refused    "Kom inte in" (krysset i bannern) — nekad i dörren. people_ahead = 0: kön nåddes, så takten och
+           kalibreringen räknar den som entered. Mer än 20 min efter senaste punkten: people_ahead null.
+           Avslutar sessionen.
+left       "Gav upp" (krysset i bannern) — people_ahead null, ingen mätpunkt. Avslutar sessionen.
 ```
 
 Inga rapporter skickas i testläge ("Testläge — inget skickas") och stängda ställen går inte att
@@ -221,7 +225,7 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    (`supabase/migrations/20261111030000_hide_user_id.sql`, körd 2026-11-11 efter att klienten driftsatts). De gamla
    "user-…"-id:na, som var läsbara, byttes på servern mot nya som ingen känner till; klienten byter själv ut ett
    "user-…"-id (`getUserId`).
-2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`): 5 min per `user_id`, och högst 10 kömätningar
+2. **Spärren mot dubbelrapportering finns på servern** (`reports_guard`): 5 min per `user_id`, och högst 50 kömätningar
    i timmen per nät (IP-adressen hashad med hemligt salt, sparad en timme i `report_ip_log`). Ett nytt id räcker alltså
    inte för att fylla ett ställe; ett nytt nät gör det. Mer kräver inloggning eller captcha.
 3. **`expires_at` och `created_at` sätts av servern.**

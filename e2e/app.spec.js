@@ -227,6 +227,34 @@ test.describe('4. Rapportera en kö', () => {
     expect(inserts).toHaveLength(1);
     expect([0, 5, 17, 37, 60]).toContain(inserts[0].people_ahead);
   });
+
+  test('"Kom inte in" avslutar kön och skickas som en mätpunkt vid dörren', async ({ page }) => {
+    // Förut stängde krysset kön utan att skicka något: appen lärde sig bara av dem som kom in.
+    await skipOnboarding(page);
+    const inserts = [];
+    await mockSupabase(page, [], { onInsert: (row) => inserts.push(row) });
+    await openApp(page);
+    await goToScreen(page, 'report');
+    await page.locator('#rs-search').fill('kristall');
+    await page.waitForTimeout(500);
+    await page.locator('.rs-item').first().click();
+    await page.waitForTimeout(400);
+    await page.locator('#rs2 .q-btn').nth(2).click();
+    await page.waitForTimeout(1500);
+
+    const banner = page.locator('#omw-banner');
+    await expect(banner).toContainText('I kön');
+    await banner.locator('.qs-close').click();
+    await expect(banner).toContainText('Varför lämnar du kön?');
+    await banner.getByRole('button', { name: 'Kom inte in' }).click();
+    await page.waitForTimeout(800);
+
+    expect(inserts).toHaveLength(2);
+    expect(inserts[1].report_type).toBe('refused');
+    expect(inserts[1].people_ahead, 'nådde dörren').toBe(0);
+    expect(inserts[1].queue_session).toBe(inserts[0].queue_session);
+    await expect(banner).toBeHidden();
+  });
 });
 
 test.describe('5. Radera min data', () => {
