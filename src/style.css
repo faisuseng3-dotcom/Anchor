@@ -1191,3 +1191,25 @@
     }
     /* Telefoner har ingen Alt + 2: där räcker beskedet. */
     @media (hover: none) { .qb-testdata body::after { content: 'Testdata · inget skickas'; } }
+    /* Rundturen visar testdatan som exempel: etiketten säger det, så att ingen tar exemplen för kvällens köer. */
+    .qb-testdata.qb-tour body::after { content: 'Exempel · inte riktiga köer'; }
+
+    /* ── Rundtur ────────────────────────────────────────────────────────── */
+    /* Under kapseln (top sätts av tourLine), mitt på. Orden glider upp efter varandra som ordmärket i introt. */
+    .tour-tip {
+      position: absolute; z-index: 5; left: 50%; transform: translateX(-50%);
+      width: max-content; max-width: calc(100% - 48px); pointer-events: none;
+      padding: 8px 12px; border-radius: var(--radius-md); text-align: center;
+      background: var(--overlay-surface); border: 1px solid var(--border-hover); color: var(--text-primary);
+      font: 600 calc(15 * var(--u))/1.35 var(--font-base);
+    }
+    .tour-tip[hidden] { display: none; }
+    .tour-tip span { display: inline-block; animation: splashUp 350ms calc(var(--i) * 60ms) var(--ease-out) both; }
+    /* Rapportera-knappen sänder ut en ring, en gång, samma form som kartans våg vid ny rapport. */
+    .tour-ping { position: relative; }
+    .tour-ping::after {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      border: 2px solid var(--accent); animation: tourPing 900ms var(--ease-out) both;
+    }
+    @keyframes tourPing { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.7, 1.9); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .tour-tip span, .tour-ping::after { animation: none; } }

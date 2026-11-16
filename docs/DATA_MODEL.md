@@ -213,6 +213,7 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
 | `qb_favorites` | Array med venue-id | Favoriterna försvinner (de läses inte från databasen) |
 | `qb_testdata` | `'1'` = testdata på (Alt + 2) | — |
 | `qb_consent` | `'true'` när informationsrutan bekräftats ("Jag förstår"); inget annat värde sätts | Informationsrutan visas igen |
+| `qb_tour_done` | `'1'` när rundturen efter samtycket är klar eller avbruten | — (rundturen startar bara från "Jag förstår") |
 | `qb_install_dismissed` | PWA-prompten avvisad | — |
 | `qb_push` | `'1'` = notiser påslagna här | Profilen visar "Av"; prenumerationen finns kvar tills den slås på igen |
 | `qb_push_dismissed` | Rutan "Få notiser" efter en ny favorit stängd med × | — |

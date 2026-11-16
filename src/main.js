@@ -52,6 +52,7 @@ import './style.css';
     var prevScreen = 'home';
 
     function showScreen(name) {
+      if (_touring && name !== currentScreen) endTour(); // en flik tar över: rundturen är slut
       if (name !== currentScreen && _vcMode) vcHideNow(); // kortet hör till skärmen det öppnades på
       prevScreen = currentScreen;
       currentScreen = name;
@@ -1011,6 +1012,14 @@ import './style.css';
       return { top: (bar ? bar.getBoundingClientRect().bottom - m.top : 0) + 8, bottom: bottom - 8, height: m.height };
     }
 
+    // Kameran för ett valt ställe: zoom 15 och lutning, där syns Standard-kartans 3D-byggnader och landmärken. Ljus går
+    // närmare, brantare och vrider kartan. Stället hamnar en bit ovanför mitten av det som syns, så kapseln ryms under.
+    function vcFocusCamera(venue) {
+      var b = vcMapBounds(), f3d = mapStyle().focus3d;
+      return { center: [venue.lng, venue.lat], zoom: Math.max(f3d ? 16.2 : 15, map.getZoom()), pitch: f3d ? 60 : Math.max(45, map.getPitch()),
+        bearing: f3d ? -30 : 0, offset: [0, b.top + (b.bottom - b.top) * 0.35 - b.height / 2] };
+    }
+
     // Kapseln sitter på stället: pillens mitt i höjd med kapselns översta rad, i sidled inom skärmen. Körs när kartan
     // rör sig, när innehållet ändras och när kapseln fälls ut.
     function vcPlace() {
@@ -1096,15 +1105,12 @@ import './style.css';
       var grow = from ? vcMorph(card, from, false, 380)
         : _reduceMotion ? null : card.animate([{ opacity: 0, transform: 'scale(0.96)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: VC_EASE });
       // Kartan flyger först när kapselns animation har börjat: kartans första bild (nya tiles, omplacering) blockerade
-      // annars dess första bilder. Stället hamnar en bit ovanför mitten av det som syns, så den utfällda kapseln ryms under.
+      // annars dess första bilder.
       (grow ? grow.ready : Promise.resolve()).then(function() {
         if (!map || activeVenue !== venue || _vcMode !== 'map') return;
-        var b = vcMapBounds();
-        // Zoom 15 och lutning: där syns Standard-kartans 3D-byggnader och landmärken runt stället. Ljus går närmare,
-        // brantare och vrider kartan, och färgar ställets hus i statusfärgen när kameran är framme.
+        // Ljus färgar ställets hus i statusfärgen när kameran är framme.
         var f3d = mapStyle().focus3d;
-        map.flyTo({ center: [venue.lng, venue.lat], zoom: Math.max(f3d ? 16.2 : 15, map.getZoom()), pitch: f3d ? 60 : Math.max(45, map.getPitch()),
-          bearing: f3d ? -30 : 0, duration: 800, offset: [0, b.top + (b.bottom - b.top) * 0.35 - b.height / 2] });
+        map.flyTo(Object.assign(vcFocusCamera(venue), { duration: 800 }));
         if (f3d) map.once('moveend', function() { if (activeVenue === venue) lightVenueBuilding(venue); });
       }, function() {}); // avbruten animation: ett nytt kort öppnades och flyger själv
     }
@@ -1536,6 +1542,17 @@ import './style.css';
       var top = bar ? bar.getBoundingClientRect().bottom - m.top : 0;
       var bottom = card && card.offsetHeight ? m.bottom - card.getBoundingClientRect().top : 0;
       return { top: top + 24, bottom: bottom + 24, left: 28, right: 28 };
+    }
+
+    // Startvyn ramar in ställena med färsk data (annars alla 28) mellan sökfältet och "Bäst nu"-kortet. Zoomen hålls
+    // nere vid 12,4, så startvyn visar väntetider och inte en utzoomad karta full av kluster; ett ställe långt ut
+    // kan då hamna utanför bild, men det som händer syns. Kräver kartan (map och mapboxgl).
+    function startCamera() {
+      var bounds = new mapboxgl.LngLatBounds();
+      var live = VENUES.filter(function(v) { return computeStatus(v.id, allReports) !== 'unknown'; });
+      (live.length >= 2 ? live : VENUES).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
+      var cam = map.cameraForBounds(bounds, { pitch: 28, padding: mapViewPadding() });
+      return cam ? { center: cam.center, zoom: Math.min(14, Math.max(12.4, cam.zoom)) } : { center: map.getCenter(), zoom: 12.6 };
     }
 
     // ── Kartans utseende ───────────────────────────────────────────────────
@@ -2138,16 +2155,6 @@ import './style.css';
           console.log('[QueueBar] Kartlager klara');
         });
 
-        // Startvyn ramar in ställena med färsk data (annars alla 28) mellan sökfältet och "Bäst nu"-kortet. Zoomen hålls
-        // nere vid 12,4, så startvyn visar väntetider och inte en utzoomad karta full av kluster; ett ställe långt ut
-        // kan då hamna utanför bild, men det som händer syns.
-        function startCamera() {
-          var bounds = new mapboxgl.LngLatBounds();
-          var live = VENUES.filter(function(v) { return computeStatus(v.id, allReports) !== 'unknown'; });
-          (live.length >= 2 ? live : VENUES).forEach(function(v) { bounds.extend([v.lng, v.lat]); });
-          var cam = map.cameraForBounds(bounds, { pitch: 28, padding: mapViewPadding() });
-          return cam ? { center: cam.center, zoom: Math.min(14, Math.max(12.4, cam.zoom)) } : { center: map.getCenter(), zoom: 12.6 };
-        }
         var _userMovedMap = false;
         ['dragstart', 'zoomstart', 'pitchstart'].forEach(function(ev) {
           map.on(ev, function(e) { if (e.originalEvent) _userMovedMap = true; });
@@ -2556,6 +2563,7 @@ import './style.css';
     var TESTDATA_KEY = 'qb_testdata';
 
     function testDataEnabled() {
+      if (_touring) return true; // rundturens exempel: inget skickas, och en omläsning behåller exemplen
       if (new URLSearchParams(location.search).get('testdata') === 'true') return true;
       try { return localStorage.getItem(TESTDATA_KEY) === '1'; } catch(e) { return false; }
     }
@@ -3317,6 +3325,87 @@ import './style.css';
     function acceptConsent() {
       localStorage.setItem('qb_consent', 'true');
       document.getElementById('consent-modal').style.display = 'none';
+      if (!localStorage.getItem('qb_tour_done')) afterSplash(startTour);
+    }
+
+    // ── Rundtur, första gången ───────────────────────────────────────────────
+    // En gång efter samtycket (qb_tour_done), utan att användaren gör något: kameran sveper från hela stan till "Bäst nu"
+    // medan pillarna tänds längst kö först, kapseln växer ur pillen och väntetiden rullar in, en mening under kapseln,
+    // och Rapportera sänder ut en ring. Kartan visar testdatans köer, märkt "Exempel", så att färgerna syns även en
+    // eftermiddag utan rapporter; medan den pågår är appen i testläge (testDataEnabled) och inget skickas. Första
+    // tryck var som helst avslutar och lägger tillbaka de riktiga rapporterna.
+    var TOUR_LINE = 'Kön just nu. Från folk som står i den.';
+    var _touring = false, _tourTimer = null, _tourSaved = null;
+
+    function startTour() {
+      _tourSaved = { night: _testNightMin, rates: _historicalRates, ratesTest: _historicalRatesTest, patterns: _historicalPatterns, omw: _omwTestCounts };
+      _touring = true;
+      document.documentElement.classList.add('qb-testdata', 'qb-tour');
+      _testNightMin = 23 * 60; // exemplen är en kväll; annars är allt stängt på dagen
+      if (testDataEnabled()) injectTestData(); // sann från _touring = true
+      _prevPill = null; // pillarna tänds på nytt, längst kö först (trackMapChanges)
+      renderReports();
+      // Fånga trycket innan det når kartan eller knappen, så att det aldrig verkar på exemplen.
+      ['pointerdown', 'keydown'].forEach(function(ev) { document.addEventListener(ev, endTour, { capture: true, once: true }); });
+      tourFly();
+    }
+
+    // 1–2. Från hela stan till "Bäst nu" på 1,8 s; pillarna tonar fram under tiden. Kartan kan ladda fortfarande: vänta.
+    function tourFly() {
+      if (!_touring) return;
+      if (!map || !map.isStyleLoaded()) { _tourTimer = setTimeout(tourFly, 400); return; }
+      var best = computeBestNow(), s = startCamera(), dur = _reduceMotion ? 0 : 1800;
+      if (!best) return;
+      map.jumpTo({ center: s.center, zoom: s.zoom - 1.5, pitch: 0, bearing: 0 });
+      map.flyTo(Object.assign(vcFocusCamera(best.venue), { duration: dur }));
+      _tourTimer = setTimeout(function() { tourOpen(best.venue); }, dur + 100);
+    }
+
+    // 3. Kapseln växer ur pillen (openVenueCard) och väntetiden rullar in uppifrån, som siffrorna i listan (waitInDown).
+    function tourOpen(venue) {
+      openVenueCard(venue, 'rundtur');
+      if (!_reduceMotion) {
+        document.getElementById('vc-status').animate([{ opacity: 0, transform: 'translateY(-60%)' }, { opacity: 1, transform: 'none' }],
+          { duration: 380, delay: 120, easing: VC_EASE, fill: 'backwards' });
+      }
+      _tourTimer = setTimeout(tourLine, 900);
+    }
+
+    // 4. En mening under kapseln, ord för ord som ordmärket i introt. 5. Rapportera sänder ut en ring, en gång.
+    function tourLine() {
+      var tip = document.getElementById('tour-tip'), words = TOUR_LINE.split(' ');
+      var card = vcCard().getBoundingClientRect(), home = document.getElementById('screen-home').getBoundingClientRect();
+      tip.style.top = (card.bottom - home.top + 12) + 'px';
+      tip.innerHTML = words.map(function(w, n) { return '<span style="--i:' + n + '">' + w + '</span>'; }).join(' ');
+      tip.hidden = false;
+      _tourTimer = setTimeout(function() {
+        var disc = document.querySelector('.tab-report-disc');
+        disc.classList.add('tour-ping');
+        _tourTimer = setTimeout(function() { disc.classList.remove('tour-ping'); }, 900);
+      }, words.length * 60 + 750);
+    }
+
+    // Exemplen bort, de riktiga rapporterna tillbaka. Var testläget redan på står testdatan kvar.
+    function endTour() {
+      if (!_touring) return;
+      clearTimeout(_tourTimer);
+      _touring = false;
+      try { localStorage.setItem('qb_tour_done', '1'); } catch (e) {}
+      document.getElementById('tour-tip').hidden = true;
+      document.querySelector('.tab-report-disc').classList.remove('tour-ping');
+      document.documentElement.classList.remove('qb-tour');
+      if (testDataEnabled()) return;
+      document.documentElement.classList.remove('qb-testdata');
+      _testNightMin = _tourSaved.night;
+      _historicalRates = _tourSaved.rates;
+      _historicalRatesTest = _tourSaved.ratesTest;
+      _historicalPatterns = _tourSaved.patterns;
+      _omwTestCounts = _tourSaved.omw;
+      allReports = allReports.filter(function(r) { return !String(r.id).startsWith('test-'); });
+      vcHideNow(); // direkt: trycket som avslutade får inte landa på exempelkapselns knappar
+      renderReports();
+      loadReports();
+      if (map && map.isStyleLoaded()) { var s = startCamera(); map.easeTo({ center: s.center, zoom: s.zoom, pitch: 28, duration: _reduceMotion ? 0 : 1200 }); }
     }
 
     // ── Dataradering ─────────────────────────────────────────────────────────

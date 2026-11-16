@@ -524,6 +524,15 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.
   Priorn väger som 2 sessioner, så den är **trög** — med 3 mätningar väger den fortfarande 40 %
 - `qbCalibration()` i konsolen: medianfel, bias (+ = appen lovade för kort väntan), andel i intervall
+- **Rundturen** (`startTour` → `tourFly` → `tourOpen` → `tourLine`, `endTour`): en gång efter "Jag förstår"
+  (`qb_tour_done`; den som redan samtyckt ser den aldrig), helt utan tryck. Kameran sveper från hela stan till "Bäst nu"
+  på 1,8 s (`vcFocusCamera`, samma kamera som ett öppnat ställe) medan pillarna tänds längst kö först (`_prevPill = null`
+  startar om introt i `trackMapChanges`); kapseln växer ur pillen och väntetiden rullar in uppifrån; en mening under
+  kapseln (`#tour-tip`), ord för ord; Rapportera sänder ut en ring en gång (`.tour-ping`, 900 ms). Medan den pågår är
+  `testDataEnabled()` sann: testdatan visas märkt "Exempel · inte riktiga köer", klockan står på 23:00 och inget skickas.
+  Första tryck eller tangent var som helst avslutar (fångas i capture-fasen, kapseln stängs direkt så att trycket inte
+  landar på exemplet) och lägger tillbaka de riktiga rapporterna och de historiska takterna. Ingen overlay, ingen
+  räknare, inget "Nästa"
 
 ## Känd skuld
 
@@ -590,8 +599,8 @@ Dokumenterad i [docs/](docs/). De allvarligaste:
   kartans puls bara på kartskärmen; vågor bara för rapporter <2 min; pillarnas intro väntar på data; skeletten bara vid
   första laddningen; radering stoppar "På väg"; venue-kortet rullar i stället för att växa över kanten; dialogerna har
   `role="dialog"` och fokus; toasten radbryts och har `role="status"`; tryckytor ≥44 px; död CSS och oanvända variabler bort
-- Granskningen av "AI-utseende" 2026-11-02: introduktionsrundturen borttagen (samtycket är den enda rutan vid första
-  start); färgad vänsterkant och tonad bakgrund borta från Lista, Live och "Bäst nu"; inga tankstreck i synlig text
+- Granskningen av "AI-utseende" 2026-11-02: introduktionsrundturen borttagen (kom tillbaka 2026-11-16 utan overlay, se
+  "Rundturen" under Mönster); färgad vänsterkant och tonad bakgrund borta från Lista, Live och "Bäst nu"; inga tankstreck i synlig text
   (korta meningar i stället); rubriker i vanlig skrift, ingen "Färska rapporter 17" (färskhetsraden säger det); steg 2
   utan gråa staplar, stegräknare och monospace; samtycket är två meningar och en länk; Live-ikonen
   är en aktivitetslinje, inte wifi; testlägets etikett ligger under kort och ark

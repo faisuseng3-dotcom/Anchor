@@ -161,8 +161,10 @@ grep -n "text-transform: uppercase" src/style.css
 
 ### Coach-mark tours
 
-A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining. The screens must explain themselves. Qbar
-removed its tour on 2026-11-02; do not add one back.
+A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining. Qbar removed that tour on 2026-11-02. The
+first-run tour since 2026-11-16 (`startTour`) is the allowed form: the real map with example data labelled "Exempel",
+a camera sweep, the capsule opening, one sentence under it and one ring on Rapportera; any tap ends it. Do not add a
+dimmed overlay, spotlight hole, arrow bubble, step counter or "Nästa" button to it.
 
 ### Bottom-sheet detail card
 
