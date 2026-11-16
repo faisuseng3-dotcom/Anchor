@@ -1206,13 +1206,13 @@ import './style.css';
         secondary.hidden = true;
       } else {
         var directionsOnly = walk !== null && (walk > 40 || tooLate);
-        primary.textContent = walk === null ? 'Gå hit' : directionsOnly ? 'Vägbeskrivning · ' + formatDistance(km) : 'Gå hit · ' + walk + ' min';
+        primary.textContent = walk === null ? 'Jag ska dit' : directionsOnly ? 'Vägbeskrivning · ' + formatDistance(km) : 'Jag ska dit · ' + walk + ' min';
         primary.onclick = directionsOnly ? openDirections : vcGoThere;
         secondary.textContent = 'Rapportera';
         secondary.onclick = goToReport;
         secondary.hidden = closed;
       }
-      // Vägbeskrivning i länkraden bara när huvudknappen inte redan öppnar den ("Gå hit" gör det): vid stället och stängt.
+      // Vägbeskrivning i länkraden bara när huvudknappen inte redan öppnar den ("Jag ska dit" gör det): vid stället och stängt.
       document.getElementById('vc-dir').hidden = !primary.hidden && primary.onclick !== goToReport;
 
       document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports);
@@ -2910,7 +2910,7 @@ import './style.css';
       } finally { _reportSending = false; }
     }
 
-    // Position som följer med när man går (watchPosition). Avstånd, "Gå hit", "Rapportera kön", "Bäst nu" och prognosen
+    // Position som följer med när man går (watchPosition). Avstånd, "Jag ska dit", "Rapportera kön", "Bäst nu" och prognosen
     // bygger på den — med en position hämtad hemma klockan 22 visade kortet "3,8 km" för den som stod vid dörren.
     // Ritar bara om efter ≥25 m förflyttning, annars skakar GPS:en om allt hela tiden.
     window._userPos = null;
@@ -2920,7 +2920,7 @@ import './style.css';
       updateMeOnMap();
       if (_flyToMe) { _flyToMe = false; flyToMe(); }
       // Ny omritning efter ≥25 m förflyttning, eller när noggrannheten ändrats lika mycket — samma plats med 10 m i
-      // stället för 100 m osäkerhet kan flytta dig från "vid stället" till "Gå hit".
+      // stället för 100 m osäkerhet kan flytta dig från "vid stället" till "Jag ska dit".
       var acc = Math.min(window._userPos.acc, 100);
       if (_posRendered && distanceKmTo(_posRendered) < 0.025 && Math.abs(acc - Math.min(_posRendered.acc, 100)) < 25) return;
       _posRendered = window._userPos;
@@ -3002,7 +3002,7 @@ import './style.css';
       return km === null ? null : Math.max(2, Math.round(km / (5 / 60)));
     }
     // Vid stället: inom 150 m, med GPS:ens osäkerhet (högst 100 m) till din fördel. Inomhus vid Stureplan hamnar
-    // positionen ofta 50–100 m fel, och då ska knappen säga "Rapportera kön", inte "Gå hit · 2 min".
+    // positionen ofta 50–100 m fel, och då ska knappen säga "Rapportera kön", inte "Jag ska dit · 2 min".
     function isAtVenue(venue) {
       var km = distanceKmTo(venue);
       if (km === null) return false;

@@ -450,11 +450,11 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   senaste 20 min", siffran är medianen), `#vc-meta`, prognosrutan (`#vc-go`), Rapportera · Vägbeskrivning · Dela · ☆, rapporterna
   hopfällda. Animationerna är bara `transform`/`opacity`/`height`; kartans `flyTo` startar vid `animation.ready`
 - Huvudknappen följer läget (`renderVenueCard`): vid stället (`isAtVenue`: ≤150 m med GPS-osäkerheten, högst 100 m, till
-  din fördel) → "Rapportera kön"; annars "Gå hit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
+  din fördel) → "Rapportera kön"; annars "Jag ska dit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
   eller om stället stänger innan du är framme → bara "Vägbeskrivning · 7,8 km"
 - Vägbeskrivning (`openDirections`) öppnar Google Maps till fots med "namn, adress, Stockholm" som mål, på alla enheter.
   Länken `#vc-dir` i länkraden visas bara när huvudknappen inte redan öppnar vägbeskrivningen: vid stället ("Rapportera
-  kön") och på stängda ställen. Bredvid "Gå hit" eller "Vägbeskrivning · 7,8 km" vore den samma knapp två gånger
+  kön") och på stängda ställen. Bredvid "Jag ska dit" eller "Vägbeskrivning · 7,8 km" vore den samma knapp två gånger
 - `renderVenueCard` ritar innehållet, `openVenueCard` öppnar. Ett öppet kort ritas om vid ny data och ny position
   (`refreshVenueCard`). All omritning efter läsning, fel och väckning går genom `renderReports()`
 - Positionen följer med (`watchPosition`, omritning efter ≥25 m), men frågan om plats kommer först när den behövs:
