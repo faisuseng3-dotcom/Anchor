@@ -26,7 +26,7 @@ Version 1.0, bygge 1. Laddas ett nytt bygge upp för samma version måste byggnu
 **Underrubrik** (högst 30): `Se kön innan du går dit`
 
 **Kampanjtext** (högst 170):
-Hur lång är kön just nu? Qbar visar väntetiden på 290 barer och klubbar i Stockholm, rapporterad av folk som står där. Hitta kortast kö på några sekunder.
+Hur lång är kön just nu? Qbar visar väntetiden på 277 barer och klubbar i Stockholm, rapporterad av folk som står där. Hitta kortast kö på några sekunder.
 
 **Beskrivning:**
 ```
@@ -34,7 +34,7 @@ Qbar visar hur lång kön är på barer, pubar och nattklubbar i Stockholm, just
 
 Köerna rapporteras av folk som står i dem. Två tryck räcker: välj stället och hur många som står framför dig. Qbar räknar om det till en väntetid och visar den för alla.
 
-• Karta och lista över 290 ställen, från Stureplan till Södermalm
+• Karta och lista över 277 ställen, från Stureplan till Södermalm
 • Väntetid i minuter när tre personer rapporterat samma kö; innan dess ser du vad de rapporterat, i vitt
 • "Bäst nu": stället där du kommer in snabbast, räknat med promenaden dit
 • Live: de senaste rapporterna från hela stan
@@ -106,7 +106,7 @@ Ingen inloggning krävs. Lämna "Logga in krävs" avmarkerat.
 ## Anteckningar till granskaren (engelska)
 
 ```
-Qbar shows live queue lengths at 290 bars and nightclubs in Stockholm, Sweden. All data is reported by users standing
+Qbar shows live queue lengths at 277 bars and nightclubs in Stockholm, Sweden. All data is reported by users standing
 in the queues; there is no account and no login.
 
 Outside Stockholm nightlife hours there may be no live reports, so most venues will show no data. To see the app with
