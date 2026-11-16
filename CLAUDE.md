@@ -524,15 +524,20 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.
   Priorn väger som 2 sessioner, så den är **trög** — med 3 mätningar väger den fortfarande 40 %
 - `qbCalibration()` i konsolen: medianfel, bias (+ = appen lovade för kort väntan), andel i intervall
-- **Rundturen** (`startTour` → `tourFly` → `tourOpen` → `tourLine`, `endTour`): en gång efter "Jag förstår"
-  (`qb_tour_done`; den som redan samtyckt ser den aldrig), helt utan tryck. Kameran sveper från hela stan till "Bäst nu"
-  på 1,8 s (`vcFocusCamera`, samma kamera som ett öppnat ställe) medan pillarna tänds längst kö först (`_prevPill = null`
-  startar om introt i `trackMapChanges`); kapseln växer ur pillen och väntetiden rullar in uppifrån; en mening under
-  kapseln (`#tour-tip`), ord för ord; Rapportera sänder ut en ring en gång (`.tour-ping`, 900 ms). Medan den pågår är
-  `testDataEnabled()` sann: testdatan visas märkt "Exempel · inte riktiga köer", klockan står på 23:00 och inget skickas.
-  Första tryck eller tangent var som helst avslutar (fångas i capture-fasen, kapseln stängs direkt så att trycket inte
-  landar på exemplet) och lägger tillbaka de riktiga rapporterna och de historiska takterna. Ingen overlay, ingen
-  räknare, inget "Nästa"
+- **Rundturen** (`startTour`, `tourGo`, `tourNote`, `tourGuard`, `endTour`, `#tour` i `#app`): en övning i appens riktiga
+  gränssnitt, första gången efter "Jag förstår" (`qb_tour_done`; den som redan samtyckt ser den inte), igen från Profil
+  ("Så funkar Qbar", `replayTour`). **`?tour` i adressen spelar första gången igen** (glömmer samtycket och rundturen):
+  så förhandsvisas den. Stegen i `tourGo`: intro → tryck på områdesknappen Södermalm (`selectArea` anropar `tourGo`) →
+  välj ett ställe på kartan eller i listan (`openVenueCard` anropar `tourVenueTapped`; ett ställe utan rapport öppnas
+  men övningen väntar) → spotlight på väntetiden, sedan på `#vc-sub` (kapseln fälls ut) → spotlight på Rapportera →
+  välj antal i `#rs2` (`pickAhead` skickar aldrig under övningen, `tourPicked`) → "Slutför övningen" → "Öppna kartan".
+  Nästa instruktion visas när kartan och kapseln stått still (`moveend`, animationernas `finished`; `tourWhenStill`),
+  aldrig efter en gissad tid. `tourGuard` (capture-fasen) släpper bara igenom tryck på stegets mål (`_tourAllow`),
+  instruktionen och "Hoppa över"; Escape avslutar. Rapportera frågar inte om plats under övningen. Medan den pågår är
+  `testDataEnabled()` sann: testdatan visas och varje instruktion börjar med "Exempel · steg 2 av 4" (text utan ruta;
+  "Hoppa över" som grå text uppe till höger, sökfältet dolt), klockan står på 23:00 och inget skickas.
+  `endTour` lägger tillbaka de riktiga rapporterna och takterna, tar bort områdesvalet och visar startvyn
+  (`_prevPill = null`, så att riktiga köer inte ser ut som nya rapporter)
 
 ## Känd skuld
 

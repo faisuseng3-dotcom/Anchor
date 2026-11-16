@@ -161,10 +161,12 @@ grep -n "text-transform: uppercase" src/style.css
 
 ### Coach-mark tours
 
-A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining. Qbar removed that tour on 2026-11-02. The
-first-run tour since 2026-11-16 (`startTour`) is the allowed form: the real map with example data labelled "Exempel",
-a camera sweep, the capsule opening, one sentence under it and one ring on Rapportera; any tap ends it. Do not add a
-dimmed overlay, spotlight hole, arrow bubble, step counter or "Nästa" button to it.
+A numbered "01 — 04 · Nästa →" tour that blurs the screen it is explaining and only asks for "Nästa". Qbar removed that
+tour on 2026-11-02. The first-run onboarding since 2026-11-16 (`startTour`) is a guided practice instead: the user does
+each step in the real interface (area chip, a venue, Rapportera), a spotlight only while something is being explained,
+text next to the target with no box or bordered banner, each instruction starting with "Exempel · steg 2 av 4". Keep it
+that way: no full-width status bar (it reads as "no connection"), no animated hand doing the tap for the user, no
+auto-playing film, no wide panel that ignores the app container.
 
 ### Bottom-sheet detail card
 

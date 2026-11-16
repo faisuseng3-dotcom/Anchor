@@ -1191,25 +1191,64 @@
     }
     /* Telefoner har ingen Alt + 2: där räcker beskedet. */
     @media (hover: none) { .qb-testdata body::after { content: 'Testdata · inget skickas'; } }
-    /* Rundturen visar testdatan som exempel: etiketten säger det, så att ingen tar exemplen för kvällens köer. */
-    .qb-testdata.qb-tour body::after { content: 'Exempel · inte riktiga köer'; }
-
     /* ── Rundtur ────────────────────────────────────────────────────────── */
-    /* Under kapseln (top sätts av tourLine), mitt på. Orden glider upp efter varandra som ordmärket i introt. */
-    .tour-tip {
-      position: absolute; z-index: 5; left: 50%; transform: translateX(-50%);
-      width: max-content; max-width: calc(100% - 48px); pointer-events: none;
-      padding: 8px 12px; border-radius: var(--radius-md); text-align: center;
-      background: var(--overlay-surface); border: 1px solid var(--border-hover); color: var(--text-primary);
-      font: 600 calc(15 * var(--u))/1.35 var(--font-base);
+    /* Övningen märker sig själv ("Övningsläge · Exempeldata" överst), så testlägets etikett behövs inte. Lagret ligger i
+       #app (overflow: hidden): dimningen når aldrig utanför appen. Det tar inga tryck själv; tourGuard i main.js gör det. */
+    .qb-tour body::after { display: none; }
+    .tour { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: transparent; transition: background var(--dur-slow) var(--ease-out); }
+    .tour[hidden], .tour-note[hidden] { display: none; }
+    .tour--dim { background: rgba(0,0,0,0.85); } /* text mitt på skärmen: det bakom får inte konkurrera */
+    /* Spotlight: hålet är elementet, dimningen är skuggan runt det. Flyttas mellan mål (morph); en ny hoppar dit. */
+    .tour-spot {
+      position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-radius: var(--radius-lg); opacity: 0;
+      box-shadow: 0 0 0 200vmax rgba(0,0,0,0.72); outline: 2px solid rgba(255,255,255,0.85); outline-offset: 0;
+      transition: opacity 240ms var(--ease-out), left 300ms var(--ease-out), top 300ms var(--ease-out),
+                  width 300ms var(--ease-out), height 300ms var(--ease-out);
     }
-    .tour-tip[hidden] { display: none; }
-    .tour-tip span { display: inline-block; animation: splashUp 350ms calc(var(--i) * 60ms) var(--ease-out) both; }
-    /* Rapportera-knappen sänder ut en ring, en gång, samma form som kartans våg vid ny rapport. */
-    .tour-ping { position: relative; }
-    .tour-ping::after {
-      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-      border: 2px solid var(--accent); animation: tourPing 900ms var(--ease-out) both;
+    .tour-spot.on { opacity: 1; }
+    .tour-spot.snap { transition: opacity 240ms var(--ease-out); }
+    /* Sökfältet används inte i övningen; raden överst bär bara "Hoppa över". */
+    .qb-tour .map-topbar { visibility: hidden; }
+    .tour-top {
+      position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: flex-end;
+      height: calc(env(safe-area-inset-top) + 64px); padding: env(safe-area-inset-top) 12px 0 16px; pointer-events: none;
     }
-    @keyframes tourPing { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.7, 1.9); opacity: 0; } }
-    @media (prefers-reduced-motion: reduce) { .tour-tip span, .tour-ping::after { animation: none; } }
+    .tour-top > * { pointer-events: auto; }
+    .tour-skip {
+      min-height: 44px; padding: 0 8px; background: none; border: 0; cursor: pointer;
+      font: 600 calc(15 * var(--u)) var(--font-base); color: var(--text-secondary);
+    }
+    /* Instruktionen är text utan ruta. Bredvid en spotlight står den på dimningen; där inget dimmas (kartan, listan,
+       rapporten) får den en mjuk toning bakom sig i stället för en ruta med kant. */
+    .tour-note {
+      position: absolute; left: 20px; right: 20px; pointer-events: auto; color: var(--text-primary); font-family: var(--font-base);
+      text-shadow: 0 1px 12px rgba(0,0,0,0.6);
+    }
+    .tour-note:focus { outline: none; }
+    .tour-note.in { animation: rsFadeUp 260ms var(--ease-out) both; }
+    .tour-note--center { top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+    .tour-note--top, .tour-note--list { left: 0; right: 0; padding: 16px 20px 40px; background: linear-gradient(rgba(8,8,10,0.94), rgba(8,8,10,0.82) 60%, rgba(8,8,10,0)); }
+    .tour-note--top { top: calc(12px + 48px + 8px + 40px + 4px + env(safe-area-inset-top) + var(--banner-h, 0px)); }
+    /* I listan över listans rubrik och sök (som inte används i övningen), så att raderna går att trycka på. */
+    .tour-note--list { top: calc(env(safe-area-inset-top) + 64px); }
+    .tour-note--bottom {
+      left: 0; right: 0; bottom: calc(var(--nav-bottom) + 64px); padding: 48px 20px 16px;
+      background: linear-gradient(to top, rgba(8,8,10,0.96), rgba(8,8,10,0.86) 60%, rgba(8,8,10,0));
+    }
+    .tour-eyebrow { display: block; margin-bottom: 8px; font-size: calc(13 * var(--u)); font-weight: 600; color: var(--text-secondary); }
+    /* Rubriken "Rapportera" ligger där "Hoppa över" står; ställets namn och frågan räcker i övningen. */
+    .qb-tour #screen-report .screen-head { visibility: hidden; }
+    .tour-title { display: block; font-size: calc(24 * var(--u)); font-weight: 700; line-height: 1.2; }
+    .tour-text { display: block; margin-top: 8px; font-size: calc(15 * var(--u)); font-weight: 500; line-height: 1.45; color: rgba(255,255,255,0.8); }
+    .tour-cta { margin: 20px 0 0; }
+    .tour-link {
+      display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0; background: none; border: 0; cursor: pointer;
+      font: 600 calc(15 * var(--u)) var(--font-base); color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px;
+    }
+    .tour-check { margin: 0 0 16px; }
+    /* Övningens val i rapporten: samma knapp, markerad som vald. */
+    .q-btn--picked { border-color: var(--accent); background: var(--accent-light); }
+    @media (prefers-reduced-motion: reduce) {
+      .tour, .tour-spot, .tour-spot.snap { transition: none; }
+      .tour-note.in { animation: none; }
+    }

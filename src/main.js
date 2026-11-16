@@ -52,7 +52,6 @@ import './style.css';
     var prevScreen = 'home';
 
     function showScreen(name) {
-      if (_touring && name !== currentScreen) endTour(); // en flik tar över: rundturen är slut
       if (name !== currentScreen && _vcMode) vcHideNow(); // kortet hör till skärmen det öppnades på
       prevScreen = currentScreen;
       currentScreen = name;
@@ -65,7 +64,7 @@ import './style.css';
       if (name === 'home') setTimeout(function() { if (map) map.resize(); }, 50);
       if (name === 'profile') { loadUserHistory(); renderPushUI(); }
       if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
-        startLocation(); // listan sorteras på avstånd, och en rapport långt ifrån ska inte starta en kö-session
+        if (!_touring) startLocation(); // listan sorteras på avstånd, och en rapport långt ifrån ska inte starta en kö-session. Övningen frågar inte om plats
         selectedRV = null;
         rsStep(1);
         filterReportList();
@@ -1067,6 +1066,7 @@ import './style.css';
 
     // Öppnar kortet för ett ställe: på kartan som kapsel vid stället, annars under raden (row: den man tryckte på).
     function openVenueCard(venue, source, row) {
+      if (_touring && _tourStep === 'venue') tourVenueTapped(venue);
       console.log('[QueueBar] openVenueCard:', venue.id, '| källa:', source || 'lista');
       var card = vcCard(), onMap = currentScreen === 'home';
       if (!onMap) row = row || document.querySelector('#screen-' + currentScreen + ' [data-venue="' + venue.id + '"]');
@@ -1531,6 +1531,7 @@ import './style.css';
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
       if (area) flyToArea(area);
+      if (_touring && _tourStep === 'area' && area) tourGo('flying');
     }
     function flyToAreaChip(i) { if (_areaChips[i]) selectArea(_areaChips[i] === _selectedArea ? null : _areaChips[i]); }
 
@@ -2582,6 +2583,7 @@ import './style.css';
     // Enter/mellanslag på en rad med role="button" (Utforska, Live) gör samma sak som ett tryck.
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        if (_touring) { endTour(); return; }
         var sheet = document.getElementById('qr-sheet');
         if (sheet && sheet.style.display === 'block') { closeQuickReport(); return; }
         var msMenu = document.getElementById('map-style-menu');
@@ -3329,71 +3331,226 @@ import './style.css';
     }
 
     // ── Rundtur, första gången ───────────────────────────────────────────────
-    // En gång efter samtycket (qb_tour_done), utan att användaren gör något: kameran sveper från hela stan till "Bäst nu"
-    // medan pillarna tänds längst kö först, kapseln växer ur pillen och väntetiden rullar in, en mening under kapseln,
-    // och Rapportera sänder ut en ring. Kartan visar testdatans köer, märkt "Exempel", så att färgerna syns även en
-    // eftermiddag utan rapporter; medan den pågår är appen i testläge (testDataEnabled) och inget skickas. Första
-    // tryck var som helst avslutar och lägger tillbaka de riktiga rapporterna.
-    var TOUR_LINE = 'Kön just nu. Från folk som står i den.';
-    var _touring = false, _tourTimer = null, _tourSaved = null;
+    // Första gången (efter "Jag förstår", qb_tour_done), igen från Profil (replayTour) eller med ?tour i adressen. En
+    // övning i appens riktiga gränssnitt med testdatan: välj Södermalm (områdesknappen), välj ett ställe på kartan eller i
+    // listan, se vad kapseln säger, prova att rapportera. Steg som förklarar tonar ned allt utom målet (#tour-spot); steg
+    // där användaren gör något väntar på trycket. Nästa text visas först när kartan och kapseln stått still (moveend,
+    // animationernas finished), aldrig efter en gissad tid. Medan den pågår är testDataEnabled() sann, så inget skickas,
+    // och tourGuard släpper bara igenom tryck på det steget handlar om. Lagret ligger i #app: aldrig utanför appen.
+    var TOUR_AREA = 'Södermalm';
+    var _touring = false, _tourStep = null, _tourVenue = null, _tourAllow = null, _tourTarget = null, _tourAnchor = null, _tourActs = [], _tourSaved = null;
 
     function startTour() {
+      if (_touring) return;
       _tourSaved = { night: _testNightMin, rates: _historicalRates, ratesTest: _historicalRatesTest, patterns: _historicalPatterns, omw: _omwTestCounts };
       _touring = true;
+      _tourVenue = null;
       document.documentElement.classList.add('qb-testdata', 'qb-tour');
       _testNightMin = 23 * 60; // exemplen är en kväll; annars är allt stängt på dagen
       if (testDataEnabled()) injectTestData(); // sann från _touring = true
-      _prevPill = null; // pillarna tänds på nytt, längst kö först (trackMapChanges)
+      _prevPill = null; // exemplen tänds som vid start, längst kö först (trackMapChanges)
+      selectArea(null);
       renderReports();
-      // Fånga trycket innan det når kartan eller knappen, så att det aldrig verkar på exemplen.
-      ['pointerdown', 'keydown'].forEach(function(ev) { document.addEventListener(ev, endTour, { capture: true, once: true }); });
-      tourFly();
+      document.getElementById('tour').hidden = false;
+      tourGo('intro');
     }
 
-    // 1–2. Från hela stan till "Bäst nu" på 1,8 s; pillarna tonar fram under tiden. Kartan kan ladda fortfarande: vänta.
-    function tourFly() {
-      if (!_touring) return;
-      if (!map || !map.isStyleLoaded()) { _tourTimer = setTimeout(tourFly, 400); return; }
-      var best = computeBestNow(), s = startCamera(), dur = _reduceMotion ? 0 : 1800;
-      if (!best) return;
-      map.jumpTo({ center: s.center, zoom: s.zoom - 1.5, pitch: 0, bearing: 0 });
-      map.flyTo(Object.assign(vcFocusCamera(best.venue), { duration: dur }));
-      _tourTimer = setTimeout(function() { tourOpen(best.venue); }, dur + 100);
+    function replayTour() {
+      showScreen('home');
+      startTour();
     }
 
-    // 3. Kapseln växer ur pillen (openVenueCard) och väntetiden rullar in uppifrån, som siffrorna i listan (waitInDown).
-    function tourOpen(venue) {
-      openVenueCard(venue, 'rundtur');
-      if (!_reduceMotion) {
-        document.getElementById('vc-status').animate([{ opacity: 0, transform: 'translateY(-60%)' }, { opacity: 1, transform: 'none' }],
-          { duration: 380, delay: 120, easing: VC_EASE, fill: 'backwards' });
+    // Stegen i ordning. n är huvudsteget som visas i stegindikatorn (1–4).
+    function tourGo(step) {
+      _tourStep = step;
+      _tourAllow = null;
+      if (step === 'intro') {
+        tourOverview();
+        tourNote({ center: true, title: 'Prova Qbar med exempeldata.', text: 'Du väljer ett område, hittar ett ställe och provar att rapportera. Inga riktiga rapporter skickas.',
+          acts: [['Börja', function() { tourGo('area'); }]] });
+      } else if (step === 'area') {
+        var i = _areaChips.indexOf(TOUR_AREA), chip = i < 0 ? null : document.querySelector('.fbtn[data-area="' + i + '"]');
+        if (!chip || !map || currentScreen !== 'home') { tourGo('venue'); return; } // utan karta: välj i listan
+        chip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        _tourAllow = chip;
+        tourNote({ n: 1, target: chip, title: 'Börja med ett område.', text: 'Tryck på ' + TOUR_AREA + ' för att utforska.' });
+      } else if (step === 'flying') {
+        // selectArea har startat flygningen; nästa text när kartan står still.
+        tourNote(null);
+        var next = function() { if (_tourStep === 'flying') tourGo('venue'); };
+        if (map && map.isMoving()) map.once('moveend', next); else next();
+      } else if (step === 'venue') {
+        var onMap = currentScreen === 'home' && !!map;
+        if (!onMap && currentScreen !== 'explore') showScreen('explore');
+        _tourAllow = onMap ? '#map' : '#explore-list';
+        tourNote({ n: 2, place: onMap ? 'top' : 'list', title: 'Välj ett ställe.', text: 'Tryck på en bar eller klubb för att se kön.',
+          acts: onMap ? [['Välj i listan i stället', function() { showScreen('explore'); tourGo('venue'); }, 'link']] : [] });
+        if (onMap) tourPulse();
+      } else if (step === 'opening') {
+        tourNote(null);
+        tourWhenStill(function() { tourGo('wait'); });
+      } else if (step === 'wait') {
+        // På kartan står väntetiden i kapseln; i listan i raden ovanför det utfällda kortet.
+        var row = _vcMode === 'inline' && document.querySelector('.is-open[data-venue]');
+        var st = row ? (row.querySelector('.erow-hero') || row) : document.getElementById('vc-status'), t = st.textContent;
+        var copy = /min/.test(t) ? ['Här ser du väntetiden.', 'En uppskattning utifrån vad folk i kön har rapporterat.']
+          : /i kö/.test(t) ? ['Här ser du hur många som står i kön.', 'Minuter visas först när tre personer är överens.']
+          : ['Här ser du köläget.', 'Ingen kö: de som är där säger att man går rakt in.'];
+        tourNote({ n: 3, target: st, anchor: vcCard(), title: copy[0], text: copy[1], acts: [['Fortsätt', function() { tourGo('reports'); }]] });
+      } else if (step === 'reports') {
+        var card = vcCard();
+        if (_vcMode === 'map' && !card.classList.contains('vc--open')) {
+          // Kapseln fälls ut som när man trycker på den; spotlighten kommer när den och kartan stått still.
+          card.classList.add('vc--open');
+          vcPlace();
+          vcKeepVisible();
+          tourNote(null);
+          tourWhenStill(function() { tourGo('reports'); });
+          return;
+        }
+        tourNote({ n: 3, target: document.getElementById('vc-sub'), anchor: vcCard(), title: 'Kolla när det rapporterades.',
+          text: 'Hur många som rapporterat och hur gamla rapporterna är. Äldre än 45 minuter räknas inte.',
+          acts: [['Fortsätt', function() { tourGo('report'); }]] });
+      } else if (step === 'report') {
+        var tab = document.querySelector('.tab--report');
+        _tourAllow = tab;
+        tab.addEventListener('click', tourReportOpened, { once: true }); // efter flikens egen onclick: skärmen är redan bytt
+        tourNote({ n: 4, target: tab.querySelector('.tab-report-disc'), title: 'Står du själv i kön?', text: 'Tryck på Rapportera för att hjälpa andra.' });
+      } else if (step === 'practice') {
+        _tourAllow = '#rs2 .q-btn';
+        tourNote({ n: 4, place: 'bottom', title: 'Välj hur många som står före dig.', text: 'Det här är en övning. Ingen riktig rapport skickas.' });
+      } else if (step === 'reported') {
+        tourNote({ center: true, check: true, title: 'Klart! Nu vet du hur du rapporterar kön.', text: 'Det var en övning, så ingen rapport skickades.',
+          acts: [['Slutför övningen', function() { showScreen('home'); tourGo('done'); }]] }); // avslutet visas över kartan
+      } else if (step === 'done') {
+        tourNote({ center: true, title: 'Redo att utforska.', text: 'Öppna kartan för att se kvällens rapporterade köer. Är den tom har ingen rapporterat än.',
+          acts: [['Öppna kartan', endTour]] });
       }
-      _tourTimer = setTimeout(tourLine, 900);
     }
 
-    // 4. En mening under kapseln, ord för ord som ordmärket i introt. 5. Rapportera sänder ut en ring, en gång.
-    function tourLine() {
-      var tip = document.getElementById('tour-tip'), words = TOUR_LINE.split(' ');
-      var card = vcCard().getBoundingClientRect(), home = document.getElementById('screen-home').getBoundingClientRect();
-      tip.style.top = (card.bottom - home.top + 12) + 'px';
-      tip.innerHTML = words.map(function(w, n) { return '<span style="--i:' + n + '">' + w + '</span>'; }).join(' ');
-      tip.hidden = false;
-      _tourTimer = setTimeout(function() {
-        var disc = document.querySelector('.tab-report-disc');
-        disc.classList.add('tour-ping');
-        _tourTimer = setTimeout(function() { disc.classList.remove('tour-ping'); }, 900);
-      }, words.length * 60 + 750);
+    // Ritar instruktionen. o: { n, title, text, target, place: 'top'|'bottom', center, check, acts: [[text, fn, 'link']] }.
+    // Utan o: instruktionen och spotlighten tonas bort (medan kameran eller kapseln rör sig).
+    function tourNote(o) {
+      var tour = document.getElementById('tour'), note = document.getElementById('tour-note'), spot = document.getElementById('tour-spot');
+      var wasOn = spot.classList.contains('on');
+      _tourTarget = o && o.target || null;
+      _tourAnchor = o && o.anchor || _tourTarget; // instruktionen hamnar bredvid hela kapseln, inte ovanpå resten av den
+      tour.classList.toggle('tour--dim', !!(o && o.center));
+      spot.classList.toggle('on', !!_tourTarget);
+      spot.classList.toggle('snap', !wasOn); // en ny spotlight hoppar dit, en flyttad glider (morph)
+      note.classList.remove('in');
+      if (!o) { note.hidden = true; return; }
+      _tourActs = (o.acts || []).map(function(a) { return a[1]; });
+      note.className = 'tour-note' + (o.center ? ' tour-note--center' : '') + (o.place ? ' tour-note--' + o.place : '');
+      // "Exempel · steg 2 av 4" ovanför rubriken: märkningen och stegen hör till guiden, ingen egen rad eller ruta.
+      note.innerHTML =
+        '<span class="tour-eyebrow">Exempel' + (o.n ? ' · steg ' + o.n + ' av 4' : '') + '</span>' +
+        (o.check ? '<span class="rs-success-icon rs-success-on tour-check"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="rs-success-ring" cx="32" cy="32" r="24" transform="rotate(-90 32 32)"/><path class="rs-success-check" d="M22 33.5 L29.5 41 L43 25"/></svg></span>' : '') +
+        '<span class="tour-title">' + o.title + '</span><span class="tour-text">' + o.text + '</span>' +
+        (o.acts || []).map(function(a, i) { return '<button class="' + (a[2] === 'link' ? 'tour-link' : 'consent-accept tour-cta') + '" onclick="tourAct(' + i + ')">' + a[0] + '</button>'; }).join('');
+      note.hidden = false;
+      tourPlace();
+      void note.offsetWidth;
+      note.classList.add('in');
+      note.focus({ preventScroll: true });
     }
 
-    // Exemplen bort, de riktiga rapporterna tillbaka. Var testläget redan på står testdatan kvar.
+    function tourAct(i) { if (_tourActs[i]) _tourActs[i](); }
+
+    // Spotlighten runt målet och instruktionen intill (anchor: det den inte får täcka): under i övre halvan, ovanför i
+    // nedre. Räknas om vid storleksändring och rullning (en utfälld rad i listan rullas fram).
+    function tourPlace() {
+      if (!_touring || !_tourTarget) return;
+      var app = document.getElementById('app').getBoundingClientRect(), r = _tourTarget.getBoundingClientRect(), a = _tourAnchor.getBoundingClientRect();
+      var spot = document.getElementById('tour-spot'), note = document.getElementById('tour-note'), pad = 8;
+      spot.style.left = (r.left - app.left - pad) + 'px';
+      spot.style.top = (r.top - app.top - pad) + 'px';
+      spot.style.width = (r.width + pad * 2) + 'px';
+      spot.style.height = (r.height + pad * 2) + 'px';
+      var top = Math.min(a.top, r.top) - app.top - pad, bottom = Math.max(a.bottom, r.bottom) - app.top + pad; // varken målet eller ankaret täcks
+      if ((top + bottom) / 2 < app.height / 2) { note.style.top = (bottom + 16) + 'px'; note.style.bottom = ''; }
+      else { note.style.bottom = (app.height - top + 16) + 'px'; note.style.top = ''; }
+    }
+    window.addEventListener('resize', tourPlace);
+    document.addEventListener('scroll', tourPlace, true);
+
+    // Kör fn när kapselns animationer är klara och kartan står still (vcMorph, utfällningen, openVenueCards flyTo).
+    function tourWhenStill(fn) {
+      var step = _tourStep;
+      function go() { if (_touring && _tourStep === step) requestAnimationFrame(fn); }
+      requestAnimationFrame(function() {
+        Promise.all(vcCard().getAnimations({ subtree: true }).map(function(a) { return a.finished.catch(function() {}); })).then(function() {
+          if (map && map.isMoving()) map.once('moveend', go); else go();
+        });
+      });
+    }
+
+    // Översikt över stan, utan lutning, medan introduktionen läses.
+    function tourOverview() {
+      if (!map || !map.isStyleLoaded()) return;
+      var s = startCamera(), cam = { center: s.center, zoom: s.zoom - 0.6, pitch: 0, bearing: 0 };
+      if (_reduceMotion) map.jumpTo(cam); else map.easeTo(Object.assign(cam, { duration: 900 }));
+    }
+
+    // En våg, en gång, från ett ställe med kö i området: markörerna går att trycka på.
+    function tourPulse() {
+      var v = VENUES.find(function(x) { return x.area === TOUR_AREA && computeStatus(x.id, allReports) !== 'unknown'; });
+      if (v && !_reduceMotion) _ripples.push({ lng: v.lng, lat: v.lat, color: getStatusColor(computeStatus(v.id, allReports)), start: performance.now() });
+    }
+
+    // Anropas av openVenueCard i steg 2. Ett ställe utan rapport öppnas som vanligt, men övningen väntar på ett med kö.
+    function tourVenueTapped(venue) {
+      if (computeStatus(venue.id, allReports) === 'unknown') {
+        tourNote({ n: 2, place: currentScreen === 'home' ? 'top' : 'list', title: 'Inga rapporter här än.', text: 'Välj ett ställe med färg, så ser du hur kön visas.' });
+        return;
+      }
+      _tourVenue = venue;
+      tourGo('opening');
+    }
+
+    // Rapportera-fliken har bytt skärm (utan platsfråga, se showScreen); övningen går direkt till det valda stället.
+    function tourReportOpened() {
+      if (_tourStep !== 'report') return;
+      if (_tourVenue) pickRV(_tourVenue.id);
+      tourGo(_tourVenue ? 'practice' : 'reported');
+    }
+
+    // Anropas av pickAhead i stället för att skicka: valet markeras och övningen är klar.
+    function tourPicked(peopleAhead) {
+      var btn = document.querySelector('#rs2 .q-btn[onclick="pickAhead(' + peopleAhead + ')"]');
+      if (btn) btn.classList.add('q-btn--picked');
+      tourGo('reported');
+    }
+
+    // Bara det steget handlar om tar emot tryck; resten av appen står still bakom. Instruktionen och "Hoppa över" alltid.
+    function tourGuard(e) {
+      if (!_touring || !e.target.closest) return;
+      var t = e.target;
+      if (t.closest('#tour-note, .tour-top')) return;
+      if (_tourAllow && (typeof _tourAllow === 'string' ? t.closest(_tourAllow) : _tourAllow.contains(t))) return;
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+    }
+    ['pointerdown', 'mousedown', 'touchstart', 'click', 'wheel'].forEach(function(ev) {
+      document.addEventListener(ev, tourGuard, { capture: true, passive: false });
+    });
+
+    // Exemplen bort, de riktiga rapporterna tillbaka, appen i vanligt läge på kartan. Var testläget redan på står
+    // testdatan kvar.
     function endTour() {
       if (!_touring) return;
-      clearTimeout(_tourTimer);
+      tourNote(null);
       _touring = false;
+      _tourStep = _tourAllow = _tourTarget = _tourAnchor = _tourVenue = null;
       try { localStorage.setItem('qb_tour_done', '1'); } catch (e) {}
-      document.getElementById('tour-tip').hidden = true;
-      document.querySelector('.tab-report-disc').classList.remove('tour-ping');
+      document.getElementById('tour').hidden = true;
       document.documentElement.classList.remove('qb-tour');
+      document.querySelectorAll('.q-btn--picked').forEach(function(b) { b.classList.remove('q-btn--picked'); });
+      vcHideNow();
+      selectArea(null);
+      selectedRV = null;
+      rsStep(1);
+      if (currentScreen !== 'home') showScreen('home');
       if (testDataEnabled()) return;
       document.documentElement.classList.remove('qb-testdata');
       _testNightMin = _tourSaved.night;
@@ -3402,10 +3559,10 @@ import './style.css';
       _historicalPatterns = _tourSaved.patterns;
       _omwTestCounts = _tourSaved.omw;
       allReports = allReports.filter(function(r) { return !String(r.id).startsWith('test-'); });
-      vcHideNow(); // direkt: trycket som avslutade får inte landa på exempelkapselns knappar
+      _prevPill = null; // de riktiga köerna tänds som vid start, utan vågor som ser ut som nya rapporter
       renderReports();
       loadReports();
-      if (map && map.isStyleLoaded()) { var s = startCamera(); map.easeTo({ center: s.center, zoom: s.zoom, pitch: 28, duration: _reduceMotion ? 0 : 1200 }); }
+      if (map) { var s = startCamera(); map.easeTo({ center: s.center, zoom: s.zoom, pitch: 28, bearing: 0, duration: _reduceMotion ? 0 : 1200 }); } // startvyn, som vid start
     }
 
     // ── Dataradering ─────────────────────────────────────────────────────────
@@ -4436,6 +4593,7 @@ import './style.css';
     // andra tryck. Gäller båda vägarna in (rapportskärmen och snabbarket).
     var _reportSending = false;
     async function pickAhead(peopleAhead) {
+      if (_touring) { if (_tourStep === 'practice') tourPicked(peopleAhead); return; } // övningen skickar aldrig
       if (!selectedRV || _reportSending) return;
       _reportSending = true;
       try {
@@ -4621,6 +4779,8 @@ import './style.css';
     updateProfileStats();
 
     console.log('[QueueBar] Initiering klar');
+    // ?tour: spela första gången igen (förhandsvisning av rundturen): samtycket och rundturen glöms på den här enheten.
+    if (new URLSearchParams(location.search).has('tour')) { try { localStorage.removeItem('qb_consent'); localStorage.removeItem('qb_tour_done'); } catch (e) {} }
     checkConsent();
 
 // Expose functions referenced in inline event handlers (onclick, oninput, etc.)
@@ -4638,6 +4798,7 @@ Object.assign(window, {
   dismissInstall,
   dismissPushPrompt,
   dismissQueueSession,
+  endTour,
   filterReportList,
   flyToAreaChip,
   getVenueById,
@@ -4670,6 +4831,8 @@ Object.assign(window, {
   setMapStyle,
   toggleMapStyleMenu,
   toggleVcReports,
+  replayTour,
+  tourAct,
   undoLastReport,
   useListSuggestion,
   useMapSuggestion,

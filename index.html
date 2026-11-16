@@ -95,8 +95,6 @@
       <button id="locate-btn" class="map-style-btn locate-btn" onclick="locateMe()" aria-label="Min position">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3 3 7.5L21 3Z"/></svg>
       </button>
-      <!-- Rundturen första gången (startTour i src/main.js): meningen under kapseln. Placeras av tourLine. -->
-      <div id="tour-tip" class="tour-tip" role="status" hidden></div>
       <div id="err-toast">
         <span class="err-toast-dot"></span>
         <span class="err-toast-msg">Ingen kontakt med servern</span>
@@ -222,6 +220,7 @@
         <div class="pf-card" style="padding-top:0;padding-bottom:0">
           <a class="pf-row" href="mailto:support@queuebar.se"><span>Skriv till oss<small>support@queuebar.se</small></span></a>
           <a class="pf-row" href="mailto:hello@queuebar.se"><span>För krogar och klubbar<small>hello@queuebar.se</small></span></a>
+          <button class="pf-row" onclick="replayTour()"><span>Så funkar Qbar<small>Gör övningen igen, med exempeldata</small></span></button>
           <a class="pf-row" href="/integritet.html"><span>Integritet och villkor</span></a>
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span></button>
         </div>
@@ -258,6 +257,15 @@
         Live
       </button>
     </nav>
+    <!-- Rundturen (startTour i src/main.js): en övning i appens riktiga gränssnitt. Ligger i #app, aldrig utanför appen.
+         Spotlighten tonar ned allt utom målet; instruktionen ligger intill. Trycken släpps igenom av tourGuard. -->
+    <div id="tour" class="tour" hidden>
+      <div id="tour-spot" class="tour-spot"></div>
+      <div class="tour-top">
+        <button class="tour-skip" onclick="endTour()">Hoppa över</button>
+      </div>
+      <div id="tour-note" class="tour-note" role="dialog" aria-label="Så funkar Qbar" aria-live="polite" tabindex="-1" hidden></div>
+    </div>
   </div>
 
   <!-- Venue-kortet har inget eget ställe på skärmen. På kartan är det en kapsel som växer ur pillen och följer stället;
