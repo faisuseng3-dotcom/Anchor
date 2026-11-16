@@ -1212,9 +1212,8 @@ import './style.css';
         secondary.onclick = goToReport;
         secondary.hidden = closed;
       }
-      // Vägbeskrivning finns alltid i länkraden ("Gå hit" öppnar den också, men säger det inte), utom när huvudknappen
-      // redan heter så.
-      document.getElementById('vc-dir').hidden = !primary.hidden && primary.onclick === openDirections;
+      // Vägbeskrivning i länkraden bara när huvudknappen inte redan öppnar den ("Gå hit" gör det): vid stället och stängt.
+      document.getElementById('vc-dir').hidden = !primary.hidden && primary.onclick !== goToReport;
 
       document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports);
       document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type) + (km !== null ? ' · ' + formatDistance(km) : '');

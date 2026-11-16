@@ -453,8 +453,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   din fördel) → "Rapportera kön"; annars "Gå hit · 12 min" (`vcGoThere`: vägbeskrivning + "på väg"); över 40 min promenad
   eller om stället stänger innan du är framme → bara "Vägbeskrivning · 7,8 km"
 - Vägbeskrivning (`openDirections`) öppnar Google Maps till fots med "namn, adress, Stockholm" som mål, på alla enheter.
-  Länken `#vc-dir` finns i länkraden på varje kort, även stängda och vid stället ("Gå hit" öppnar den också men säger det
-  inte); den döljs bara när huvudknappen redan är "Vägbeskrivning"
+  Länken `#vc-dir` i länkraden visas bara när huvudknappen inte redan öppnar vägbeskrivningen: vid stället ("Rapportera
+  kön") och på stängda ställen. Bredvid "Gå hit" eller "Vägbeskrivning · 7,8 km" vore den samma knapp två gånger
 - `renderVenueCard` ritar innehållet, `openVenueCard` öppnar. Ett öppet kort ritas om vid ny data och ny position
   (`refreshVenueCard`). All omritning efter läsning, fel och väckning går genom `renderReports()`
 - Positionen följer med (`watchPosition`, omritning efter ≥25 m), men frågan om plats kommer först när den behövs:
