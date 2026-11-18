@@ -1021,14 +1021,16 @@ import './style.css';
 
     // Kapseln sitter på stället: pillens mitt i höjd med kapselns översta rad, i sidled inom skärmen. Körs när kartan
     // rör sig, när innehållet ändras och när kapseln fälls ut.
+    // translate i stället för left/top: flyttar kapseln utan ny layout, så att mätningen nedan är gratis i varje bildruta.
+    var _vcTop = 0; // kapselns översta kant i kartan (translate syns inte i offsetTop)
     function vcPlace() {
       if (_vcMode !== 'map' || !activeVenue || !map) return;
       var card = vcCard(), head = card.querySelector('.vc-head');
       var p = map.project([activeVenue.lng, activeVenue.lat]), W = document.getElementById('map').clientWidth;
       // Alla mått läses före skrivningarna: annars tvingade varje kartrörelse fram en extra layout.
       var cw = card.offsetWidth, headMid = head.offsetTop + head.offsetHeight / 2;
-      card.style.left = Math.max(12, Math.min(W - cw - 12, p.x - cw / 2)) + 'px';
-      card.style.top = (p.y - headMid) + 'px';
+      _vcTop = p.y - headMid;
+      card.style.translate = Math.max(12, Math.min(W - cw - 12, p.x - cw / 2)) + 'px ' + _vcTop + 'px';
     }
     window.addEventListener('resize', vcPlace);
 
@@ -1037,7 +1039,7 @@ import './style.css';
     function vcKeepVisible() {
       if (_vcMode !== 'map' || !map) return;
       var card = vcCard(), b = vcMapBounds();
-      var top = card.offsetTop, bottom = top + card.offsetHeight;
+      var top = _vcTop, bottom = top + card.offsetHeight;
       var dy = bottom > b.bottom ? bottom - b.bottom : top < b.top ? top - b.top : 0;
       if (dy) map.panBy([0, dy], { duration: _reduceMotion ? 0 : 300 });
     }
@@ -1078,7 +1080,7 @@ import './style.css';
       vcHideNow(); // ett annat öppet kort, eller ett som håller på att stänga, försvinner direkt
       if (!onMap && !row) return;
       activeVenue = venue;
-      applyMapFocus();
+      if (!onMap) applyMapFocus(); // på kartan först när kapselns animation har börjat (nedan)
       _vcListOpen = false; // varje kort börjar hopfällt
       _vcMode = onMap ? 'map' : 'inline';
       card.classList.add(onMap ? 'vc--map' : 'vc--inline');
@@ -1104,13 +1106,15 @@ import './style.css';
       var from = !_reduceMotion && vcPillRect(venue);
       var grow = from ? vcMorph(card, from, false, 380)
         : _reduceMotion ? null : card.animate([{ opacity: 0, transform: 'scale(0.96)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: VC_EASE });
-      // Kartan flyger först när kapselns animation har börjat: kartans första bild (nya tiles, omplacering) blockerade
-      // annars dess första bilder.
+      // Kartan markerar stället och flyger först när kapselns animation har börjat: kartans omplacering av alla pillar
+      // (applyMapFocus) och första bild (nya tiles) blockerade annars dess första bilder.
       (grow ? grow.ready : Promise.resolve()).then(function() {
         if (!map || activeVenue !== venue || _vcMode !== 'map') return;
+        applyMapFocus();
         // Ljus färgar ställets hus i statusfärgen när kameran är framme.
         var f3d = mapStyle().focus3d;
-        map.flyTo(Object.assign(vcFocusCamera(venue), { duration: 800 }));
+        // 500 ms, inte 800: varje bildruta under flygningen ritar 3D-kartan, och kartan står still ~300 ms tidigare.
+        map.flyTo(Object.assign(vcFocusCamera(venue), { duration: 500 }));
         if (f3d) map.once('moveend', function() { if (activeVenue === venue) lightVenueBuilding(venue); });
       }, function() {}); // avbruten animation: ett nytt kort öppnades och flyger själv
     }
@@ -1263,7 +1267,7 @@ import './style.css';
       clearTimeout(_vcCloseTimer);
       _vcCloseTimer = null;
       card.getAnimations({ subtree: true }).forEach(function(a) { a.cancel(); });
-      card.style.overflow = card.style.left = card.style.top = ''; // kapselns plats får inte följa med till listan
+      card.style.overflow = card.style.translate = ''; // kapselns plats får inte följa med till listan
       var row = document.querySelector('.is-open[data-venue]'), hadFocus = card.contains(document.activeElement);
       if (row) vcMarkRow(row, false);
       if (!_vcMode) return;
@@ -1673,6 +1677,10 @@ import './style.css';
     Promise.all([_mapboxLoad, new Promise(afterRing)]).then(function() {
       console.log('[QueueBar] Initierar Mapbox-karta');
       try {
+        // Högst 2×: på en iPhone (3×) ritade kartan 2,25 gånger fler pixlar per bildruta än vid 2×, med knappt synlig
+        // skillnad. Mapbox 3.33 läser bara window.devicePixelRatio (Map-alternativet pixelRatio finns inte och ignorerades),
+        // så taket sätts där. Egenskapen går att skriva över; CSS och bilder i appen följer skärmen som förut.
+        window.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
         map = new mapboxgl.Map({
           container: 'map',
           // Grundkartan är en import ('basemap'), så att den kan bytas (setMapStyle) utan att våra lager försvinner.
@@ -1687,8 +1695,6 @@ import './style.css';
           pitchWithRotate: false,
           dragRotate: false,
           logoPosition: 'bottom-right',
-          // Högst 2×: på en iPhone (3×) ritade kartan 2,25 gånger fler pixlar per bildruta än vid 2×, med knappt synlig skillnad.
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2)
           // Ingen attributionControl: false. © Mapbox © OpenStreetMap krävs av Mapbox villkor och OSM:s licens; under 640 px
           // bred karta är rutan kompakt, ett (i) som fälls ut.
         });
@@ -1823,10 +1829,10 @@ import './style.css';
           map.addImage(name, { width: canvas.width, height: canvas.height, data: imageData.data }, { pixelRatio: PR });
         }
 
-        // Ringen som andas runt en brådskande pill: samma mått som pillen plus 5 px utanför, bara en tunn linje i statusfärgen.
+        // Ringen runt en brådskande pill: samma mått som pillen plus 5 px utanför, bara en tunn linje i statusfärgen.
         // Namn: ring|<pillens text>, eftersom bredden följer texten.
         function drawRing(map, name) {
-          // ring|text = andningsringen kring lång kö (röd); focus|text = ditt val eller "Bäst nu" (accentblå).
+          // ring|text = ringen kring lång, färsk kö (röd); focus|text = ditt val eller "Bäst nu" (accentblå).
           var focus = name.indexOf('focus|') === 0;
           var text = name.slice(name.indexOf('|') + 1);
           var PR = 2, H = 28, OUT = 2, PAD = 9, GLYPH = 13, GAP = 5, EXTRA = 6;
@@ -2050,7 +2056,7 @@ import './style.css';
             paint: namePaint
           });
 
-          // Liv på kartan kommer från data. En ring runt pillen andas bara när kön är lång OCH färsk (< 20 min) — samma regel
+          // Liv på kartan kommer från data. En ring runt pillen syns bara när kön är lång OCH färsk (< 20 min) — samma regel
           // som den pulserande pricken i listan. Ställen med fri ingång pulserar inte längre: de är inte brådskande, och
           // en rörelse som inte betyder något tar bort värdet av den som gör det.
           // Ringen är en pill-formad bild (pill-ring) under pillen, så den följer pillens bredd i stället för att vara en cirkel.
@@ -2064,32 +2070,18 @@ import './style.css';
               'icon-allow-overlap': true,
               'icon-ignore-placement': true
             },
-            // Andningen ligger i feature-state "breath": ett nytt paint-uttryck per bildruta (det beror på feature-state, alltså
-            // datadrivet) fick Mapbox att ladda om hela källan "venues" 60 gånger i sekunden, och kartan hackade.
-            paint: { 'icon-opacity': pillsIn(['*', APPEAR, ['coalesce', ['feature-state', 'breath'], 0]]) }
+            // Ringen står still. När den andades (feature-state i varje bildruta) ritades hela 3D-kartan om 60 gånger i
+            // sekunden så fort en lång kö syntes, och panoreringen hackade. APPEAR: se applyMapFocus.
+            paint: { 'icon-opacity': pillsIn(['*', APPEAR, 0.55]) }
           }, 'venues-pins');
 
-          // Andning: opacity 0 → 0,7 → 0 på ~2,2 s, bara när något är brådskande och ringen syns (från PILL_MIN). Varje
-          // ändring ritar om hela kartan, så inget skrivs i onödan. Ringen runt din position står still av samma skäl.
-          var _breathStart = performance.now();
-          function animateMapPulse() {
+          // Pillar som tonar in och vågor (stepMapMotion). Inget skrivs när inget rör sig, så kartan vilar.
+          function animateMapMotion() {
             // Bara på kartskärmen: annars ritade Mapbox om 60 gånger i sekunden hela natten bakom Lista och Live.
-            if (map && !document.hidden && currentScreen === 'home') {
-              var now = performance.now() - _breathStart;
-              if (_urgentIds.length && map.getZoom() >= PILL_MIN) {
-                var t = (now % 2200) / 2200, breath = 0.7 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2));
-                _urgentIds.forEach(function(id) { map.setFeatureState({ source: 'venues', id: id }, { breath: breath }); });
-              }
-              stepMapMotion(performance.now());
-            }
-            requestAnimationFrame(animateMapPulse);
+            if (map && !document.hidden && currentScreen === 'home') stepMapMotion(performance.now());
+            requestAnimationFrame(animateMapMotion);
           }
-          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            requestAnimationFrame(animateMapPulse);
-          } else {
-            // Stillbild i stället för rörelse: ringen syns, den andas inte
-            map.setPaintProperty('venues-urgent', 'icon-opacity', pillsIn(['*', APPEAR, 0.55])); // APPEAR: se applyMapFocus
-          }
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(animateMapMotion);
 
           // En lyssnare för alla: features[0] är den översta. "+N" zoomar in mot pillen; en pill vinner över en tom ring
           // under den. Prickarna (utzoomat) går också att trycka på, de är bara små.
@@ -2144,12 +2136,13 @@ import './style.css';
             map.jumpTo({ center: start.center, zoom: start.zoom, pitch: 28 });
           } else {
             map.jumpTo({ center: start.center, zoom: start.zoom - 1, pitch: 0 });
-            // Inzoomningen väntar tills introt är borta; annars är den slut innan någon ser den.
+            // Inzoomningen väntar tills introt är borta; annars är den slut innan någon ser den. 600 ms, inte 2,2 s: under
+            // inzoomningen ritas hela 3D-kartan i varje bildruta medan kartrutorna laddas, och kartan stod still först efter ~5 s.
             afterSplash(function() {
               setTimeout(function() {
                 // Vyn räknas om här, efter introt: vid kartans load har rapporterna ofta inte kommit, och då ramades alla
                 // 28 ställen in i stället för de med färsk data.
-                if (map && !_userMovedMap) { var s = startCamera(); map.easeTo({ center: s.center, zoom: s.zoom, pitch: 28, duration: 2200, easing: function(t) { return 1 - Math.pow(1 - t, 3); } }); }
+                if (map && !_userMovedMap) { var s = startCamera(); map.easeTo({ center: s.center, zoom: s.zoom, pitch: 28, duration: 600, easing: function(t) { return 1 - Math.pow(1 - t, 3); } }); }
               }, 150);
             });
           }
@@ -2324,7 +2317,6 @@ import './style.css';
 
     // Brådskande = lång kö OCH en kö-rapport yngre än 20 min. Exakt samma regel som den pulserande pricken i listan
     // (showPulseDot i renderExploreVenueRow), så kartan och listan aldrig är oense om vad som är akut.
-    var _urgentIds = [];
     function isUrgent(venueId, status) {
       if (status !== 'long') return false;
       var latest = 0;
@@ -2339,7 +2331,6 @@ import './style.css';
     function updateMapStatuses() {
       if (!map || !venueGeoJSON) return;
       if (!map.getSource('venues') || !map.getSource('venues-empty')) return;
-      _urgentIds = [];
       var best = computeBestNow(), bestId = best ? best.venue.id : null;
       var updated = venueGeoJSON.features.filter(function(f) { return venueTypeMatches(f.properties); }).map(function(f) {
         var id = f.properties.id;
@@ -2348,7 +2339,6 @@ import './style.css';
         // Pillens bildnamn bär allt som ritas: status (färg), typ (ikon) och text. Bilden skapas första gången kartan ber om den.
         var pill = status === 'unknown' || !text ? '' : 'pill|' + status + '|' + (f.properties.type === 'bar' ? 'bar' : 'club') + '|' + text;
         var urgent = pill && isUrgent(id, status);
-        if (urgent) _urgentIds.push(id);
         return Object.assign({}, f, {
           properties: Object.assign({}, f.properties, {
             status: pill ? status : 'unknown',
@@ -2373,7 +2363,7 @@ import './style.css';
     // Pillar som krockar på skärmen: den viktigaste syns (valt ställe, "Bäst nu", sedan längst kö) och får "+N" för dem den
     // skymmer; de andra döljs tills man zoomat in så långt att de får plats. Räknas här i stället för av Mapbox kollision,
     // så att "+N" och det som döljs alltid är samma sak. Körs efter ny data, nytt val och varje kartrörelse (moveend).
-    var _livePills = [], _declutterDone = null, _declutterSel;
+    var _livePills = [], _declutterDone = null, _declutterSel, _declutterData, _declutterKey;
     var DECLUTTER_RANK = { long: 4, medium: 3, short: 2, none: 1, few: 0.5 };
     function declutterPills() {
       if (!map || !map.getSource('venues')) return;
@@ -2398,9 +2388,16 @@ import './style.css';
         var hit = shown.find(function(s) { return Math.abs(s.x - it.x) < (s.w + it.w) / 2 + 2 && Math.abs(s.y - it.y) < (s.h + it.h) / 2 + 2; });
         if (hit) { hit.more++; it.hidden = 1; } else shown.push(it);
       });
-      map.getSource('venues').setData({ type: 'FeatureCollection', features: items.map(function(it) {
-        return Object.assign({}, it.f, { properties: Object.assign({}, it.f.properties, { hidden: it.hidden, more: it.more }) });
-      }) });
+      // Samma data och samma döljda/"+N" som förra gången: ingen ny skrivning. Varje setData fick Mapbox att lägga ut alla
+      // pillar på nytt efter panoreringen, och de ryckte till när man släppte.
+      var key = items.map(function(it) { return it.f.properties.id + ':' + it.hidden + ':' + it.more; }).join();
+      if (_livePills !== _declutterData || key !== _declutterKey) {
+        map.getSource('venues').setData({ type: 'FeatureCollection', features: items.map(function(it) {
+          return Object.assign({}, it.f, { properties: Object.assign({}, it.f.properties, { hidden: it.hidden, more: it.more }) });
+        }) });
+        _declutterData = _livePills;
+        _declutterKey = key;
+      }
       _declutterDone = low ? _livePills : null;
       _declutterSel = sel;
     }
@@ -2496,7 +2493,8 @@ import './style.css';
       features.forEach(function(f) { pills[f.properties.id] = f.properties.pill_image; });
       allReports.forEach(function(r) { if (isQueueReport(r)) seen[r.id] = r; });
       if (!_reduceMotion && _prevPill === null) {
-        // Första gången: dölj alla pillar och släpp fram dem längst kö först, 70 ms isär, när introt är borta.
+        // Första gången: dölj alla pillar och släpp fram dem längst kö först, 20 ms isär, när introt är borta. 70 ms isär
+        // gjorde att den sista av ~20 pillar syntes först ~2 s efter introt.
         var order = features.filter(function(f) { return f.properties.pill_image; }).sort(function(a, b) {
           return (INTRO_RANK[b.properties.status] || 0) - (INTRO_RANK[a.properties.status] || 0);
         });
@@ -2506,7 +2504,7 @@ import './style.css';
         });
         afterSplash(function() {
           var t0 = performance.now() + 250;
-          order.forEach(function(f, i) { if (_appear[f.properties.id]) _appear[f.properties.id].start = t0 + i * 70; });
+          order.forEach(function(f, i) { if (_appear[f.properties.id]) _appear[f.properties.id].start = t0 + i * 20; });
         });
       } else if (!_reduceMotion) {
         var now = performance.now();
@@ -3344,6 +3342,7 @@ import './style.css';
       if (_touring) return;
       _tourSaved = { night: _testNightMin, rates: _historicalRates, ratesTest: _historicalRatesTest, patterns: _historicalPatterns, omw: _omwTestCounts };
       _touring = true;
+      tourGuardOn(true);
       _tourVenue = null;
       document.documentElement.classList.add('qb-testdata', 'qb-tour');
       _testNightMin = 23 * 60; // exemplen är en kväll; annars är allt stängt på dagen
@@ -3531,9 +3530,15 @@ import './style.css';
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }
-    ['pointerdown', 'mousedown', 'touchstart', 'click', 'wheel'].forEach(function(ev) {
-      document.addEventListener(ev, tourGuard, { capture: true, passive: false });
-    });
+    // Bara medan rundturen pågår: icke-passiva touchstart/wheel på dokumentet tvingar webbläsaren att vänta på huvudtråden
+    // (där kartan ritar) före varje tryck och rullning i hela appen.
+    function tourGuardOn(on) {
+      ['pointerdown', 'mousedown', 'touchstart', 'click', 'wheel'].forEach(function(ev) {
+        document[on ? 'addEventListener' : 'removeEventListener'](ev, tourGuard, { capture: true, passive: false });
+      });
+    }
+    // iOS visar :active (knapparnas tryckkänsla) bara när det finns en touchstart-lyssnare. Passiv: blockerar inget.
+    document.addEventListener('touchstart', function() {}, { passive: true });
 
     // Exemplen bort, de riktiga rapporterna tillbaka, appen i vanligt läge på kartan. Var testläget redan på står
     // testdatan kvar.
@@ -3541,6 +3546,7 @@ import './style.css';
       if (!_touring) return;
       tourNote(null);
       _touring = false;
+      tourGuardOn(false);
       _tourStep = _tourAllow = _tourTarget = _tourAnchor = _tourVenue = null;
       try { localStorage.setItem('qb_tour_done', '1'); } catch (e) {}
       document.getElementById('tour').hidden = true;
