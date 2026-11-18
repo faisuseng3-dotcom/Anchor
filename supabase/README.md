@@ -71,18 +71,21 @@ under Users kan logga in.
 Avtalet upphör: `delete from venue_accounts where email = '…';` (raden i `venue_notes` försvinner ur appen efter 06:00).
 
 Supabases inbyggda e-post skickar 2 mejl i timmen (`rate_limit_email_sent`); koppla egen SMTP (Authentication →
-SMTP Settings) före fler än några ställen. Kopplas qbar.se: lägg till `https://qbar.se/krog.html` under Redirect URLs.
+SMTP Settings) före fler än några ställen. Det kräver en registrerad avsändardomän med SPF/DKIM: 2026-11-18 var varken
+`queuebar.se` eller `qbar.se` registrerade. Lägg till `https://qbar.se/krog.html` under Redirect URLs först när domänen
+är er och pekar på Vercel: en adress i listan som någon annan äger får inloggningslänkarna.
 
 ### Demo
 
 `supabase/demo-krog.sql` lägger 8 veckors kvällar på det påhittade stället `qbar-demo` (inte i `VENUES`, syns aldrig i
-appen) och kopplar kontot `demo@queuebar.se` (auth-användaren skapad 2026-11-18). Kör om före varje demo; läs
+appen) och kopplar kontot `demo@qbar.invalid` (auth-användaren skapad 2026-11-18; `.invalid` kan aldrig registreras,
+så ingen kan ta emot en länk till kontot). Kör om före varje demo; läs
 kommentaren överst först. Inloggningslänk utan mejl:
 
 ```bash
 SK=$(npx -y supabase@latest projects api-keys --project-ref awwmfsjsrjktekmbgadx -o json | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0)).find(k=>k.name==='service_role').api_key)")
 curl -s -X POST https://awwmfsjsrjktekmbgadx.supabase.co/auth/v1/admin/generate_link -H "apikey: $SK" -H "Authorization: Bearer $SK" \
-  -H 'content-type: application/json' -d '{"type":"magiclink","email":"demo@queuebar.se","redirect_to":"https://anchor-queuebar.vercel.app/krog.html"}'
+  -H 'content-type: application/json' -d '{"type":"magiclink","email":"demo@qbar.invalid","redirect_to":"https://anchor-queuebar.vercel.app/krog.html"}'
 ```
 
 `action_link` i svaret loggar in (en gång, inom en timme).
