@@ -192,6 +192,22 @@ Tabell och funktioner: `supabase/migrations/20261111040000_on_my_way.sql` (fanns
 "N på väg" hade aldrig visats). En rad per `user_id`, giltig till beräknad ankomst + 15 min (gångtiden högst 60 min).
 `delete_my_data` raderar den också.
 
+## 5b. Qbar för krogar: `venue_accounts`, `venue_notes`, `venue_stats()`
+
+`supabase/migrations/20261118000000_krog.sql`, körd i produktionen 2026-11-18. Sidan är `krog.html` (`src/krog.js`).
+
+| Del | Vem når den | Innehåll |
+|---|---|---|
+| `venue_accounts` | ingen (RLS utan policyer); läggs till för hand | e-post (gemener) → `venue_id`, och `pace` kopierad ur `VENUES` (dörrtaktens startgissning) |
+| `venue_notes` | alla läser; skrivs bara via `save_venue_note` | en rad per ställe: `entry`, `guestlist`, `tonight`, `updated_at`. Appen visar bara rader sparade efter kvällens 06:00 (`loadVenueNotes`), som "Från stället ✓" i kapseln |
+| `krog_venue()` | bara funktionerna | inloggat ställe: `auth.uid()` → `auth.users` med **bekräftad** e-post → `venue_accounts` |
+| `venue_stats()` | `authenticated` med avtal | JSON med bara sammanställda siffror: `now` (text, status, antal färska), `on_way` (null under 3), `reports_tonight`/`reports_last_week`, `tonight`/`last_week` (29 värden 20:00–03:00, null utan minuter), `heat` (snitt per veckodag och timme, 8 veckor, minst två kvällar) |
+| `qbar_rates`, `qbar_prior`, `qbar_estimate` | bara funktionerna | `sessionRates`, `historicalRateFor` och `estimateWait` (med `formatWait`/`reportedText`/`waitToStatus`) i SQL. `tests/krog.test.js` jämför dem med `src/main.js` i en riktig Postgres (PGlite) |
+
+Ingen funktion i modellen läser `venue_notes`: ett ställe kan inte påverka väntetiden. Ett inloggat ställe
+(`authenticated`) har ingen rätt alls på `reports` (`20261118010000_krog_no_direct_reports.sql`); appen kör som anon.
+Demoställe: `qbar-demo` (`supabase/demo-krog.sql`), finns inte i `VENUES` och syns därför aldrig i appen.
+
 ---
 
 ## ~~6. `increment_points` — en RPC som inte finns~~ — åtgärdat

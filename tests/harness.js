@@ -60,7 +60,7 @@ const shims = `
 
 const exported = [
   'VENUES', 'HIDDEN_VENUES', 'PACE_RATE', 'AHEAD_BUCKETS',
-  'estimateWait', 'setWaitRange', 'formatWait', 'waitToStatus',
+  'estimateWait', 'setWaitRange', 'formatWait', 'reportedText', 'waitToStatus',
   'sessionRates', 'measureQueueRates', 'historicalRateFor', 'nightKey',
   'aheadBucket', 'isQueueReport', 'median', 'computeStatus', 'forecastWait',
   'getVenueById', '_searchNorm', 'venueScore', 'venueSearch', 'areaHits', 'didYouMean',
@@ -79,7 +79,7 @@ for (const name of exported) {
 
 export const {
   VENUES, HIDDEN_VENUES, PACE_RATE, AHEAD_BUCKETS,
-  estimateWait, setWaitRange, formatWait, waitToStatus,
+  estimateWait, setWaitRange, formatWait, reportedText, waitToStatus,
   sessionRates, measureQueueRates, historicalRateFor, nightKey,
   aheadBucket, isQueueReport, median, computeStatus, forecastWait,
   getVenueById, _searchNorm, venueScore, venueSearch, areaHits, didYouMean,
