@@ -534,6 +534,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   appen och krogsidan men i Europe/Stockholm i SQL: samma i Sverige, och appens `nightKey` gör likadant (medvetet).
   Raden har ingen realtid: den syns vid nästa `loadReports` (≤30 s utan realtid, annars vid nästa rapport eller ≤2 min).
   `venue_id` utanför `VENUE_NAMES` (dolt, borttaget, demo) visas som "Syns inte i Qbar". Demo: `supabase/demo-krog.sql`
+  plus pg_cron `qbar-demo` (en rapport var 10:e minut på `qbar-demo`); lösenordsinloggning bara för demokontot. Appens
+  historikläsningar har `.neq('venue_id', DEMO_VENUE_ID)`: ta inte bort det, då tränger demon undan riktiga ställen
 - Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
   data" lovade något koden aldrig gjorde. Integritet och villkor är en egen sida, `public/integritet.html` (länkad från
   samtycket och Profil). Ändras vad som sparas eller vilka tjänster som används: ändra sidan i samma commit

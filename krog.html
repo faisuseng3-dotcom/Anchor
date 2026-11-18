@@ -33,6 +33,17 @@
       <button class="kr-btn" type="submit">Skicka länk</button>
     </form>
     <p id="kr-login-msg" class="kr-msg" role="status"></p>
+    <!-- Bara konton som fått ett lösenord (demokontot, se supabase/README.md). Ställena loggar in med länken ovan. -->
+    <details class="kr-pw">
+      <summary>Logga in med lösenord</summary>
+      <form id="kr-pw-form">
+        <label for="kr-pw-email">E-post</label>
+        <input id="kr-pw-email" type="email" autocomplete="username" required>
+        <label for="kr-pw-pass">Lösenord</label>
+        <input id="kr-pw-pass" type="password" autocomplete="current-password" required>
+        <button class="kr-btn" type="submit">Logga in</button>
+      </form>
+    </details>
     <p class="kr-muted">Inte kund än? <a href="mailto:support@queuebar.se">Kontakta oss</a></p>
     <p class="kr-fine">Bara ställen med avtal kan logga in. Ett ställe ser aldrig ett annat ställes siffror.</p>
   </section>
