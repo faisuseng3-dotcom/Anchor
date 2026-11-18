@@ -356,7 +356,8 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   vitt, för färg betyder status och grått försvann i gatorna. `updateMapStatuses` fördelar dem.
   Siffror i bubblor ("21") är borta: de såg ut som data men sa bara "här vet vi inget". Krockande pillar löser
   `declutterPills`: valt ställe → "Bäst nu" → längst kö (Fullt före intervall, färskt före 15–45 min) syns och får "+N"
-  (`venues-more`, tryck zoomar in); övriga döljs (`hidden`) tills de får plats. Körs efter data, val och `moveend`.
+  (`venues-more`, tryck zoomar in); övriga döljs (`hidden`) tills de får plats. Körs efter data, val och `moveend`, men
+  skriver källan bara när datan eller döljda/"+N" ändrats: varje `setData` lade ut alla pillar på nytt och de ryckte till.
   Glöden är liten (22–64 px, 0,3) — den stora gjorde kartan suddig. Den enda vägen till en väntetid är `venueWaitText()`
 - **Ikoner utzoomat, siffror inzoomat:** under zoom 13,25 visar ställen med data bara en rund ikon i statusfärgen
   (`venues-icons`, bilderna `pin-bar-*`/`pin-club-*`), med blå ring runt "Bäst nu" (`venues-icon-focus`). Mellan
@@ -399,23 +400,33 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   `['*', APPEAR, 0]`). Annars kraschar Mapbox 3.33 i `updateBuckets` när kartans ljus räknas om ("reading 'paint'":
   inga state-beroende lager i en bucket som har feature-state). Hände i hälften av gångerna en kapsel öppnades
 - **Animera aldrig med `setPaintProperty` på ett datadrivet uttryck** (feature-state, `['get', …]`): Mapbox laddar då
-  om hela källan i workern. Andningen på `venues-urgent` gjorde det i varje bildruta (~1000 worker-meddelanden/s) och
-  kartan hackade vid zoom och panorering. Animera via `setFeatureState` (`breath`, `appear`)
-- **Kartan ska vila när inget rör sig.** Varje ändring (även `setFeatureState`) ritar om hela 3D-kartan. Därför: ringen
-  runt din position (`me-halo`) står still, andningen skrivs bara när ringen syns (zoom ≥ `PILL_MIN`), och pillar som
-  väntar på introt skrivs inte om (`stepMapMotion`). Förut ritade kartan om 60 gånger i sekunden så fort GPS fanns.
-  `pixelRatio` är högst 2 (en iPhone har 3)
+  om hela källan i workern. Ringen på `venues-urgent` gjorde det i varje bildruta (~1000 worker-meddelanden/s) och
+  kartan hackade vid zoom och panorering. Kortlivade animationer går via `setFeatureState` (`appear`)
+- **Kartan ska vila när inget rör sig.** Varje ändring (även `setFeatureState`) ritar om hela 3D-kartan. Därför står
+  ringen runt din position (`me-halo`) och ringen runt lång kö (`venues-urgent`, opacitet 0,55) still, och pillar som
+  väntar på introt skrivs inte om (`stepMapMotion`). Ringen runt lång kö andades förut (feature-state i varje bildruta):
+  inzoomat med en lång kö ritades kartan om 60 gånger i sekunden utan att någon rörde den (180 mot ~10 omritningar på 3 s).
+  Förut ritade kartan också om 60 gånger i sekunden så fort GPS fanns.
+  Kartan ritas med högst 2× (en iPhone har 3×): `window.devicePixelRatio` sätts till högst 2 precis innan kartan skapas.
+  Mapbox 3.33 läser bara den; Map-alternativet `pixelRatio` fanns inte, och kartan ritades i 3× (1179 × 1977 px på en
+  iPhone 15) trots att koden sa annat. Med taket: 786 × 1318 px, ~30 % kortare bildruta vid panorering (mjukvarurenderat)
 - **Introts ring ritas på huvudtråden** (`stroke-dasharray`); resten av introt är transform/opacity. Kartan skapas därför
   först när ringen är fylld (`afterRing`), och pill-bilderna ritas med `willReadFrequently` (ingen läsning från
   grafikkortet). Förut startade kartan mitt i ringen och den hackade i 80–130 ms åt gången
 - **Listan och Live ritas bara när de syns** (`renderExploreVenues` och `renderLiveFeed` returnerar direkt utanför
   sin skärm; `showScreen` ritar dem. Live uppdaterar ändå pricken i menyn). Sorteringens nycklar räknas en gång per
   ställe, och modellens filter kollar `venue_id` före datumet (`estimateWait`, `measureQueueRates`): en omritning vid
-  1000 rapporter gick från ~150 till ~17 ms
+  1000 rapporter gick från ~150 till ~17 ms. Raderna (`.erow`) har `content-visibility: auto`: de utanför skärmen läggs
+  inte ut när Lista öppnas
 - **Kartbiblioteket är en egen fil** (`import('mapbox-gl')` i `_mapboxLoad`, huvudfilen 364 kB i stället för 2,3 MB).
   Datan och listan väntar inte på det: på 4G syns datan efter ~0,8 s i stället för ~2,8 s. `mapboxgl` är `null` tills
   biblioteket är laddat, men bara kartkod som körs efter `map` finns använder det
 - Inga `backdrop-filter` över kartan: oskärpan räknas om i varje bildruta kartan ritar
+- **Tryck ska svara direkt.** `touch-action: manipulation` på allt (ingen dubbeltrycks-zoom som håller inne klicket).
+  Inga icke-passiva `touchstart`/`wheel` på dokumentet utanför rundturen: `tourGuard` kopplas in i `startTour` och ur
+  i `endTour` (`tourGuardOn`); förut väntade varje tryck och rullning i hela appen på huvudtråden. En tom passiv
+  `touchstart` finns kvar, för utan den visar iOS inte `:active`. Allt som går att trycka på har tryckkänsla i den
+  gemensamma regeln i `style.css` (skala 0,96, eller bakgrund för rader i full bredd); en ny knapp läggs till där
 - **Ingen `black-translucent` statusrad.** Med den lägger iOS 26+ hemskärmsappens webbvy vid skärmens överkant men
   gör den statusradens höjd (59 pt) för kort: ett svart fält över menyn och kartan nertill. Fältet ligger utanför
   webbvyn, så ingen CSS eller JS kan nå det (det försökte `--vp-gap`, som bara förlängde sidan ut i det osynliga;
@@ -436,7 +447,11 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
 - Ett filter som aldrig ska matcha skrivs `['has', '__ingen__']`. `['==', 1, 0]` tolkas som gammalt filterformat och
   ger ett Mapbox-fel; under kartans start (innan `load`) stänger det av kartan
 - Venue-kortet är inget ark. **På kartan** (`vc--map`) är det en kapsel i pillens form och statusfärg som växer ur pillen
-  (`vcMorph`) och sitter kvar på stället när kartan rör sig (`vcPlace` på `move`): namn, väntetid, huvudknappen. Ett
+  (`vcMorph`) och sitter kvar på stället när kartan rör sig (`vcPlace` på `move`): namn, väntetid, huvudknappen.
+  `vcPlace` flyttar med CSS-egenskapen `translate`, inte `left`/`top` som gav en ny layout i varje bildruta (`vcMorph`
+  animerar `transform`, så de krockar inte). Kartans markering (`applyMapFocus`) och `flyTo` väntar tills kapselns
+  animation har börjat (`grow.ready`); omplaceringen av pillarna fick annars kapseln att hacka i starten. Flygningen
+  tar 500 ms (var 800): varje bildruta under den ritar hela 3D-kartan, så den ska vara kort. Ett
   tryck på kapseln fäller ut resten (`vc--open`), ett tryck på kartan stänger och kapseln krymper in i pillen. **I Lista
   och Live** (`vc--inline`) läggs samma element direkt efter raden (`row.after`), raden får `is-open`/`aria-expanded`,
   och ett tryck till fäller ihop den. Ingen mörk bakgrund, inget handtag, inget kryss. Den utfällda kapseln har
@@ -472,9 +487,11 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   all ålder (räknad mot `Date.now()`) stämmer. Förut räknades en färsk rapport inte alls på en telefon som gick efter
 - Startvyn (`startCamera`) ramar in ställena med färsk data och håller zoomen ≥12,4
 - Kartans rörelse (`trackMapChanges` + `stepMapMotion`, driven av kartans rAF-slinga): pillarna tonar fram längst kö
-  först när introt är borta (`afterSplash`, eventet `qb:splashdone` från `index.html`); en pill som byter värde tonar in
+  först, 20 ms isär (var 70: sista av ~20 pillar kom ~2 s efter introt), när introt är borta (`afterSplash`, eventet
+  `qb:splashdone` från `index.html`); en pill som byter värde tonar in
   på nytt; en ny kö-rapport skickar ut en våg (`venues-ripple`). Opacitet via feature-state `appear` (källan har
-  `promoteId: 'id'`), multiplicerad in i `applyMapFocus`. Kartans inzoomning väntar också på introt. Inget av det vid
+  `promoteId: 'id'`), multiplicerad in i `applyMapFocus`. Kartans inzoomning väntar också på introt och tar
+  600 ms (var 2,2 s: kartan stod still först ~5 s efter start på 4G). Inget av det vid
   `prefers-reduced-motion`
 - Bara `report_type: 'initial'` mäter kölängd (`isQueueReport`); `followup` är positioner i kön
 - "Fullt" kräver ≥2 mätta sessioner — härled det aldrig ur `venue.pace`
@@ -532,7 +549,7 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   men övningen väntar) → spotlight på väntetiden, sedan på `#vc-sub` (kapseln fälls ut) → spotlight på Rapportera →
   välj antal i `#rs2` (`pickAhead` skickar aldrig under övningen, `tourPicked`) → "Slutför övningen" → "Öppna kartan".
   Nästa instruktion visas när kartan och kapseln stått still (`moveend`, animationernas `finished`; `tourWhenStill`),
-  aldrig efter en gissad tid. `tourGuard` (capture-fasen) släpper bara igenom tryck på stegets mål (`_tourAllow`),
+  aldrig efter en gissad tid. `tourGuard` (capture-fasen, bara under rundturen) släpper bara igenom tryck på stegets mål (`_tourAllow`),
   instruktionen och "Hoppa över"; Escape avslutar. Rapportera frågar inte om plats under övningen. Medan den pågår är
   `testDataEnabled()` sann: testdatan visas och varje instruktion börjar med "Exempel · steg 2 av 4" (text utan ruta;
   "Hoppa över" som grå text uppe till höger, sökfältet dolt), klockan står på 23:00 och inget skickas.

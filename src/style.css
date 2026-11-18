@@ -70,7 +70,9 @@
     }
 
     /* ── Reset ─────────────────────────────────────────────────────────── */
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    /* manipulation: ingen dubbeltrycks-zoom, så ett tryck skickas direkt i stället för att vänta på ett eventuellt andra tryck
+       (iOS kan annars hålla inne klicket ~300 ms). Nypzoom och rullning fungerar som förut; kartan har sin egen touch-action. */
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     /* Textstorleken följer telefonens inställning (iOS Dynamic Type). All text är calc(N * var(--u)): vid standardstorlek
        är --u en pixel, så allt ser ut som förut. -apple-system-body ger roten iOS-storleken (17 px som standard), och
        --u växer med den, högst 1,5 gånger, så att kapslar och menyn med fast höjd håller. Splash-loggan står kvar i px. */
@@ -401,7 +403,7 @@
 
     /* Kartan: pillens form och statusfärg. Det man tryckte på har vuxit; inget nytt har lagts ovanpå kartan. */
     #venue-card.vc--map {
-      display: block; position: absolute; z-index: 3; /* under sökfältet, knapparna och "Bäst nu" när kartan dras */
+      display: block; position: absolute; left: 0; top: 0; z-index: 3; /* under sökfältet, knapparna och "Bäst nu" när kartan dras */
       width: max-content; min-width: 220px; max-width: min(340px, calc(100% - 24px));
       padding: 8px 8px 8px 20px;
       background: var(--surface); border: 2px solid var(--st, var(--status-unknown)); border-radius: var(--radius-full);
@@ -624,6 +626,8 @@
       cursor: pointer;
       background: transparent;
       border-bottom: 1px solid var(--border);
+      /* Rader utanför skärmen läggs inte ut: ~300 rader kostade ~100 ms när Lista öppnades. 76 px = min-height. */
+      content-visibility: auto; contain-intrinsic-size: auto 76px;
       transition: transform var(--dur-mid) var(--ease-out),
                   background var(--dur-mid) var(--ease-out),
                   background-color var(--dur-slow) var(--ease-out);
@@ -1071,20 +1075,29 @@
 
     :root { --press-scale: 0.96; --press-dur: 90ms; }
     .fbtn, .tab, .avatar-btn, .vc-btn, .vc-link, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
-    .explore-err-btn, .consent-accept, .lv-more, .bn-card {
+    .explore-err-btn, .consent-accept, .lv-more, .bn-card, .msm-opt, .rs-back, .pf-undo, #map-search-clear,
+    .err-toast-retry, .tour-skip, .tour-link, .pf-row, .qs-close, .msearch-suggest, .explore-suggest {
       transition-property: transform, background-color, border-color, color, opacity;
       transition-duration: var(--press-dur), var(--dur-fast), var(--dur-fast), var(--dur-fast), var(--dur-fast);
       transition-timing-function: var(--ease-out);
     }
+    /* Knappar som saknade tryckkänsla (karttyperna, Tillbaka, Ångra, rensa sök, Försök igen, rundturens länkar) skalas som
+       resten; profilens rader går kant i kant och byter bakgrund. Utan svar under fingret känns ett tryck långsamt. */
     .fbtn:active, .tab:active, .avatar-btn:active, .vc-btn:active, .vc-link:active, .q-btn:active, .qs-btn:active,
     .ip-accept:active, .ip-close:active, .empty-btn:active, .explore-err-btn:active, .consent-accept:active,
-    .lv-more:active, .bn-card:active { transform: scale(var(--press-scale)); }
+    .lv-more:active, .bn-card:active, .msm-opt:active, .rs-back:active, .pf-undo:active, #map-search-clear:active,
+    .err-toast-retry:active, .tour-skip:active, .tour-link:active, .qs-close:active, .msearch-suggest:active,
+    .explore-suggest:active { transform: scale(var(--press-scale)); }
+    .pf-row:active { background: var(--surface-raised); }
     @media (prefers-reduced-motion: reduce) {
       .fbtn, .tab, .avatar-btn, .vc-btn, .vc-link, .q-btn, .qs-btn, .ip-accept, .ip-close, .empty-btn,
-      .explore-err-btn, .consent-accept, .lv-more, .bn-card { transition: none; }
+      .explore-err-btn, .consent-accept, .lv-more, .bn-card, .msm-opt, .rs-back, .pf-undo, #map-search-clear,
+      .err-toast-retry, .tour-skip, .tour-link, .pf-row, .qs-close, .msearch-suggest, .explore-suggest { transition: none; }
       .fbtn:active, .tab:active, .avatar-btn:active, .vc-btn:active, .vc-link:active, .q-btn:active, .qs-btn:active,
       .ip-accept:active, .ip-close:active, .empty-btn:active, .explore-err-btn:active, .consent-accept:active,
-      .lv-more:active, .bn-card:active { transform: none; }
+      .lv-more:active, .bn-card:active, .msm-opt:active, .rs-back:active, .pf-undo:active, #map-search-clear:active,
+      .err-toast-retry:active, .tour-skip:active, .tour-link:active, .qs-close:active, .msearch-suggest:active,
+      .explore-suggest:active { transform: none; }
     }
 
     /* ── Intro ─────────────────────────────────────────────────────────── */
@@ -1210,7 +1223,8 @@
     /* Sökfältet används inte i övningen; raden överst bär bara "Hoppa över". */
     .qb-tour .map-topbar { visibility: hidden; }
     .tour-top {
-      position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: flex-end;
+      /* z-index: den centrerade instruktionen (.tour-note--center) täcker hela höjden och tog annars trycket på "Hoppa över". */
+      position: absolute; z-index: 1; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: flex-end;
       height: calc(env(safe-area-inset-top) + 64px); padding: env(safe-area-inset-top) 12px 0 16px; pointer-events: none;
     }
     .tour-top > * { pointer-events: auto; }
