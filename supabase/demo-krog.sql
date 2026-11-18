@@ -38,8 +38,9 @@ delete from public.on_my_way where venue_id = 'qbar-demo';
 insert into public.on_my_way (user_id, venue_id, expires_at)
 select 'demo-krog-omw-' || i, 'qbar-demo', now() + interval '2 hours' from generate_series(1, 6) i;
 
--- Inloggningen (auth-användaren demo@queuebar.se) skapas en gång enligt supabase/README.md.
-insert into public.venue_accounts (email, venue_id, pace) values ('demo@queuebar.se', 'qbar-demo', 'normal')
+-- Inloggningen (auth-användaren demo@qbar.invalid) finns sedan 2026-11-18. .invalid kan aldrig registreras, så ingen kan
+-- ta emot en länk till kontot; logga in med generate_link (supabase/README.md), aldrig via formuläret.
+insert into public.venue_accounts (email, venue_id, pace) values ('demo@qbar.invalid', 'qbar-demo', 'normal')
 on conflict (email) do update set venue_id = excluded.venue_id, pace = excluded.pace;
 
 commit;
