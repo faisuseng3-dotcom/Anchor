@@ -1,0 +1,73 @@
+/* Qbar för krogar (krog.html). Färger, typsnitt och --u kommer från style.css; här bara sidans egen layout.
+   En webbsida, inte appen: sidan rullar. */
+html, body { height: auto; overflow: auto; overscroll-behavior: auto; }
+body { position: static; display: block; padding: 0 20px calc(32px + env(safe-area-inset-bottom)); }
+
+.kr-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; max-width: 1180px; margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top)) 0 16px; border-bottom: 1px solid var(--border); }
+.kr-brand { font-size: calc(20 * var(--u)); font-weight: 700; letter-spacing: -0.02em; }
+.kr-brand span { color: var(--accent); }
+.kr-pill { padding: 4px 10px; border-radius: var(--radius-full); background: var(--surface-raised); font-size: calc(13 * var(--u)); font-weight: 600; }
+.kr-pill--warn { color: var(--status-short); background: rgba(255,210,63,0.10); }
+.kr-pill--ok { color: var(--status-free); background: rgba(52,224,127,0.10); }
+.kr-pill[hidden], .kr-link[hidden] { display: none; }
+.kr-top-right { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: calc(13 * var(--u)); color: var(--text-secondary); }
+.kr-link { min-height: 44px; background: none; border: 0; color: var(--text-primary); font: 600 calc(13 * var(--u)) var(--font-base); cursor: pointer; }
+
+.kr-card, .kr-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+.kr-card h1 { font-size: calc(24 * var(--u)); margin-bottom: 8px; }
+.kr-card h2 { font-size: calc(17 * var(--u)); font-weight: 700; }
+.kr-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.kr-muted { font-size: calc(13 * var(--u)); color: var(--text-secondary); line-height: 1.45; }
+.kr-fine { font-size: calc(12 * var(--u)); color: var(--text-muted); line-height: 1.45; }
+.kr-msg { min-height: 1.4em; margin: 8px 0; font-size: calc(13 * var(--u)); font-weight: 600; }
+
+.kr-login { max-width: 420px; margin: 48px auto; display: grid; gap: 12px; }
+form { display: grid; gap: 6px; }
+label { margin-top: 6px; font-size: calc(13 * var(--u)); font-weight: 600; color: var(--text-secondary); }
+input { height: 44px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-hover); background: var(--bg-primary);
+  color: var(--text-primary); font: 500 calc(16 * var(--u)) var(--font-base); }
+input:focus { outline: none; border-color: var(--border-focus); }
+.kr-btn { justify-self: start; margin-top: 10px; min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--radius-full);
+  background: var(--text-primary); color: var(--bg-primary); font: 700 calc(15 * var(--u)) var(--font-base); cursor: pointer; }
+.kr-btn:active { transform: scale(var(--press-scale, 0.96)); }
+.kr-login .kr-btn { justify-self: stretch; }
+
+/* Dator: tre rutor, kurvan och rutnätet till vänster, raden till höger. Telefon: kön och raden först. */
+.kr-dash { max-width: 1180px; margin: 20px auto 0; display: grid; gap: 12px;
+  grid-template-columns: repeat(3, 1fr) minmax(280px, 1.15fr);
+  grid-template-areas: "now omw count note" "chart chart chart note" "heat heat heat note" "foot foot foot foot"; }
+.kr-dash[hidden], .kr-login[hidden] { display: none; }
+.kr-now { grid-area: now; } .kr-omw { grid-area: omw; } .kr-count { grid-area: count; }
+.kr-chart { grid-area: chart; } .kr-heat { grid-area: heat; } .kr-note { grid-area: note; align-self: start; } .kr-foot { grid-area: foot; }
+@media (max-width: 860px) {
+  .kr-dash { grid-template-columns: 1fr 1fr; grid-template-areas: "now now" "note note" "omw count" "chart chart" "heat heat" "foot foot"; }
+}
+
+.kr-label { font-size: calc(13 * var(--u)); font-weight: 600; color: var(--text-secondary); }
+.kr-big { margin: 6px 0 2px; font-size: calc(32 * var(--u)); font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; color: var(--st, var(--text-primary)); }
+.kr-unit { font-size: calc(15 * var(--u)); font-weight: 600; letter-spacing: 0; }
+.kr-sub { font-size: calc(13 * var(--u)); color: var(--text-muted); }
+
+.kr-st-none { --st: var(--status-free); } .kr-st-short { --st: var(--status-short); } .kr-st-medium { --st: var(--status-medium); }
+.kr-st-long { --st: var(--status-long); } .kr-st-few { --st: var(--status-few); }
+
+.kr-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: calc(12 * var(--u)); color: var(--text-secondary); }
+.kr-heat .kr-legend { margin-top: 12px; }
+.kr-line { display: inline-block; width: 18px; border-top: 2px solid var(--text-primary); margin-right: -6px; }
+.kr-line--dash { border-top: 2px dashed var(--text-muted); }
+.kr-dot { width: 10px; height: 10px; border-radius: 3px; margin-right: -6px; background: var(--st, var(--surface-raised)); }
+
+#kr-chart { display: block; width: 100%; height: auto; }
+#kr-chart .grid { stroke: var(--border); }
+#kr-chart text { fill: var(--text-muted); font: 500 11px var(--font-base); }
+@media (max-width: 860px) { #kr-chart text { font-size: 18px; } } /* kurvan krymper på telefonen; texten ska inte */
+#kr-chart .now { fill: none; stroke: var(--text-primary); stroke-width: 2.5; stroke-linejoin: round; }
+#kr-chart .last { fill: none; stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+#kr-chart circle { fill: var(--text-primary); }
+
+.kr-grid { display: grid; grid-template-columns: 36px repeat(8, 1fr); gap: 4px; font-size: calc(12 * var(--u)); }
+.kr-grid > div { display: flex; align-items: center; justify-content: center; min-height: 26px; }
+.kr-dd { justify-content: flex-start !important; color: var(--text-secondary); }
+.kr-hh { color: var(--text-muted); }
+.kr-cell { border-radius: 6px; background: var(--st, var(--surface-raised)); color: var(--bg-primary); font-weight: 700; }

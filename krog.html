@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0B0D">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>Qbar för krogar</title>
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,600,500,400&display=swap" rel="stylesheet">
+  <script type="module" src="/src/krog.js"></script>
+</head>
+<body>
+  <!-- Qbar för krogar: en egen sida för ställen med avtal, samma Supabase som appen. Logiken i src/krog.js, siffrorna i
+       venue_stats() (supabase/migrations/20261118000000_krog.sql). -->
+  <header class="kr-top">
+    <div class="kr-brand">Q<span>bar</span> för krogar</div>
+    <div id="kr-venue" class="kr-pill" hidden></div>
+    <div id="kr-verified" class="kr-pill kr-pill--ok" hidden>✓ Verifierat ställe</div>
+    <div class="kr-top-right">
+      <span id="kr-clock"></span>
+      <button id="kr-logout" class="kr-link" hidden>Logga ut</button>
+    </div>
+  </header>
+
+  <section id="kr-login" class="kr-card kr-login" hidden>
+    <h1>Logga in</h1>
+    <p class="kr-muted">Skriv ställets e-post. Du får en länk som loggar in dig, inget lösenord.</p>
+    <form id="kr-login-form">
+      <label for="kr-email">E-post</label>
+      <input id="kr-email" type="email" autocomplete="email" required>
+      <button class="kr-btn" type="submit">Skicka länk</button>
+    </form>
+    <p id="kr-login-msg" class="kr-msg" role="status"></p>
+    <p class="kr-muted">Inte kund än? <a href="mailto:support@queuebar.se">Kontakta oss</a></p>
+    <p class="kr-fine">Bara ställen med avtal kan logga in. Ett ställe ser aldrig ett annat ställes siffror.</p>
+  </section>
+
+  <main id="kr-dash" class="kr-dash" hidden>
+    <div class="kr-tile kr-now">
+      <div class="kr-label">Kön just nu</div>
+      <div id="kr-now" class="kr-big"></div>
+      <div id="kr-now-sub" class="kr-sub"></div>
+    </div>
+    <div class="kr-tile kr-omw">
+      <div class="kr-label">På väg hit</div>
+      <div id="kr-omw" class="kr-big"></div>
+      <div class="kr-sub">tryckte "Jag ska dit" och är inte framme än</div>
+    </div>
+    <div class="kr-tile kr-count">
+      <div class="kr-label">Kömätningar i kväll</div>
+      <div id="kr-count" class="kr-big"></div>
+      <div id="kr-count-sub" class="kr-sub"></div>
+    </div>
+
+    <section class="kr-card kr-chart">
+      <div class="kr-head">
+        <h2>Kön i kväll</h2>
+        <div class="kr-legend"><span class="kr-line"></span>I kväll <span class="kr-line kr-line--dash"></span><span id="kr-lastweek-label">Förra veckan</span></div>
+      </div>
+      <svg id="kr-chart" viewBox="0 0 640 220" role="img" aria-label="Väntetid i minuter, 20:00 till 03:00"></svg>
+      <p id="kr-chart-empty" class="kr-muted" hidden>Inga minuter än i kväll. En punkt kommer när minst tre personer är överens om kön.</p>
+    </section>
+
+    <section class="kr-card kr-heat">
+      <div class="kr-head">
+        <h2>När kön brukar vara längst</h2>
+        <div class="kr-muted">Snitt i minuter, senaste 8 veckorna</div>
+      </div>
+      <div id="kr-heat" class="kr-grid"></div>
+      <div class="kr-legend">
+        <span class="kr-dot kr-st-none"></span>Ingen kö <span class="kr-dot kr-st-short"></span>Kort
+        <span class="kr-dot kr-st-medium"></span>Medel <span class="kr-dot kr-st-long"></span>Lång
+        <span class="kr-dot"></span>Ingen data
+      </div>
+      <p id="kr-heat-empty" class="kr-muted" hidden>För lite historik än. En ruta fylls när appen visat minuter samma
+        veckodag och timme minst två kvällar.</p>
+    </section>
+
+    <section class="kr-card kr-note">
+      <h2>Din rad i Qbar</h2>
+      <p class="kr-muted">Syns i kapseln när någon öppnar stället, som "Från stället ✓". Påverkar aldrig väntetiden.
+        Raden gäller kvällen du sparar den, till 06:00.</p>
+      <form id="kr-note-form">
+        <label for="kr-entry">Insläpp</label>
+        <input id="kr-entry" maxlength="40" placeholder="Från 22:00">
+        <label for="kr-guestlist">Gästlista</label>
+        <input id="kr-guestlist" maxlength="40" placeholder="Till 23:30">
+        <label for="kr-tonight">Kvällen</label>
+        <input id="kr-tonight" maxlength="60" placeholder="DJ i Salongen · 20 år">
+        <button class="kr-btn" type="submit">Spara</button>
+      </form>
+      <p id="kr-note-msg" class="kr-msg" role="status"></p>
+    </section>
+
+    <p class="kr-fine kr-foot">Du ser bara sammanställd statistik för ditt eget ställe. Enskilda rapporter, och vem som
+      rapporterat, visas aldrig.</p>
+  </main>
+</body>
+</html>

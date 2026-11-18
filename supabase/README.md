@@ -21,6 +21,9 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | Spärren per `user_id` mellan kömätningar 20 → 5 min (`reports_guard`, `rate_limited`) | `migrations/20261113000000_report_cooldown.sql` | samma, körd 2026-11-13 |
 | Kommentarer nollas (`reports_no_comment`), push bara till webbläsarnas push-tjänster (`save_push_subscription`) | `migrations/20261112010000_launch_hardening.sql` | samma, körd 2026-11-13; `notify-favorites` driftsatt samma dag (titel ur `venue-names.js`) |
 | Spärren per nät 10 → 50 kömätningar i timmen (en klubbs wifi är en IP); `report_type` `refused`/`left` ("Kom inte in", "Gav upp") avslutar sessionen | `migrations/20261115000000_ip_limit_and_queue_exits.sql` | samma, körd 2026-11-15 |
+| Qbar för krogar: `venue_accounts`, `venue_notes`, `save_venue_note`, `venue_stats` och modellen i SQL (`qbar_*`) | `migrations/20261118000000_krog.sql` | samma, körd 2026-11-18 |
+| Ett inloggat ställe (`authenticated`) läser eller skriver aldrig `reports` direkt, bara via `venue_stats()` | `migrations/20261118010000_krog_no_direct_reports.sql` | samma, körd 2026-11-18 |
+| Auth: Site URL och Redirect URLs `https://anchor-queuebar.vercel.app/krog.html`, `http://localhost:5173/krog.html`; registrering avstängd (`disable_signup`) | Management API (`PATCH /v1/projects/…/config/auth`) | satt 2026-11-18 |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.
@@ -49,3 +52,38 @@ drop function if exists public.delete_push_subscriptions(text);
 ```
 
 och Edge Functions → `notify-favorites` → Delete.
+
+## Lägg till ett ställe med avtal (krog.html)
+
+Auth används bara av krog.html; Qbar-appen har inga konton. Registrering är avstängd, så bara adresser som lagts in
+under Users kan logga in.
+
+1. Authentication → Users → Add user → Create user med "Auto Confirm User", med ställets e-post.
+2. Lägg till avtalet. `venue_id` måste vara exakt id:t i `VENUES` (`src/main.js`), `pace` samma som där (`slow`,
+   `normal` eller `fast`):
+   ```sql
+   insert into venue_accounts (email, venue_id, pace) values ('kvall@berns.se', 'berns', 'slow');
+   ```
+3. Ändras `pace` i `VENUES`: `update venue_accounts set pace = '…' where venue_id = '…';`. Ändras namn eller ställen:
+   `node scripts/venue-names.mjs` (krogsidan tar namnet därifrån). Hamnar stället i `HIDDEN_VENUES` eller tas bort
+   ur `VENUES` säger krogsidan "Syns inte i Qbar"; säg upp avtalet eller öppna stället igen.
+
+Avtalet upphör: `delete from venue_accounts where email = '…';` (raden i `venue_notes` försvinner ur appen efter 06:00).
+
+Supabases inbyggda e-post skickar 2 mejl i timmen (`rate_limit_email_sent`); koppla egen SMTP (Authentication →
+SMTP Settings) före fler än några ställen. Kopplas qbar.se: lägg till `https://qbar.se/krog.html` under Redirect URLs.
+
+### Demo
+
+`supabase/demo-krog.sql` lägger 8 veckors kvällar på det påhittade stället `qbar-demo` (inte i `VENUES`, syns aldrig i
+appen) och kopplar kontot `demo@queuebar.se` (auth-användaren skapad 2026-11-18). Kör om före varje demo; läs
+kommentaren överst först. Inloggningslänk utan mejl:
+
+```bash
+SK=$(npx -y supabase@latest projects api-keys --project-ref awwmfsjsrjktekmbgadx -o json | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0)).find(k=>k.name==='service_role').api_key)")
+curl -s -X POST https://awwmfsjsrjktekmbgadx.supabase.co/auth/v1/admin/generate_link -H "apikey: $SK" -H "Authorization: Bearer $SK" \
+  -H 'content-type: application/json' -d '{"type":"magiclink","email":"demo@queuebar.se","redirect_to":"https://anchor-queuebar.vercel.app/krog.html"}'
+```
+
+`action_link` i svaret loggar in (en gång, inom en timme).
+

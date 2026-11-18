@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.2",
+    "@electric-sql/pglite": "^0.5.16",
     "@playwright/test": "^1.56.1",
     "husky": "^9.1.7",
     "vite": "^6.0.0",

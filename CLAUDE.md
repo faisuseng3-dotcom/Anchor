@@ -523,6 +523,17 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   rapportens `venue_name`, som är fri text från klienten. Prenumerationer tas bara emot till webbläsarnas push-tjänster.
   Tryck öppnar stället i Lista (`?venue=`, `openVenueFromNotification`). iPhone kräver hemskärmsappen. Servern
   sätts upp enligt `supabase/README.md`; nycklarna finns inte i repot (`PUSH_PUBLIC_KEY` i main.js är den publika)
+- **Qbar för krogar** (`krog.html`, `src/krog.js`, `src/krog.css`; egen ingång i `vite.config.js`): ställen med avtal
+  loggar in med e-postlänk (Supabase Auth, `shouldCreateUser: false`; konto + rad i `venue_accounts` läggs upp för hand,
+  `supabase/README.md`). Statistiken räknas i `venue_stats()` och kommer bara sammanställd för inloggat ställe. Modellen
+  finns därför **två gånger**: `estimateWait` m.fl. här och `qbar_*` i `supabase/migrations/20261118000000_krog.sql`.
+  Ändras modellen: ändra SQL:en i en ny migrering, `tests/krog.test.js` (PGlite) larmar när de glider isär. "Din rad i
+  Qbar" (`venue_notes`) visas i kapseln som "Från stället ✓" (`#vc-from`, `loadVenueNotes`, bara kvällens rad efter
+  06:00, `escapeHtml`) och läses aldrig av modellen. Ett inloggat ställe (`authenticated`) når inte `reports` alls
+  (`20261118010000_krog_no_direct_reports.sql`); appen kör alltid som anon. Kvällsgränsen räknas i telefonens tid i
+  appen och krogsidan men i Europe/Stockholm i SQL: samma i Sverige, och appens `nightKey` gör likadant (medvetet).
+  Raden har ingen realtid: den syns vid nästa `loadReports` (≤30 s utan realtid, annars vid nästa rapport eller ≤2 min).
+  `venue_id` utanför `VENUE_NAMES` (dolt, borttaget, demo) visas som "Syns inte i Qbar". Demo: `supabase/demo-krog.sql`
 - Samtyckesrutan är ett besked med "Jag förstår", inget val — appen kan inte fungera utan ID, och "utan att spara
   data" lovade något koden aldrig gjorde. Integritet och villkor är en egen sida, `public/integritet.html` (länkad från
   samtycket och Profil). Ändras vad som sparas eller vilka tjänster som används: ändra sidan i samma commit
@@ -534,8 +545,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   räknas bara när ingen på plats rapporterat. Låst av `tests/wait.test.js`
 - Kartans sök är en combobox: pil upp/ned väljer träff (`_mapActive`, `aria-activedescendant`), Enter öppnar den
 - `public/sw.js` cachar fortfarande ingenting, men en sidladdning utan nät får en egen sida ("Ingen internetanslutning",
-  Försök igen) i stället för webbläsarens fel. Rapporter äldre än 90 dagar raderas varje natt (pg_cron `qbar-gallring`);
-  historiken läser 8 veckor. Ändras gränsen: ändra `public/integritet.html` också
+  Försök igen) i stället för webbläsarens fel (krog.html får en egen mening). Rapporter äldre än 90 dagar raderas varje
+  natt (pg_cron `qbar-gallring`); historiken och krogsidans rutnät läser 8 veckor, så gränsen får aldrig under 8 veckor.
+  Ändras gränsen: ändra `public/integritet.html` också
 - `forecastWait()` visas bara med ≥3 initial-rapporter från ≥2 personer på 30 min över ≥10 min. Trenden är lutningen
   över alla rapporter, med tak ±0,5 personer/min — inte första mot sista rapport
 - Taktlager i `estimateWait`: ikväll → `_historicalRates` (samma veckodag ±1 h, ≥3) → `venue.pace`.

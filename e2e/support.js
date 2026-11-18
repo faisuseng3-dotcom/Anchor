@@ -54,7 +54,7 @@ export async function mockSupabase(page, rows = [], opts = {}) {
       return route.fulfill({ status: 201, contentType: 'application/json', body: '[]' });
     }
 
-    if (url.includes('on_my_way')) {
+    if (url.includes('on_my_way') || url.includes('venue_notes')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
     }
     if (rows === 'error') {

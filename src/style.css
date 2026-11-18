@@ -421,7 +421,7 @@
     }
     .vc--inline .vc-title, .vc--inline #vc-area { display: none; }
     .vc--inline .vc-more { display: contents; }
-    .vc--inline #vc-sub, .vc--inline #vc-meta, .vc--inline #vc-go { order: 1; }
+    .vc--inline #vc-sub, .vc--inline #vc-from, .vc--inline #vc-meta, .vc--inline #vc-go { order: 1; }
     .vc--inline .vc-head { order: 2; margin-top: 12px; }
     .vc--inline .vc-links { order: 3; }
     .vc--inline #vc-timeline { order: 4; }
@@ -447,7 +447,11 @@
     #vc-sub { font-size: calc(13 * var(--u)); font-weight: 600; }
     .vc--nodata #vc-sub { color: var(--text-muted); }
     #vc-meta, #vc-area { margin-top: 2px; font-size: calc(13 * var(--u)); font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-    #vc-meta:empty, #vc-go:empty, #vc-timeline:empty { display: none; }
+    #vc-meta:empty, #vc-go:empty, #vc-timeline:empty, #vc-from:empty { display: none; }
+    /* Ställets egen rad (krog.html): egen yta, så att den aldrig läses som besökarnas rapporter. */
+    #vc-from { margin-top: 8px; padding: 8px 12px; background: var(--surface-raised); border-radius: var(--radius-sm); font-size: calc(13 * var(--u)); font-weight: 600; overflow-wrap: anywhere; }
+    .vc-from-label { font-size: calc(11 * var(--u)); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    .vc-from-label span { color: var(--status-free); }
     /* Om du går nu: det enda med ram, för det är svaret på "är det värt att gå?". Bara när det finns en prognos. */
     #vc-go { margin-top: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: calc(13 * var(--u)); font-weight: 600; }
     .vc-links { display: flex; align-items: center; gap: 12px; }

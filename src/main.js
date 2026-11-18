@@ -1182,6 +1182,16 @@ import './style.css';
       document.getElementById('vc-sub').textContent = closed ? closedText(venue)
         : waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
 
+      // Ställets egen rad, under det besökarna rapporterat. Stängt: kvällens rad gäller inte längre.
+      var note = closed ? null : _venueNotes[venue.id];
+      var lower = function(s) { return s.charAt(0).toLowerCase() + s.slice(1); };
+      var noteLines = note ? [[note.entry && 'Insläpp ' + lower(note.entry), note.guestlist && 'Gästlista ' + lower(note.guestlist)]
+        .filter(Boolean).join(' · '), note.tonight].filter(Boolean) : [];
+      document.getElementById('vc-from').innerHTML = noteLines.length
+        ? '<div class="vc-from-label">Från stället <span aria-hidden="true">✓</span></div>' +
+          noteLines.map(function(l) { return '<div>' + escapeHtml(l) + '</div>'; }).join('')
+        : '';
+
       // Resten på en lugn rad: stängning och hur många som är på väg. Klockslaget för senaste rapporten bara när det
       // är den enda — med fler står tiderna redan i ändringsraden och listan under.
       var meta = [];
@@ -2288,6 +2298,7 @@ import './style.css';
           renderReports();
           // Kortets "N på väg" och prognos använder antalen — rita om det när de har kommit, inte en pollning senare.
           loadOnMyWayCounts().then(function() { updateOnMyWayUI(); refreshVenueCard(); });
+          loadVenueNotes().then(refreshVenueCard);
         }
       } catch(err) {
         if (seq !== _loadSeq) return;
@@ -2295,6 +2306,19 @@ import './style.css';
         _loadState = 'error';
         renderLoadFailure();
       }
+    }
+
+    // "Från stället ✓": raden ett ställe med avtal skriver i krog.html (venue_notes). Bara kvällens rad (sparad efter
+    // 06:00) visas, och den påverkar aldrig väntetiden. Texten är stället eget: escapeHtml när den ritas.
+    var _venueNotes = {};
+    async function loadVenueNotes() {
+      if (!supabase) return;
+      var night = new Date(Date.now() - 6 * 3600 * 1000);
+      night.setHours(6, 0, 0, 0);
+      var res = await supabase.from('venue_notes').select('venue_id, entry, guestlist, tonight').gte('updated_at', night.toISOString());
+      if (res.error) { console.warn('[QueueBar] venue_notes:', res.error.message); return; }
+      _venueNotes = {};
+      (res.data || []).forEach(function(n) { _venueNotes[n.venue_id] = n; });
     }
 
     // Telefonen väcks efter en stund i fickan: rita om direkt ur det vi har (så att 23:10-läget ser gammalt ut klockan

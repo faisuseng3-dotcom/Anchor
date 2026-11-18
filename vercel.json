@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/krog", "destination": "/krog.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
