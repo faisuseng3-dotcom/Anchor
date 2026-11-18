@@ -11,6 +11,7 @@ body { position: static; display: block; padding: 0 20px calc(32px + env(safe-ar
 .kr-pill--warn { color: var(--status-short); background: rgba(255,210,63,0.10); }
 .kr-pill--ok { color: var(--status-free); background: rgba(52,224,127,0.10); }
 .kr-pill[hidden], .kr-link[hidden] { display: none; }
+.kr-pw summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: calc(13 * var(--u)); color: var(--text-secondary); }
 .kr-top-right { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: calc(13 * var(--u)); color: var(--text-secondary); }
 .kr-link { min-height: 44px; background: none; border: 0; color: var(--text-primary); font: 600 calc(13 * var(--u)) var(--font-base); cursor: pointer; }
 

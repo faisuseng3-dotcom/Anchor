@@ -79,14 +79,19 @@ SMTP Settings) före fler än några ställen. Det kräver en registrerad avsän
 
 `supabase/demo-krog.sql` lägger 8 veckors kvällar på det påhittade stället `qbar-demo` (inte i `VENUES`, syns aldrig i
 appen) och kopplar kontot `demo@qbar.invalid` (auth-användaren skapad 2026-11-18; `.invalid` kan aldrig registreras,
-så ingen kan ta emot en länk till kontot). Kör om före varje demo; läs
-kommentaren överst först. Inloggningslänk utan mejl:
+så ingen kan ta emot en länk till kontot). Sedan håller pg_cron-jobbet `qbar-demo` stället levande: en kömätning och
+sex "på väg" var 10:e minut (`qbar_demo_tick`, `migrations/20261118020000_krog_demo_tick.sql`), så demo-krog.sql
+behöver bara köras om rutnätet ska fyllas om från början. Appens historik hoppar över `qbar-demo` (`DEMO_VENUE_ID`).
+
+Demokontot har ett lösenord (bara det kontot; ställena har inga): krog.html → "Logga in med lösenord". Lösenordet finns
+i `~/Desktop/qbar-krog-demo-inlogg.txt` på grundarens dator, aldrig i repot. Byt det:
 
 ```bash
 SK=$(npx -y supabase@latest projects api-keys --project-ref awwmfsjsrjktekmbgadx -o json | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0)).find(k=>k.name==='service_role').api_key)")
-curl -s -X POST https://awwmfsjsrjktekmbgadx.supabase.co/auth/v1/admin/generate_link -H "apikey: $SK" -H "Authorization: Bearer $SK" \
-  -H 'content-type: application/json' -d '{"type":"magiclink","email":"demo@qbar.invalid","redirect_to":"https://anchor-queuebar.vercel.app/krog.html"}'
+curl -s -X PUT https://awwmfsjsrjktekmbgadx.supabase.co/auth/v1/admin/users/873b84fc-11a4-4cf8-9f43-a01ed0d2ce57 \
+  -H "apikey: $SK" -H "Authorization: Bearer $SK" -H 'content-type: application/json' -d '{"password":"<nytt lösenord>"}'
 ```
 
-`action_link` i svaret loggar in (en gång, inom en timme).
+Ta bort demon: `select cron.unschedule('qbar-demo'); delete from venue_accounts where venue_id = 'qbar-demo';
+delete from reports where venue_id = 'qbar-demo'; delete from on_my_way where venue_id = 'qbar-demo';`
 

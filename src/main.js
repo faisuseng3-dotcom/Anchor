@@ -3052,6 +3052,9 @@ import './style.css';
 
     // ── Historiska mönster ───────────────────────────────────────────────────
     var _historicalPatterns = {};
+    // Krogsidans påhittade demoställe (supabase/demo-krog.sql) får en rapport var 10:e minut. Det finns inte i VENUES,
+    // men utan filtret skulle dess rader ta platsen för riktiga ställen i historikens tak på 1000 rader.
+    var DEMO_VENUE_ID = 'qbar-demo';
 
     // "Brukar vara …" (listan och På väg, bara när färsk data saknas): vanligaste köstatusen samma veckodag ±1 h
     // tidigare kvällar — samma regel som historicalRateFor, via nightKey så att 00:30 hör till kvällen innan. Kvällen
@@ -3067,6 +3070,7 @@ import './style.css';
           .select('venue_id, queue_status, created_at')
           .gte('created_at', new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString())
           .eq('report_type', 'initial')
+          .neq('venue_id', DEMO_VENUE_ID)
           .order('created_at', { ascending: false })
           .limit(1000);
         if (result.error || !result.data) return;
@@ -3102,6 +3106,7 @@ import './style.css';
       var res = await supabase.from('reports')
         .select('venue_id, queue_session, people_ahead, report_type, created_at')
         .not('queue_session', 'is', null)
+        .neq('venue_id', DEMO_VENUE_ID)
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(1000);

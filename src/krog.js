@@ -164,6 +164,14 @@ $('kr-login-form').addEventListener('submit', async (e) => {
     : 'Gick inte att skicka: ' + error.message;
 });
 
+$('kr-pw-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('kr-login-msg').textContent = 'Loggar in…';
+  const { error } = await sb.auth.signInWithPassword({ email: $('kr-pw-email').value.trim(), password: $('kr-pw-pass').value });
+  // Lyckas det tar onAuthStateChange över och visar sidan.
+  $('kr-login-msg').textContent = error ? (/invalid/i.test(error.message) ? 'Fel e-post eller lösenord.' : 'Gick inte: ' + error.message) : '';
+});
+
 $('kr-logout').addEventListener('click', () => sb.auth.signOut());
 
 // Anropa inte Supabase direkt i lyssnaren (supabase-js kan låsa sig); därför setTimeout.
