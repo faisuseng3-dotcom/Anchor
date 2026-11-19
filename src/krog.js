@@ -167,9 +167,13 @@ $('kr-login-form').addEventListener('submit', async (e) => {
 $('kr-pw-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('kr-login-msg').textContent = 'Loggar in…';
-  const { error } = await sb.auth.signInWithPassword({ email: $('kr-pw-email').value.trim(), password: $('kr-pw-pass').value });
+  // Användarnamn utan @ är ett konto på qbar.invalid ("demo" = demo@qbar.invalid). Telefonens tangentbord och kopiering
+  // lägger lätt till stor bokstav eller ett mellanslag på slutet; inget av våra lösenord har det.
+  const user = $('kr-pw-email').value.trim().toLowerCase();
+  const { error } = await sb.auth.signInWithPassword({ email: user.includes('@') ? user : user + '@qbar.invalid',
+    password: $('kr-pw-pass').value.trim() });
   // Lyckas det tar onAuthStateChange över och visar sidan.
-  $('kr-login-msg').textContent = error ? (/invalid/i.test(error.message) ? 'Fel e-post eller lösenord.' : 'Gick inte: ' + error.message) : '';
+  $('kr-login-msg').textContent = error ? (/invalid/i.test(error.message) ? 'Fel användarnamn eller lösenord.' : 'Gick inte: ' + error.message) : '';
 });
 
 $('kr-logout').addEventListener('click', () => sb.auth.signOut());

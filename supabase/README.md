@@ -83,7 +83,8 @@ så ingen kan ta emot en länk till kontot). Sedan håller pg_cron-jobbet `qbar-
 sex "på väg" var 10:e minut (`qbar_demo_tick`, `migrations/20261118020000_krog_demo_tick.sql`), så demo-krog.sql
 behöver bara köras om rutnätet ska fyllas om från början. Appens historik hoppar över `qbar-demo` (`DEMO_VENUE_ID`).
 
-Demokontot har ett lösenord (bara det kontot; ställena har inga): krog.html → "Logga in med lösenord". Lösenordet finns
+Demokontot har ett lösenord (bara det kontot; ställena har inga): krog.html → "Logga in med lösenord", användarnamn
+`demo` (ett namn utan @ blir `<namn>@qbar.invalid`). Lösenordet finns
 i `~/Desktop/qbar-krog-demo-inlogg.txt` på grundarens dator, aldrig i repot. Byt det:
 
 ```bash
