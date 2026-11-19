@@ -811,7 +811,7 @@ import './style.css';
 
     // ── Dela (Share) ─────────────────────────────────────────────────────────────
     // Länken som delas. I iOS-appen är window.location.origin capacitor://localhost, som ingen annan kan öppna.
-    var QBAR_URL = 'https://anchor-queuebar.vercel.app';
+    var QBAR_URL = 'https://qbar-app.vercel.app';
     function shareVenue(venueId) {
       var venue = getVenueById(venueId);
       if (!venue) return;

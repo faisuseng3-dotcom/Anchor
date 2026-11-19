@@ -10,7 +10,7 @@ Den svåraste uppgiften i projektet är att omvandla enstaka opålitliga männis
 siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
 
 **Namnet är Qbar.** Allt användaren ser säger Qbar. Kvar som QueueBar: domänen `queuebar.se` (e-post),
-Vercel-URL:en, `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo-projektet).
+Vercel-projektet `anchor-queuebar` (och dess gamla adress), `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo-projektet).
 
 **Introt** (`#splash` + inline-skript i `index.html`, blocket "Intro" i `src/style.css`): Q:et visas stort medan
 ringen fylls som en timer (en färg i taget, röd → gul → grön, stannar på 72 % — aldrig flera färger samtidigt, då
@@ -24,8 +24,9 @@ inom 0,9 s (långsamt nät, iOS strömsparläge, webbläsare utan H.264) krymper
 session (`sessionStorage` `qb_splash`), hoppas över vid tryck, stilla logga vid `prefers-reduced-motion`.
 E2E-testerna hoppar över det i `skipOnboarding`.
 
-Produktion: `anchor-queuebar.vercel.app` (använd **aldrig** en Vercel-URL med slumpkod i mitten —
-de är frysta ögonblicksbilder).
+Produktion: `qbar-app.vercel.app` (adressen som delas). `anchor-queuebar.vercel.app` är samma deploy och finns kvar:
+gamla länkar, krogsidans inloggning (Supabase Redirect URLs) och användarnas sparade data (localStorage gäller per
+adress). Använd **aldrig** en Vercel-URL med slumpkod i mitten — de är frysta ögonblicksbilder.
 
 ## Teknisk stack (verifierad 2026-10-18)
 
