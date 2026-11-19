@@ -48,11 +48,11 @@ Inga konton, ingen reklam. Din position lämnar aldrig telefonen. Allt du skicka
 **Nyckelord** (högst 100, inga mellanslag):
 `kö,krog,bar,nattklubb,klubb,utgång,nattliv,uteliv,stureplan,södermalm,väntetid,insläpp,vakt,fest`
 
-**Support-URL:** `https://anchor-queuebar.vercel.app/integritet.html` (har kontaktadressen support@queuebar.se)
+**Support-URL:** `https://qbar-app.vercel.app/integritet.html` (har kontaktadressen support@queuebar.se)
 
-**Marknadsförings-URL:** `https://anchor-queuebar.vercel.app`
+**Marknadsförings-URL:** `https://qbar-app.vercel.app`
 
-**Integritetspolicy-URL:** `https://anchor-queuebar.vercel.app/integritet.html`
+**Integritetspolicy-URL:** `https://qbar-app.vercel.app/integritet.html`
 
 **Kategori:** Mat och dryck (primär), Navigering (sekundär)
 
