@@ -24,6 +24,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | Qbar för krogar: `venue_accounts`, `venue_notes`, `save_venue_note`, `venue_stats` och modellen i SQL (`qbar_*`) | `migrations/20261118000000_krog.sql` | samma, körd 2026-11-18 |
 | Ett inloggat ställe (`authenticated`) läser eller skriver aldrig `reports` direkt, bara via `venue_stats()` | `migrations/20261118010000_krog_no_direct_reports.sql` | samma, körd 2026-11-18 |
 | Auth: Site URL och Redirect URLs `https://anchor-queuebar.vercel.app/krog.html`, `http://localhost:5173/krog.html`; registrering avstängd (`disable_signup`) | Management API (`PATCH /v1/projects/…/config/auth`) | satt 2026-11-18 |
+| Arkiv: `reports_archive` (utan `user_id`/`reporter`, bara service role). `qbar-gallring` kopierar rapporter till arkivet innan de raderas efter 90 dagar | `migrations/20261120000000_reports_archive.sql` | `db query --remote=awwmfsjsrjktekmbgadx --yes -f`, **inte körd än** |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.

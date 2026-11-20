@@ -38,14 +38,15 @@
       ditt slumpade id. Andra kan läsa rapporten, men inte id:t; de ser bara en hash av det (en kod som inte går att räkna
       tillbaka), så att appen kan se att två rapporter kom från samma telefon.</li>
     <li>Rapporter syns i appen i 45 minuter. Därefter sparas de för att räkna hur snabbt köer brukar röra sig samma
-      veckodag och tid (appen använder de senaste 8 veckorna). Efter 90 dagar raderas de automatiskt. Radera min data
-      tar bort dem direkt.</li>
+      veckodag och tid (appen använder de senaste 8 veckorna). Efter 90 dagar raderas de; kvar blir en anonym kopia utan
+      ditt id (ställe, tid, antal i kön och om rapportören var vid stället), som inte går att koppla till dig eller din
+      telefon. Radera min data tar bort dina rapporter direkt, innan någon kopia gjorts.</li>
     <li><b>"Jag ska dit":</b> vilket ställe du är på väg till och när du beräknas vara framme. Raden försvinner 15 minuter efter
       beräknad ankomst, eller när du avbryter. Andra ser bara hur många som är på väg, och först från tre personer.</li>
     <li><b>Notiser, om du slår på dem:</b> telefonens notisadress, de nycklar notisen krypteras med och dina favoriter.
       Tas bort när du stänger av notiserna.</li>
     <li><b>Skydd mot falska rapporter:</b> när du rapporterar en kö sparas en kod gjord av din IP-adress och en hemlig
-      nyckel (inte adressen själv) i en timme, så att samma nät inte kan skicka fler än tio kömätningar i timmen.</li>
+      nyckel (inte adressen själv) i en timme, så att samma nät inte kan skicka fler än 50 kömätningar i timmen.</li>
   </ul>
 
   <h2>Det ställen med avtal ser</h2>
