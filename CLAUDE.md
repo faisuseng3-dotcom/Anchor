@@ -196,7 +196,8 @@ Två regler som följer av det:
   körs bara när `allReports` är tom.
 
 **Testdata:** `?testdata=true` i URL:en, **Alt + 2** (Option + 2 på Mac; ignoreras i textfält där det skriver "@")
-eller **fem snabba tryck på rubriken "Profil"** (telefoner och App Store-granskaren, som saknar båda). Växlar
+eller **fem snabba tryck på rubriken "Profil"** (högst 0,6 s mellan trycken; påslaget frågar först med `confirm`, eftersom
+vanliga användare slog på det av misstag). Telefoner och App Store-granskaren saknar de två första. Växlar
 `qb_testdata` i localStorage och laddar om. Av som standard —
 produktionen visar aldrig falska rapporter. **Verifiera alltid med testdata innan arbete
 rapporteras klart.**

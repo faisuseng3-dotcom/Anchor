@@ -112,9 +112,10 @@ in the queues; there is no account and no login.
 Outside Stockholm nightlife hours there may be no live reports, so most venues will show no data. To see the app with
 sample data:
 1. Tap the profile button (top right on the map) to open the "Profil" screen.
-2. Tap the heading "Profil" five times quickly.
-The app reloads with sample reports for 17 venues and shows the label "Testdata · inget skickas" ("Test data, nothing is
-sent") at the bottom. Nothing is sent to the server in this mode. Tap the heading five times again to turn it off.
+2. Tap the heading "Profil" five times quickly (within about half a second between taps) and confirm the dialog.
+The app reloads with sample reports for 17 venues and shows the label "Testdata · stäng av: 5 snabba tryck på Profil"
+("Test data, turn off: 5 quick taps on Profil") at the bottom. Nothing is sent to the server in this mode. Tap the heading
+five times again to turn it off.
 
 Native features:
 - Location (when in use): walking distance and time to each venue, and whether you are at the venue you report.
