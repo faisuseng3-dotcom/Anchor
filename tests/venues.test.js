@@ -10,9 +10,9 @@ const FIELDS = ['id', 'name', 'address', 'area', 'type', 'lat', 'lng', 'closing'
 
 describe('VENUES — struktur', () => {
   // Vakt mot trunkering: src/main.js har kapats två gånger av AI-redigeringar.
-  // 304 rader (28 handskrivna + 280 från OSM + 2 tillagda för hand − 6 stängda för gott) minus 27 dolda i HIDDEN_VENUES.
-  it('innehåller 277 synliga ställen', () => {
-    expect(VENUES).toHaveLength(277);
+  // 317 rader (28 handskrivna + 280 från OSM + 15 tillagda för hand − 6 stängda för gott) minus 24 dolda i HIDDEN_VENUES.
+  it('innehåller 293 synliga ställen', () => {
+    expect(VENUES).toHaveLength(293);
   });
 
   it('varje dolt id finns som rad och syns inte', () => {
