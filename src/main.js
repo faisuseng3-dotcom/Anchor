@@ -143,7 +143,7 @@ import './style.css';
     var userHistory = [];
 
     const VENUES = [
-      { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'bar', lat: 59.333343, lng: 18.076189, closing: '03:00', pace: 'fast' },
+      { id: 'soap-bar', name: 'Soap Bar', address: 'Nybrogatan 1', area: 'Östermalm', type: 'klubb', lat: 59.333343, lng: 18.076189, closing: '03:00', pace: 'fast' },
       { id: 'akkurat', name: 'Akkurat Bar & Restaurang', address: 'Hornsgatan 18', area: 'Slussen', type: 'bar', lat: 59.319809, lng: 18.068854, closing: ['00:00', '00:00', '01:00', '01:00', '01:00', '01:00', '23:00'], pace: 'fast' },
       { id: 'tjoget', name: 'Tjoget', address: 'Hornsbruksgatan 24', area: 'Södermalm', type: 'bar', lat: 59.3157, lng: 18.0348, closing: '01:00', pace: 'fast' },
       { id: 'sturehof', name: 'Sturehof', address: 'Stureplan 2', area: 'Östermalm', type: 'bar', lat: 59.3361, lng: 18.0733, closing: '02:00', pace: 'fast' },
@@ -154,14 +154,29 @@ import './style.css';
       { id: 'berns', name: 'Berns', address: 'Berzelii Park', area: 'Norrmalm', type: 'bar', lat: 59.3322, lng: 18.0739, closing: '03:00', pace: 'slow' },
       { id: 'lounge-bar', name: 'The Lounge Bar', address: 'Sveavägen 45', area: 'Norrmalm', type: 'bar', lat: 59.339235, lng: 18.059438, closing: '01:00', pace: 'fast' },
       { id: 'niva22', name: 'Nivå 22', address: 'Fridhemsgatan 17', area: 'Kungsholmen', type: 'bar', lat: 59.332417, lng: 18.028535, closing: '01:00', pace: 'fast' },
-      { id: 'cafe-opera', name: 'Café Opera', address: 'Karl XII:s torg 6', area: 'Kungsträdgården', type: 'klubb', lat: 59.3307, lng: 18.0715, closing: '05:00', pace: 'slow' },
+      { id: 'cafe-opera', name: 'Café Opera', address: 'Gustav Adolfs torg 2', area: 'Kungsträdgården', type: 'klubb', lat: 59.3307, lng: 18.0715, closing: '05:00', pace: 'slow' },
       { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3088, lng: 18.0812, closing: '05:00', pace: 'fast' },
       { id: 'under-bron', name: 'Under Bron', address: 'Skansbron 4', area: 'Södermalm', type: 'klubb', lat: 59.3082, lng: 18.0798, closing: '05:00', pace: 'fast' },
+      // Klubbar tillagda för hand (ägaren 2026-11-20). Koordinaterna är adressens läge i OpenStreetMap (Nominatim), inte
+      // listans avrundade, som låg upp till 500 m fel; stängningstid okänd (null) tills den är kontrollerad.
+      { id: 'umganget', name: 'Umgänget', address: 'Birger Jarlsgatan 23', area: 'Östermalm', type: 'klubb', lat: 59.336635, lng: 18.071256, closing: null, pace: 'normal' },
+      { id: 'kyoto', name: 'KYOTO', address: 'Linnégatan 18', area: 'Östermalm', type: 'klubb', lat: 59.33756, lng: 18.078238, closing: null, pace: 'normal' },
+      { id: 'ego', name: 'EGO', address: 'Kungsgatan 24', area: 'Norrmalm', type: 'klubb', lat: 59.336051, lng: 18.067226, closing: null, pace: 'normal' },
+      { id: 'sense-hyde', name: 'Sense / HYDE', address: 'Jakobsbergsgatan 15', area: 'Norrmalm', type: 'klubb', lat: 59.334639, lng: 18.069846, closing: null, pace: 'normal' },
+      { id: 'boqueria', name: 'Boqueria', address: 'Jakobsbergsgatan 17', area: 'Norrmalm', type: 'klubb', lat: 59.334701, lng: 18.069002, closing: null, pace: 'normal' },
+      { id: 'sodra-teatern', name: 'Södra Teatern', address: 'Mosebacke torg 1', area: 'Södermalm', type: 'klubb', lat: 59.317856, lng: 18.07486, closing: null, pace: 'normal' },
+      { id: 'hallwylska', name: 'Hallwylska', address: 'Hamngatan 4', area: 'Norrmalm', type: 'klubb', lat: 59.333252, lng: 18.0744, closing: null, pace: 'normal' },
+      { id: 'rigoletto', name: 'Rigoletto', address: 'Kungsgatan 16', area: 'Norrmalm', type: 'klubb', lat: 59.336107, lng: 18.068319, closing: null, pace: 'normal' },
+      { id: 'lokal', name: 'LOKAL', address: 'Scheelegatan 8', area: 'Kungsholmen', type: 'klubb', lat: 59.329647, lng: 18.043695, closing: null, pace: 'normal' },
+      { id: 'biblioteket-live', name: 'Biblioteket Live', address: 'Medborgarplatsen 2', area: 'Södermalm', type: 'klubb', lat: 59.314555, lng: 18.071853, closing: null, pace: 'normal' },
+      { id: 'spice99', name: 'Spice99', address: 'Götgatan 99', area: 'Södermalm', type: 'klubb', lat: 59.307477, lng: 18.076974, closing: null, pace: 'normal' },
+      { id: 'casa', name: 'CASA', address: 'Mäster Samuelsgatan 17', area: 'Norrmalm', type: 'klubb', lat: 59.334074, lng: 18.070122, closing: null, pace: 'normal' },
+      { id: 'mister-french', name: 'Mister French', address: 'Skeppsbron 23', area: 'Gamla Stan', type: 'klubb', lat: 59.325917, lng: 18.075338, closing: null, pace: 'normal' },
       { id: 'sturecompagniet', name: 'Sturecompagniet', address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.3365, lng: 18.0735, closing: [false, false, false, '03:00', '03:00', '03:00', false], pace: 'slow' },
       { id: 'kristall', name: 'Kristall', address: 'Regeringsgatan 12', area: 'Norrmalm', type: 'klubb', lat: 59.330681, lng: 18.068596, closing: '03:00', pace: 'normal' },
       { id: 'golden-hits', name: 'Golden Hits', address: 'Kungsgatan 26', area: 'Norrmalm', type: 'klubb', lat: 59.335798, lng: 18.066863, closing: [false, false, '01:00', '02:00', '03:00', '03:00', false], pace: 'normal' },
       { id: 'neu', name: 'Neu', address: 'Östgötagatan 8', area: 'Södermalm', type: 'klubb', lat: 59.3115, lng: 18.0780, closing: '05:00', pace: 'normal' },
-      { id: 'end-nightclub', name: 'END Nightclub', address: 'Jakobsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.3320, lng: 18.0640, closing: '05:00', pace: 'normal' },
+      { id: 'end-nightclub', name: 'END Nightclub', address: 'Gustav Adolfs torg 2', area: 'Norrmalm', type: 'klubb', lat: 59.329523, lng: 18.069534, closing: '05:00', pace: 'normal' },
       { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.337163, lng: 18.067552, closing: '03:00', pace: 'normal' },
       { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00', pace: 'normal' },
       { id: 'patricia', name: 'Patricia', address: 'Söder Mälarstrand', area: 'Södermalm', type: 'klubb', lat: 59.321397, lng: 18.052765, closing: [false, false, '00:00', '00:00', '05:00', '05:00', '05:00'], pace: 'normal' },
@@ -262,7 +277,7 @@ import './style.css';
       { id: 'hallen-sodermalm', name: 'Hallen Södermalm', address: 'Götgatan 85', area: 'Södermalm', type: 'bar', lat: 59.309925, lng: 18.075786, closing: '01:00', pace: 'fast' },
       { id: 'harvest-home', name: 'Harvest Home', address: 'Bondegatan 50', area: 'Södermalm', type: 'bar', lat: 59.313389, lng: 18.083905, closing: ['23:00', '23:00', '23:00', '23:00', '01:00', '01:00', '23:00'], pace: 'fast' },
       { id: 'herno-gin-bar', name: 'Hernö Gin Bar', address: 'Hornsgatan 1', area: 'Södermalm', type: 'bar', lat: 59.319736, lng: 18.070381, closing: '01:00', pace: 'fast' },
-      { id: 'hilma', name: 'Hilma', address: 'Torsgatan 10', area: 'Norrmalm', type: 'bar', lat: 59.335774, lng: 18.05115, closing: ['13:30', '23:00', '23:00', '23:00', '00:00', '00:00', false], pace: 'fast' },
+      { id: 'hilma', name: 'Hilma', address: 'Torsgatan 10', area: 'Norrmalm', type: 'klubb', lat: 59.335774, lng: 18.05115, closing: ['13:30', '23:00', '23:00', '23:00', '00:00', '00:00', false], pace: 'fast' },
       { id: 'hirschenkeller-gotgatan', name: 'Hirschenkeller, Götgatan', address: 'Götgatan 46', area: 'Södermalm', type: 'bar', lat: 59.316001, lng: 18.072252, closing: '01:00', pace: 'fast' },
       { id: 'hirschenkeller-sankt-eriksgatan', name: 'Hirschenkeller, Sankt Eriksgatan', address: 'Sankt Eriksgatan 22', area: 'Kungsholmen', type: 'bar', lat: 59.331527, lng: 18.031173, closing: '01:00', pace: 'fast' },
       { id: 'hirschenkeller-sveavagen', name: 'Hirschenkeller, Sveavägen', address: 'Sveavägen 61', area: 'Vasastan', type: 'bar', lat: 59.341039, lng: 18.057964, closing: ['01:15', '01:15', '03:15', '01:15', '03:15', '03:15', '01:15'], pace: 'fast' },
@@ -337,7 +352,7 @@ import './style.css';
       { id: 'omnipollos-hatt', name: 'Omnipollos hatt', address: 'Hökens Gata 1A', area: 'Södermalm', type: 'bar', lat: 59.318061, lng: 18.072234, closing: '01:00', pace: 'fast' },
       { id: 'one-tap-bar-och-food', name: 'One Tap Bar & Food', address: 'Katarinavägen 19', area: 'Södermalm', type: 'bar', lat: 59.318917, lng: 18.07698, closing: ['14:00', '14:00', '22:00', '22:00', '23:00', '23:00', false], pace: 'fast' },
       { id: 'oskar-s-kok-och-bar', name: "Oskar's kök & bar", address: 'Kungstensgatan 27', area: 'Vasastan', type: 'bar', lat: 59.34189, lng: 18.060168, closing: ['23:00', '23:00', '23:00', '23:00', '01:00', '01:00', false], pace: 'fast' },
-      { id: 'oxid-bar', name: 'Oxid Bar', address: 'Birger Jarlsgatan 33', area: 'Norrmalm', type: 'bar', lat: 59.337816, lng: 18.069137, closing: [false, false, '03:00', '03:00', '03:00', '03:00', false], pace: 'fast' },
+      { id: 'oxid-bar', name: 'Oxid Bar', address: 'Birger Jarlsgatan 33', area: 'Norrmalm', type: 'klubb', lat: 59.337816, lng: 18.069137, closing: [false, false, '03:00', '03:00', '03:00', '03:00', false], pace: 'fast' },
       { id: 'paradiso', name: 'Paradiso', address: 'Timmermansgatan 24', area: 'Södermalm', type: 'bar', lat: 59.317508, lng: 18.060243, closing: '01:00', pace: 'fast' },
       { id: 'parken-soder', name: 'Parken Söder', address: 'Fatbursgatan 3', area: 'Södermalm', type: 'bar', lat: 59.314531, lng: 18.066601, closing: ['23:00', '01:00', '01:00', '01:00', '01:00', '01:00', '01:00'], pace: 'fast' },
       { id: 'paulas', name: 'Paulas', address: 'Humlegårdsgatan 3', area: 'Östermalm', type: 'bar', lat: 59.336046, lng: 18.078169, closing: ['19:00', '19:00', '19:00', '19:00', '19:00', '17:00', false], pace: 'fast' },
@@ -452,9 +467,6 @@ import './style.css';
     // Stängda för säsong, ombyggnad eller oklart läge (uppgifter från användaren 2026-11-03). Döljs överallt: karta,
     // lista, sök, rapport. Ta bort raden här när stället öppnar igen. Permanent stängda raderas ur VENUES i stället.
     var HIDDEN_VENUES = {
-      'cafe-opera': 'Stänger för Operahusets renovering i slutet av december 2026, i cirka fem år',
-      'end-nightclub': 'Stänger för Operahusets renovering; stängt för säsongen',
-      'tradgarden': 'Säsongstängt över vintern, planerar att öppna 1 maj 2027',
       'honeyhoney': 'Troligen tillfälligt stängt (ombyggnad enligt egen webbplats)',
       'liebling-im-park': 'Säsongstängt, öppnar till sommaren',
       'n3rds-video-game-bar': 'Stängt på obestämd tid sedan 27 juni 2026',
@@ -3707,8 +3719,9 @@ import './style.css';
     function _searchNorm(s, keepSwedish) {
       s = s.toLowerCase().normalize('NFD');
       s = keepSwedish ? s.replace(/([ao][\u0308\u030a])|[\u0300-\u036f]/g, '$1').normalize('NFC') : s.replace(/[\u0300-\u036f]/g, '');
-      // Apostrofer: iPhone skriver ’, datorn ', och namnen har båda ("Kelly's", "John Scott’s").
-      return s.replace(/[’‘`´]/g, "'").replace(/\s+/g, ' ').trim();
+      // Apostrofer bort helt (’ ' ` ´): "kellys" hittar "Kelly's", "john scotts" hittar "John Scott’s". Övriga skiljetecken
+      // (- . & / : ! ? , ") blir mellanslag: "sense hyde" hittar "Sense / HYDE". Accenter vikas ovan: "cafe" hittar "Café".
+      return s.replace(/[’‘`´']/g, '').replace(/[-–.&\/:!?,"()]/g, ' ').replace(/\s+/g, ' ').trim();
     }
     function _searchCompact(s, keepSwedish) { return _searchNorm(s, keepSwedish).replace(/\s/g, ''); }
     // Typord man skriver i en sökning: "nattklubb" ska hitta klubbarna, "berns bar" ska hitta Berns.

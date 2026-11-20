@@ -2,7 +2,7 @@
 
 ## Vad projektet är
 
-Mobil webbapp som visar köstatus och uppskattad väntetid för **277 barer, pubar och nattklubbar** i
+Mobil webbapp som visar köstatus och uppskattad väntetid för **293 barer, pubar och nattklubbar** i
 Stockholm (alla som finns i OpenStreetMap, se `VENUES`). All data kommer från användarnas egna rapporter — det finns ingen extern
 datakälla för kölängder.
 
@@ -51,7 +51,7 @@ Allt ligger i **en fil**: `src/main.js`. Dela inte upp den utan att fråga förs
 ```
 index.html  →  <script type="module" src="/src/main.js">
                ↓
-VENUES (304 hårdkodade objekt, 277 synliga)  +  allReports (från Supabase)
+VENUES (317 hårdkodade objekt, 293 synliga)  +  allReports (från Supabase)
                ↓
 estimateWait()  →  formatWait()  →  venueWaitText()
                ↓
@@ -75,7 +75,7 @@ blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
 | Vad | Funktioner |
 |---|---|
 | **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
-| Venue-data | `VENUES` — 304 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 2 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården), minus 6 stängda för gott; 27 dolda via `HIDDEN_VENUES`. **Inte i databasen** — ändring = deploy |
+| Venue-data | `VENUES` — 317 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 15 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården, 13 klubbar 2026-11-20), minus 6 stängda för gott; 24 dolda via `HIDDEN_VENUES`. Nytt ställe: kör `node scripts/venue-names.mjs` (notisernas namn). **Inte i databasen** — ändring = deploy |
 | Supabase-läsning | `loadReports` — alla icke-utgångna rapporter (≤45 min, tak 1000) |
 | Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
 | Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |

@@ -31,7 +31,7 @@ deploy**, inte en databasuppdatering.
 | `closing` | `HH:MM` \| `null`, eller sju sådana måndag–söndag där `false` = stängt den kvällen | `'05:00'`, `[false, false, '05:00', '05:00', '05:00', '05:00', false]` | `closingTonight()` → `minutesToClose()` / `isClosed()` → "Stängt", "Stänger 01:00", "Bäst nu", "hinner du". Natten hör till dagen den började. `null` = okänd: aldrig "Stängt", ingen stängningsrad. |
 | `pace` | `'slow'` \| `'normal'` \| `'fast'` | `'slow'` | **Startgissning för dörrtakt** innan mätningar finns. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md). |
 
-Alla 304 objekt har samtliga nio fält (test i `tests/venues.test.js`). 27 av dem är dolda, se nedan. Fyra dolda
+Alla 317 objekt har samtliga nio fält (test i `tests/venues.test.js`). 24 av dem är dolda, se nedan. Fyra dolda
 2026-11-11 för att webbplatsen var död eller kapad (Fou, Rose, Corner Club, Corner Bar); öppnar de, ta bort raden.
 
 ### Var ställena kommer från
