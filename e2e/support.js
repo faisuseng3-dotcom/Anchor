@@ -81,6 +81,7 @@ export async function mockSupabase(page, rows = [], opts = {}) {
 export async function skipOnboarding(page) {
   await page.addInitScript(() => {
     localStorage.setItem('qb_consent', 'true');
+    localStorage.setItem('qb_tour_done', '1'); // en avbruten rundtur startar om vid nästa öppning (checkConsent)
     sessionStorage.setItem('qb_splash', '1'); // introt täcker appen i ~4 s; det testas inte här
     localStorage.removeItem('qb_testdata');
     localStorage.removeItem('qb_queue_session');

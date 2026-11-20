@@ -9,7 +9,15 @@
   <!-- iOS kräver PNG för hemskärmen; SVG blev en skärmdump. Manifestet som fil: en data:-URL kan inte tolka start_url. -->
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
-  <title>Qbar</title>
+  <title>Qbar – köerna i Stockholm just nu</title>
+  <meta name="description" content="Se hur lång kön är på Stockholms barer och klubbar, rapporterat av folk som står där. Anonymt, utan konto.">
+  <meta property="og:title" content="Qbar – köerna i Stockholm just nu">
+  <meta property="og:description" content="Se hur lång kön är på Stockholms barer och klubbar, rapporterat av folk som står där.">
+  <meta property="og:url" content="https://qbar-app.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://qbar-app.vercel.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://qbar-app.vercel.app/">
   <!-- Introt spelas en gång per session; körs före första målningen så att det aldrig blinkar till. -->
   <script>try { sessionStorage.getItem('qb_splash') ? document.documentElement.classList.add('no-splash') : sessionStorage.setItem('qb_splash', '1'); } catch (e) {}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,7 +73,7 @@
       <div class="map-search-float" id="map-search-float">
         <div class="map-search-inner">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="map-search-input" type="search" placeholder="Sök bar, klubb eller område" autocomplete="off"
+          <input id="map-search-input" type="search" placeholder="Sök bar, klubb, område" autocomplete="off"
             aria-label="Sök på kartan" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="map-search-results"
             oninput="onMapSearchInput(this.value)"
             onfocus="onMapSearchFocus()"

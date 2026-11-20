@@ -183,7 +183,7 @@ test.describe('3. Sök och öppna ett ställe', () => {
     await expect(rader.first()).toHaveAttribute('aria-expanded', 'true');
     const kort = page.locator('.erow + #venue-card');
     await expect(kort).toBeVisible();
-    await expect(kort.locator('#vc-sub')).toContainText(/rapport/);
+    await expect(kort.locator('#vc-sub')).toContainText(/senast (nyss|\d+ min sedan)/); // kortet säger hur gammal siffran är
     await expect(kort.locator('#vc-act-primary')).toBeVisible();
     await rader.first().click();
     await expect(rader.first()).toHaveAttribute('aria-expanded', 'false');
@@ -306,6 +306,35 @@ test.describe('4. Rapportera en kö', () => {
     await expect(page.locator('.toast').last()).toContainText('är skickad');
     expect(inserts).toHaveLength(1);
     expect(inserts[0].venue_id).toBe('kristall');
+  });
+
+  test('byter man flik medan rapporten skickas och nätet går ner, sparas den ändå', async ({ page }) => {
+    // Förut nollade flikbytet det valda stället, felvägen kraschade på selectedRV.id och rapporten försvann tyst.
+    await skipOnboarding(page);
+    const fel = [];
+    page.on('pageerror', (e) => fel.push(e.message));
+    await mockSupabase(page, []);
+    let slapp;
+    const vantar = new Promise((r) => { slapp = r; });
+    await page.route('**/*.supabase.co/rest/v1/reports**', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      await vantar;
+      return route.abort('internetdisconnected');
+    });
+    await openApp(page);
+    await goToScreen(page, 'report');
+    await page.locator('#rs-search').fill('kristall');
+    await page.waitForTimeout(500);
+    await page.locator('.rs-item').first().click();
+    await page.waitForTimeout(400);
+    await page.locator('#rs2 .q-btn').nth(2).click();
+    await goToScreen(page, 'explore');
+    await goToScreen(page, 'report');
+    slapp();
+    await expect(page.locator('.toast').last()).toContainText('Ingen täckning');
+    const sparad = await page.evaluate(() => JSON.parse(localStorage.getItem('qb_pending_report') || 'null'));
+    expect(sparad && sparad.venueId).toBe('kristall');
+    expect(fel).toEqual([]);
   });
 });
 

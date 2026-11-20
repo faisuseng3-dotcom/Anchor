@@ -51,10 +51,14 @@ import './style.css';
     var currentScreen = 'home';
     var prevScreen = 'home';
 
-    function showScreen(name) {
+    // fromHistory: anropet kommer från bakåtknappen (popstate) och ska inte lägga ett nytt steg i historiken.
+    function showScreen(name, fromHistory) {
       if (name !== currentScreen && _vcMode) vcHideNow(); // kortet hör till skärmen det öppnades på
+      // Varje skärmbyte blir ett steg i webbläsarens historik: bakåt går till förra skärmen i stället för ut ur appen.
+      if (!fromHistory && name !== currentScreen) history.pushState({ screen: name }, '');
       prevScreen = currentScreen;
       currentScreen = name;
+      document.body.dataset.screen = name;
       document.querySelectorAll('.screen').forEach(function(el) {
         el.classList.toggle('active', el.id === 'screen-' + name);
       });
@@ -63,7 +67,8 @@ import './style.css';
       });
       if (name === 'home') setTimeout(function() { if (map) map.resize(); }, 50);
       if (name === 'profile') { loadUserHistory(); renderPushUI(); }
-      if (name === 'report' && prevScreen !== 'report' && typeof rsStep === 'function') {
+      // Rapportera-fliken börjar alltid om från listan, även när man står på frågan eller tacket (inte mitt i en sändning).
+      if (name === 'report' && !_reportSending && typeof rsStep === 'function') {
         if (!_touring) startLocation(); // listan sorteras på avstånd, och en rapport långt ifrån ska inte starta en kö-session. Övningen frågar inte om plats
         selectedRV = null;
         rsStep(1);
@@ -74,6 +79,8 @@ import './style.css';
       if (name === 'live') renderLiveFeed();
       console.log('[QueueBar] Byter till skärm:', name);
     }
+    history.replaceState({ screen: 'home' }, '');
+    window.addEventListener('popstate', function(e) { showScreen((e.state && e.state.screen) || 'home', true); });
 
     // ── Mapbox ───────────────────────────────────────────────────────────────
     // Kartbiblioteket (~1,7 MB) är en egen fil som hämtas direkt men inte står i vägen: listan, datan och introt behöver
@@ -751,6 +758,16 @@ import './style.css';
         '<span class="wait-roll-new">' + html + '</span></span>';
     }
 
+    // Köns nivå för listans filter och sortering och kartans prioritering. Som computeStatus, men 'few' (färre än tre
+    // överens, vit i listan) räknas efter det som rapporterats: två som säger "Ingen kö" är ingen kö, inte okänt.
+    // Oense rapporter ("Går isär") har ingen nivå. "Bäst nu" använder computeStatus: där krävs tre överens.
+    function queueLevel(venueId) {
+      var s = computeStatus(venueId, allReports);
+      if (s !== 'few') return s;
+      var est = estimateWait(venueId, allReports);
+      return est && !est.conflict ? waitToStatus(est) : 'few';
+    }
+
     function computeStatus(venueId, reports) {
       if (isClosed(getVenueById(venueId))) return 'unknown';
       var est = estimateWait(venueId, reports);
@@ -819,18 +836,21 @@ import './style.css';
       // Säg hur gammal siffran är i stället för "just nu" — en delad länk läses ofta långt senare.
       var latest = allReports.filter(function(r) { return r.venue_id === venueId && isQueueReport(r); })
         .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })[0];
+      // "10–25 min" → "10–25 min kö"; "10–25 i kö" säger redan kö (blev förut "i kö kö").
+      var shareWait = /min$/.test(waitText) ? waitText + ' kö' : waitText === 'Går isär' ? 'rapporterna går isär' : waitText.toLowerCase();
       var statusText = waitText && latest
-        ? venue.name + ': ' + (waitText === 'Ingen kö' || waitText === 'Fullt' ? waitText.toLowerCase() : waitText + ' kö') + ' · rapporterat ' + timeAgo(latest.created_at)
+        ? venue.name + ': ' + shareWait + ' · rapporterat ' + timeAgo(latest.created_at)
         : venue.name + (isClosed(venue) ? ' har stängt' : ': ingen färsk rapport');
+      var url = QBAR_URL + '/?venue=' + encodeURIComponent(venueId); // öppnar stället, inte bara startsidan
 
       if (navigator.share) {
         navigator.share({
           title: 'Qbar',
           text: statusText,
-          url: QBAR_URL
+          url: url
         }).catch(function() {});
       } else {
-        var full = statusText + '\n' + QBAR_URL;
+        var full = statusText + '\n' + url;
         navigator.clipboard.writeText(full).then(function() {
           showToast('Kopierat till urklipp');
         }).catch(function() {
@@ -858,8 +878,21 @@ import './style.css';
     }
     // "Stängde 03:00", eller bara "Stängt" en kväll stället inte öppnar alls.
     function closedText(venue) {
+      if (clubDaytime(venue) && clockMinutes() >= 12 * 60) return 'Öppnar ikväll';
       var c = closingTonight(venue);
       return c ? 'Stängde ' + c : 'Stängt';
+    }
+    function clockMinutes() {
+      var d = new Date();
+      return _testNightMin !== null ? _testNightMin : d.getHours() * 60 + d.getMinutes();
+    }
+    // Vi vet bara när ställena stänger, inte när de öppnar. En nattklubb (stänger efter midnatt) har ingen kö 06–20, men
+    // räknades som öppen hela dagen: "Bäst nu: Drama · Ingen kö" klockan 14. Barer kan ha öppet på dagen och lämnas.
+    function clubDaytime(venue) {
+      if (!venue || venue.type !== 'klubb') return false;
+      var c = closingTonight(venue), h = c ? parseInt(c, 10) : NaN;
+      var now = clockMinutes();
+      return h < 6 && now >= 6 * 60 && now < 20 * 60;
     }
 
     // Minuter kvar till stängning, eller null om tiden saknas. En enda beräkning som både listan och kortet använder,
@@ -885,7 +918,7 @@ import './style.css';
     // ingen kö att visa: ingen väntetid, ingen pill, ingen "gå hit".
     function isClosed(venue) {
       var left = minutesToClose(venue);
-      return left !== null && left <= 0;
+      return (left !== null && left <= 0) || clubDaytime(venue);
     }
 
     // Barer/Klubbar: ett val för hela appen (setVenueType). Kartan, listan och "Bäst nu" visar samma ställen, annars såg man
@@ -916,7 +949,7 @@ import './style.css';
       var ch = queueChange(reports);
       if (!ch) return '';
       var cls = ch.dir === 'up' ? 'vc-chg--up' : 'vc-chg--down';
-      return '<div class="vc-chg ' + cls + '"><span class="vc-chg-dir">' + (ch.dir === 'up' ? '▲ Växer' : '▼ Krymper') + '</span>' +
+      return '<div class="vc-chg ' + cls + '"><span class="vc-chg-dir">' + (ch.dir === 'up' ? '▲ Ökar' : '▼ Minskar') + '</span>' +
         '<span class="vc-chg-time">' + clockOfIso(ch.t0) + ' → ' + clockOfIso(ch.t1) + '</span>' +
         '<span class="vc-chg-val">' + ch.from + ' → ' + ch.to + '</span></div>';
     }
@@ -1174,10 +1207,12 @@ import './style.css';
         } else if (est.ahead && est.confirmed) subParts.push(aheadBucket(est.ahead).label + ' personer i kö');
         // Färre än CONFIRM_PEOPLE överens: säg hur långt det är kvar till en väntetid (färgen för få rapporter), inte
         // att siffran är osäker. Antal i kö står redan stort ovanför.
-        if (!est.confirmed) { if (!est.conflict) subParts.push(est.agree + ' av ' + CONFIRM_PEOPLE + ' rapporter för väntetid'); }
+        // "N av 3 rapporter" lästes som antal rapporter och sa emot "Visa rapporter (2)": det är personer som är överens.
+        if (!est.confirmed) { if (!est.conflict) subParts.push(est.agree + (est.agree === 1 ? ' person' : ' personer') + ' överens · minuter när ' + CONFIRM_PEOPLE + ' är det'); }
         else subParts.push(nMedian >= 2 ? nMedian + ' rapporter senaste 20 min' : 'enligt senaste rapporten');
       }
       if (est && est.confirmed && !est.full && est.ahead && est.source !== 'live') subParts.push(est.source === 'history' ? 'enligt tidigare kvällar' : 'uppskattning');
+      if (reports[0]) subParts.push('senast ' + timeAgo(reports[0].created_at)); // hur gammal siffran är, alltid
       if (minsOld >= 15 && minsOld < 45) subParts.push('kan vara gammal');
       document.getElementById('vc-sub').textContent = closed ? closedText(venue)
         : waitText ? subParts.join(' · ') : 'Ingen färsk rapport';
@@ -1197,7 +1232,7 @@ import './style.css';
       var meta = [];
       var toClose = minutesToClose(venue);
       if (!closed) {
-        if (reports.length === 1) meta.push('Rapporterat ' + clockOfIso(reports[0].created_at));
+        // Klockslaget för senaste rapporten står redan som "senast N min sedan" under siffran.
         if (toClose !== null) meta.push('Stänger ' + closingTonight(venue) + (toClose <= 90 ? ' (om ' + toClose + ' min)' : ''));
         var omwN = onMyWayCount(venue.id);
         if (omwN) meta.push(omwN + ' på väg');
@@ -1208,10 +1243,13 @@ import './style.css';
       // du hinner fram säger kortet det i stället — en kö vid en stängd dörr är ingen prognos.
       var km = distanceKmTo(venue), walk = walkMinutesTo(venue);
       var tooLate = !closed && walk !== null && toClose !== null && walk >= toClose;
+      // Framme strax före stängning: knappen finns kvar, men kortet säger hur lite tid som återstår.
+      var lateArrival = !closed && !tooLate && walk !== null && toClose !== null && toClose - walk < 30;
       var fc = !closed && !tooLate && walk !== null && walk <= 40 ? forecastWait(venue.id, walk, othersOnWay(venue.id)) : null;
       var fcText = fc ? formatWait(fc) : '';
       document.getElementById('vc-go').textContent = tooLate
         ? 'Stänger ' + closingTonight(venue) + ', innan du hinner fram (' + walk + ' min)'
+        : lateArrival ? 'Stänger ' + closingTonight(venue) + ', ' + (toClose - walk) + ' min efter att du är framme'
         : fc ? 'Går du nu: framme ' + clockOfIso(new Date(Date.now() + walk * 60000).toISOString()) +
           (fcText === 'Ingen kö' ? ' · troligen ingen kö då' : ' · troligen ' + fcText + ' kö då') : '';
 
@@ -1226,8 +1264,10 @@ import './style.css';
         secondary.hidden = true;
       } else {
         var directionsOnly = walk !== null && (walk > 40 || tooLate);
-        primary.textContent = walk === null ? 'Jag ska dit' : directionsOnly ? 'Vägbeskrivning · ' + formatDistance(km) : 'Jag ska dit · ' + walk + ' min';
-        primary.onclick = directionsOnly ? openDirections : vcGoThere;
+        var goingHere = _onMyWay && _onMyWay.venueId === venue.id;
+        primary.textContent = goingHere ? 'Du är på väg hit · visa vägen'
+          : walk === null ? 'Jag ska dit' : directionsOnly ? 'Vägbeskrivning · ' + formatDistance(km) : 'Jag ska dit · ' + walk + ' min';
+        primary.onclick = directionsOnly || goingHere ? openDirections : vcGoThere;
         secondary.textContent = 'Rapportera';
         secondary.onclick = goToReport;
         secondary.hidden = closed;
@@ -1242,7 +1282,7 @@ import './style.css';
     }
 
     // Kortets knappar — activeVenue är modul-lokal, så inline-onclick går via dessa
-    function vcGoThere() { if (!activeVenue) return; openDirections(); goOnMyWay(activeVenue.id); } // goOnMyWay stänger kortet
+    function vcGoThere() { if (!activeVenue || _touring) return; openDirections(); goOnMyWay(activeVenue.id); } // goOnMyWay stänger kortet
     function vcShare() { if (activeVenue) shareVenue(activeVenue.id); }
     function vcToggleFavorite(event) {
       if (!activeVenue) return;
@@ -1340,7 +1380,9 @@ import './style.css';
       if (!best) {
         var text = _loadState === 'error' ? 'Ingen kontakt med servern'
           : _loadState !== 'ok' ? 'Hämtar rapporter…'
-          : allReports.some(isQueueReport) ? 'Ingen färsk rapport om kort kö just nu' : 'Inga rapporter senaste 45 min';
+          // "Bäst nu" kräver att tre är överens (en person ska inte kunna skicka alla dit): säg det, i stället för att
+          // påstå att ingen rapporterat kort kö när listan visar "Ingen kö" från två personer.
+          : allReports.some(isQueueReport) ? 'Ingen kort kö som tre personer är överens om just nu' : 'Inga rapporter senaste 45 min';
         card.innerHTML = '<button class="bn-card" onclick="showScreen(\'explore\')">' +
           '<span class="bn-eyebrow">Bäst nu</span>' +
           '<span class="bn-empty-text">' + text + '</span>' +
@@ -1356,12 +1398,13 @@ import './style.css';
       if (best.dist != null) meta.push(formatDistance(best.dist));
       if (latest) meta.push(timeAgo(latest.created_at));
       if (_loadState === 'error') meta.push('ingen kontakt, kan vara gammalt');
+      var stColor = getStatusColor(computeStatus(v.id, allReports)); // samma färg som listan och kartan (vit vid få rapporter)
       // Samma åldrande som listan och kortet: data som är 15–30 min gammal tonas, så "Bäst nu" aldrig ser färskare ut.
-      card.innerHTML = '<button class="bn-card' + (best.minsAgo >= 15 ? ' bn-card--aging' : '') + '" style="--st:' + getStatusColor(best.status) + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
+      card.innerHTML = '<button class="bn-card' + (best.minsAgo >= 15 ? ' bn-card--aging' : '') + '" style="--st:' + stColor + '" onclick="openVenueCard(getVenueById(\'' + v.id + '\'), \'bast-nu\')">' +
         '<span class="bn-eyebrow">Bäst nu</span>' +
         '<span class="bn-row">' +
           '<span class="bn-name">' + v.name + '</span>' +
-          '<span class="bn-wait">' + waitRollHtml('best', v.id, wait, getStatusColor(best.status)) + '</span>' +
+          '<span class="bn-wait">' + waitRollHtml('best', v.id, wait, stColor) + '</span>' +
         '</span>' +
         '<span class="bn-meta">' + meta.filter(Boolean).join(' · ') + '</span>' +
         '</button>';
@@ -1453,7 +1496,12 @@ import './style.css';
         return;
       }
 
-      resultsEl.innerHTML = areas.map(function(a, i) {
+      // Bara svaga träffar på en felstavning ("brens"): fråga efter det närmaste namnet först, som listan gör.
+      var weak = !areas.length && hits.length && venueScore(query, hits[0]) <= 20 ? didYouMean(query, VENUES) : null;
+      if (weak && weak.text === hits[0].name) weak = null;
+      _mapSuggestion = weak;
+      resultsEl.innerHTML = (weak ? '<div class="msearch-empty"><button class="msearch-suggest" onmousedown="useMapSuggestion()">Menade du ' + escapeHtml(weak.text) + '?</button></div>' : '') +
+        areas.map(function(a, i) {
         return '<div class="msearch-row" onmousedown="selectMapSearchArea(' + i + ')">' +
           '<div class="msearch-dot msearch-dot--area"></div>' +
           '<div class="msearch-name">' + escapeHtml(a.area) + '</div>' +
@@ -2204,7 +2252,7 @@ import './style.css';
       var el = document.getElementById('explore-list');
       if (!el) return;
       el.innerHTML = '<div class="explore-error-state">' +
-        '<div class="explore-err-title">Ingen kontakt med servern</div>' +
+        '<div class="explore-err-title">Köerna gick inte att hämta</div>' + // raden ovanför säger redan "Ingen kontakt med servern"
         '<div class="explore-err-sub">Vi vet inte hur köerna ser ut just nu.</div>' +
         '<button class="explore-err-btn" onclick="loadReports()">Försök igen</button>' +
         '</div>';
@@ -2331,11 +2379,10 @@ import './style.css';
     // Nätet kommer ofta tillbaka först några sekunder efter väckningen; läs då direkt i stället för att vänta på pollningen.
     window.addEventListener('online', function() { if (supabase) { loadReports(); sendPendingReport(); } });
 
-    // Texten på pillen: samma källa som listan och kortet (venueWaitText), men korta former så pillen håller sig smal.
-    // "Ingen kö" blir "Fri", som i listan. Tom text = vi vet inget, och då ritas ingen pill.
+    // Texten på pillen: samma källa som listan och kortet (venueWaitText); "min" stryks så pillen håller sig smal.
+    // Tom text = vi vet inget, och då ritas ingen pill.
     function pillText(venueId) {
       var t = venueWaitText(venueId) || '';
-      if (t === 'Ingen kö') return 'Fri';
       return t.replace(/\s*min$/, '');
     }
 
@@ -2403,8 +2450,10 @@ import './style.css';
         // Bredden som drawPill ritar: kant och marginaler ~40 px, ~8 px per tecken och "min" ~20 px.
         var w = (40 + text.length * 8 + (/\d/.test(text) ? 20 : 0)) * scale;
         return { f: f, x: p.x * k, y: p.y * k, w: w, h: 32 * scale, more: 0, hidden: 0,
-          // Samma status: "Fullt" före ett intervall, färsk data före 15–45 min gammal.
-          rank: f.properties.id === sel ? 10 : f.properties.best ? 9 : (DECLUTTER_RANK[f.properties.status] || 0) +
+          // Samma status: "Fullt" före ett intervall, färsk data före 15–45 min gammal. Få rapporter (vit pill) rangordnas
+          // efter vad som rapporterats, under bekräftade: annars visades "10–25 i kö" och "25–50 i kö" dolde sig bakom "+4".
+          rank: f.properties.id === sel ? 10 : f.properties.best ? 9 : (f.properties.status === 'few'
+            ? (DECLUTTER_RANK[queueLevel(f.properties.id)] || 1) * 0.2 : (DECLUTTER_RANK[f.properties.status] || 0)) +
             (text === 'Fullt' ? 0.5 : 0) + (f.properties.aging ? 0 : 0.25) };
       }).sort(function(a, b) { return b.rank - a.rank; });
       var shown = [];
@@ -2634,8 +2683,11 @@ import './style.css';
     var _titleTaps = 0, _titleTapTimer = null;
     document.querySelector('#screen-profile h1').addEventListener('click', function() {
       clearTimeout(_titleTapTimer);
-      _titleTapTimer = setTimeout(function() { _titleTaps = 0; }, 1500);
-      if (++_titleTaps === 5) toggleTestData();
+      _titleTapTimer = setTimeout(function() { _titleTaps = 0; }, 600); // snabba tryck: långsamma tryck på rubriken slog på läget av misstag
+      if (++_titleTaps < 5) return;
+      _titleTaps = 0;
+      // Påslaget stoppar alla rapporter och visar påhittade köer: fråga först. Avslaget behöver ingen fråga.
+      if (testDataEnabled() || confirm('Slå på testläget? Påhittade köer visas och inga rapporter skickas. Stäng av med fem snabba tryck på Profil.')) toggleTestData();
     });
 
     function injectTestData() {
@@ -2785,7 +2837,7 @@ import './style.css';
     function reportErrorText(err) {
       if (err && err.userText) return err.userText;
       var msg = (err && err.message) || '';
-      if (msg.indexOf('rate_limited') >= 0) return 'Du har redan rapporterat nyss. Vänta en stund.';
+      if (msg.indexOf('rate_limited') >= 0) return 'Vänta några minuter innan du rapporterar igen (gäller alla ställen)'; // samma ord som telefonens egen spärr
       if (msg.indexOf('ip_limited') >= 0) return 'Många rapporter från samma nät just nu. Försök igen om en stund.';
       if (msg.indexOf('too_soon') >= 0) return 'Vänta några minuter innan du uppdaterar igen';
       if (msg.indexOf('session_') >= 0) return 'Din kö-rapport har gått ut. Rapportera på nytt.';
@@ -2935,10 +2987,10 @@ import './style.css';
         loadReports();
         showToast(type === 'refused' ? 'Tack. Det säger andra något om dörren.' : 'Tack. Kön är avslutad.');
       } catch(err) {
-        showToast(reportErrorText(err));
-        // Stäng ändå, som krysset gjorde förut: ett fel här (testläge, utgången session, servern utan migreringen) går
-        // sällan att skicka om, och en banner som inte går att stänga är värre än en mätpunkt som saknas.
-        endQueueSession();
+        // Nätfel: kön står kvar så att knappen går att trycka igen. Andra fel (testläge, utgången session) går sällan
+        // att skicka om, och en banner som inte går att stänga är värre än en mätpunkt som saknas: stäng och säg det.
+        if (isNetworkError(err)) { showToast('Ingen täckning. Försök igen när du har nät.'); updateOnMyWayUI(); }
+        else { showToast('Kön är avslutad, men svaret kunde inte sparas.'); endQueueSession(); }
       } finally { _reportSending = false; }
     }
 
@@ -2975,7 +3027,9 @@ import './style.css';
       if (!IS_NATIVE_APP) navigator.geolocation.clearWatch(_geoWatch);
       else if (typeof _geoWatch === 'string') Geolocation.clearWatch({ id: _geoWatch });
       _geoWatch = null;
-      if (userAsked) showToast('Platsen är avstängd. Slå på den för ' + (IS_NATIVE_APP ? 'Qbar' : 'Safari') + ' i telefonens inställningar.');
+      // Inte "Safari": samma text ska stämma i Chrome och på Android, och efter ett nej i rutan (platsen är inte avstängd).
+      if (userAsked) showToast(IS_NATIVE_APP ? 'Platsen är avstängd. Slå på den för Qbar i telefonens inställningar.'
+        : 'Qbar får inte använda din plats. Tillåt den för webbläsaren i telefonens inställningar.');
     }
     function startLocation(userAsked) {
       if (_geoWatch != null) return;
@@ -3047,6 +3101,7 @@ import './style.css';
     }
     // "650 m" under 950 m, annars "1,4 km". Samma format i "Bäst nu" och venue-kortet.
     function formatDistance(km) {
+      if (km < 0.05) return '<100 m'; // avrundat blev det "0 m"
       return km < 0.95 ? Math.round(km * 10) * 100 + ' m' : km.toFixed(1).replace('.', ',') + ' km';
     }
 
@@ -3299,7 +3354,7 @@ import './style.css';
     }
 
     var PUSH_SUB_TEXT = {
-      on: 'På · varje ny rapport från dina favoriter', off: 'Av', denied: 'Avstängda i telefonens inställningar',
+      on: 'På · varje ny rapport från dina favoriter · tryck för att stänga av', off: 'Av · tryck för att slå på', denied: 'Avstängda i telefonens inställningar',
       install: 'Lägg till Qbar på hemskärmen först', unsupported: 'Den här webbläsaren kan inte visa notiser'
     };
     function renderPushUI() {
@@ -3349,12 +3404,16 @@ import './style.css';
       if (!localStorage.getItem('qb_consent')) {
         document.getElementById('consent-modal').style.display = 'flex';
         document.querySelector('#consent-modal .consent-accept').focus({ preventScroll: true });
+      } else if (!localStorage.getItem('qb_tour_done') && !_venueFromUrl) {
+        afterSplash(startTour); // avbruten rundtur (omladdning mitt i) börjar om, i stället för att aldrig komma tillbaka
       }
     }
     function acceptConsent() {
       localStorage.setItem('qb_consent', 'true');
       document.getElementById('consent-modal').style.display = 'none';
-      if (!localStorage.getItem('qb_tour_done')) afterSplash(startTour);
+      // Efter "Radera min data" laddas appen om med samtycket först: bekräftelsen syns när rutan är borta.
+      try { if (sessionStorage.getItem('qb_deleted')) { sessionStorage.removeItem('qb_deleted'); showToast('Din data är raderad.'); } } catch (e) {}
+      if (!localStorage.getItem('qb_tour_done') && !_venueFromUrl) afterSplash(startTour); // en delad länk visar stället först
     }
 
     // ── Rundtur, första gången ───────────────────────────────────────────────
@@ -3411,7 +3470,8 @@ import './style.css';
         var onMap = currentScreen === 'home' && !!map;
         if (!onMap && currentScreen !== 'explore') showScreen('explore');
         _tourAllow = onMap ? '#map' : '#explore-list';
-        tourNote({ n: 2, place: onMap ? 'top' : 'list', title: 'Välj ett ställe.', text: 'Tryck på en bar eller klubb för att se kön.',
+        // På kartan nertill: överst täckte instruktionen Södermalms ställen, som inte gick att trycka på.
+        tourNote({ n: 2, place: onMap ? 'bottom' : 'list', title: 'Välj ett ställe.', text: 'Tryck på en bar eller klubb för att se kön.',
           acts: onMap ? [['Välj i listan i stället', function() { showScreen('explore'); tourGo('venue'); }, 'link']] : [] });
         if (onMap) tourPulse();
       } else if (step === 'opening') {
@@ -3437,7 +3497,7 @@ import './style.css';
           return;
         }
         tourNote({ n: 3, target: document.getElementById('vc-sub'), anchor: vcCard(), title: 'Kolla när det rapporterades.',
-          text: 'Hur många som rapporterat och hur gamla rapporterna är. Äldre än 45 minuter räknas inte.',
+          text: 'Hur många som är överens och hur gammal senaste rapporten är. Äldre än 45 minuter räknas inte.',
           acts: [['Fortsätt', function() { tourGo('report'); }]] });
       } else if (step === 'report') {
         var tab = document.querySelector('.tab--report');
@@ -3446,7 +3506,8 @@ import './style.css';
         tourNote({ n: 4, target: tab.querySelector('.tab-report-disc'), title: 'Står du själv i kön?', text: 'Tryck på Rapportera för att hjälpa andra.' });
       } else if (step === 'practice') {
         _tourAllow = '#rs2 .q-btn';
-        tourNote({ n: 4, place: 'bottom', title: 'Välj hur många som står före dig.', text: 'Det här är en övning. Ingen riktig rapport skickas.' });
+        // Svaren är målet: instruktionen hamnar under dem (tourPlace) och täcker inga knappar.
+        tourNote({ n: 4, target: document.getElementById('rs2'), title: 'Välj hur många som står före.', text: 'En övning: inget skickas.' });
       } else if (step === 'reported') {
         tourNote({ center: true, check: true, title: 'Klart! Nu vet du hur du rapporterar kön.', text: 'Det var en övning, så ingen rapport skickades.',
           acts: [['Slutför övningen', function() { showScreen('home'); tourGo('done'); }]] }); // avslutet visas över kartan
@@ -3476,6 +3537,7 @@ import './style.css';
         (o.check ? '<span class="rs-success-icon rs-success-on tour-check"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="rs-success-ring" cx="32" cy="32" r="24" transform="rotate(-90 32 32)"/><path class="rs-success-check" d="M22 33.5 L29.5 41 L43 25"/></svg></span>' : '') +
         '<span class="tour-title">' + o.title + '</span><span class="tour-text">' + o.text + '</span>' +
         (o.acts || []).map(function(a, i) { return '<button class="' + (a[2] === 'link' ? 'tour-link' : 'consent-accept tour-cta') + '" onclick="tourAct(' + i + ')">' + a[0] + '</button>'; }).join('');
+      note.style.top = note.style.bottom = ''; // förra stegets plats (tourPlace) sträckte annars en placerad ruta över skärmen
       note.hidden = false;
       tourPlace();
       void note.offsetWidth;
@@ -3529,7 +3591,7 @@ import './style.css';
     // Anropas av openVenueCard i steg 2. Ett ställe utan rapport öppnas som vanligt, men övningen väntar på ett med kö.
     function tourVenueTapped(venue) {
       if (computeStatus(venue.id, allReports) === 'unknown') {
-        tourNote({ n: 2, place: currentScreen === 'home' ? 'top' : 'list', title: 'Inga rapporter här än.', text: 'Välj ett ställe med färg, så ser du hur kön visas.' });
+        tourNote({ n: 2, place: currentScreen === 'home' ? 'bottom' : 'list', title: 'Inga rapporter här än.', text: 'Välj ett ställe med färg, så ser du hur kön visas.' });
         return;
       }
       _tourVenue = venue;
@@ -3555,7 +3617,11 @@ import './style.css';
       if (!_touring || !e.target.closest) return;
       var t = e.target;
       if (t.closest('#tour-note, .tour-top')) return;
-      if (_tourAllow && (typeof _tourAllow === 'string' ? t.closest(_tourAllow) : _tourAllow.contains(t))) return;
+      // Kortets knappar (Jag ska dit, Rapportera, Dela …) är riktiga handlingar: inte i övningen. Förut gav "Jag ska dit" på
+      // en rad i listan en riktig "På väg", och "Rapportera" låste fast övningen på Rapportera-skärmen.
+      var blocked = t.closest('#vc-act-primary, .vc-links .vc-link:not(.vc-link--close), #omw-banner');
+      if (!blocked && _tourStep === 'venue' && t.closest('#best-now-card')) return; // "Bäst nu" är också ett ställe att välja
+      if (!blocked && _tourAllow && (typeof _tourAllow === 'string' ? t.closest(_tourAllow) : _tourAllow.contains(t))) return;
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }
@@ -3614,6 +3680,7 @@ import './style.css';
         return;
       }
       localStorage.clear();
+      try { sessionStorage.setItem('qb_deleted', '1'); } catch (e) {} // bekräftelsen visas efter omladdningen
       location.reload();
     }
 
@@ -3731,12 +3798,17 @@ import './style.css';
     function didYouMean(query, venues) {
       var q = _searchNorm(query || '');
       if (q.length < 4) return null;
+      // Två bokstäver i fel ordning ("brens" → "Berns") är ett fel, inte två (optimal string alignment).
       function dist(a, b) {
-        var prev = [], cur;
+        var pp = null, prev = [], cur;
         for (var j = 0; j <= b.length; j++) prev[j] = j;
         for (var i = 1; i <= a.length; i++) {
           cur = [i];
-          for (var k = 1; k <= b.length; k++) cur[k] = Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (a[i - 1] === b[k - 1] ? 0 : 1));
+          for (var k = 1; k <= b.length; k++) {
+            cur[k] = Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (a[i - 1] === b[k - 1] ? 0 : 1));
+            if (pp && k > 1 && a[i - 1] === b[k - 2] && a[i - 2] === b[k - 1]) cur[k] = Math.min(cur[k], pp[k - 2] + 1);
+          }
+          pp = prev;
           prev = cur;
         }
         return prev[b.length];
@@ -3889,7 +3961,7 @@ import './style.css';
       var bastReason = '';
       if (bestData) {
         if (bestData.status === 'none') bastReason = 'Ingen kö';
-        else if (bestData.status === 'short') bastReason = 'Kortast kö';
+        else if (bestData.status === 'short') bastReason = 'Snabbast in'; // gångtid + kö, inte bara kortast kö
       }
       // Bara kömätningar från de senaste 45 min — samma fönster som estimateWait och färskhetsraden.
       var nowMs = Date.now();
@@ -3914,12 +3986,12 @@ import './style.css';
       // Stängt: tonad som en rad utan data, och hjälten krymper — stängda ställen ska inte dra blicken klockan 01:30.
       var stateClass = !hasData ? ' erow--empty' + (closed ? ' erow--closed' : '') : (isAging ? ' erow--stale' : '');
 
-      // Hero number. "Fri" är den korta formen av "Ingen kö" — samma ord som pillen på kartan.
+      // Hero number: samma text som pillen, kortet och Live (venueWaitText).
       var heroText, heroColor;
       if (!hasData) {
         heroText = closed ? 'Stängt' : '–'; heroColor = '#85858A';
       } else {
-        heroText = (est ? est.ahead === 0 : status === 'none') ? 'Fri' : venueWaitText(venue.id);
+        heroText = venueWaitText(venue.id); // samma ord som kortet, kartan och Live ("Ingen kö", inte "Fri")
         // Kort och medel får exakt statusfärg; fri och lång har fasta färger
         var heroColors = { free: '#34E07F', medium: getStatusColor(status), long: '#FF4D5E' };
         heroColor = heroColors[level] || '#85858A';
@@ -3966,8 +4038,10 @@ import './style.css';
             // Utan data: strecket till höger och rubriken "Utan färsk rapport" säger det. "Ingen rapport senaste 45 min"
             // på varje rad blev en vägg av samma mening. Ett historiskt mönster ("Brukar vara …") får stå kvar.
             // Stängt hela kvällen: "Stängt" till höger räcker, "Stängt Stängt" sa samma sak två gånger.
-            (closed ? (closingTonight(venue) ? '<span class="erow-empty-cta">' + closedText(venue) + '</span>' : '') : patHtml) +
-            closingSoonHtml +
+            // Avskiljaren bara mellan två delar: ensam inledde den raden med en lös punkt ("· Stänger 00:00").
+            [closed ? (closingTonight(venue) ? '<span class="erow-empty-cta">' + closedText(venue) + '</span>' : '') : patHtml,
+              closingSoonHtml.replace('<span class="erow-tertiary-sep">·</span>', '')]
+              .filter(Boolean).join('<span class="erow-tertiary-sep">·</span>') +
           '</div>';
 
       // Raden är neutral: statusen står i den färgade siffran till höger. Färgad kant och tonad bakgrund sa samma sak två
@@ -4001,7 +4075,7 @@ import './style.css';
       var best = null;
       VENUES.forEach(function(v) {
         if (!venueTypeMatches(v)) return;
-        var status = computeStatus(v.id, allReports);
+        var status = computeStatus(v.id, allReports); // bara bekräftat (tre överens), inte queueLevel
         if (status !== 'none' && status !== 'short') return;
         var latest = 0;
         allReports.forEach(function(r) {
@@ -4055,21 +4129,20 @@ import './style.css';
 
       // Status-based filter (new chip logic)
       if (_exploreFilter === 'free') {
-        list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'none'; });
+        list = list.filter(function(v) { return queueLevel(v.id) === 'none'; });
       } else if (_exploreFilter === 'short') {
-        list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'short'; });
+        list = list.filter(function(v) { return queueLevel(v.id) === 'short'; });
       } else if (_exploreFilter === 'long') {
-        list = list.filter(function(v) { return computeStatus(v.id, allReports) === 'long'; });
+        list = list.filter(function(v) { return queueLevel(v.id) === 'long'; });
       }
       list = list.filter(venueTypeMatches);
       // 'all' — no additional filter
 
       if (!list.length) {
         var rawQ = document.getElementById('explore-search') ? document.getElementById('explore-search').value : '';
-        var filterLabels = { free: 'ingen kö', short: 'kort kö', long: 'lång kö' };
         var emptyTitle, emptySub;
         if (_exploreFilter !== 'all' && !rawQ) {
-          emptyTitle = 'Inga ställen med ' + (filterLabels[_exploreFilter] || _exploreFilter) + ' just nu';
+          emptyTitle = { free: 'Inga ställen utan kö just nu', short: 'Inga ställen med kort kö just nu', long: 'Inga ställen med lång kö just nu' }[_exploreFilter] || 'Inga träffar just nu';
           emptySub = 'Ingen har rapporterat en sådan kö de senaste 45 minuterna.';
         } else {
           var term = rawQ ? '”' + escapeHtml(rawQ) + '”' : '';
@@ -4098,7 +4171,7 @@ import './style.css';
       //   Query set → relevance score first; within same score bucket: fresh, then shortest queue
       var QUEUE_RANK = { none: 0, short: 1, medium: 2, long: 3, few: 3.5 };
       function queueRank(v) {
-        var r = QUEUE_RANK[computeStatus(v.id, allReports)];
+        var r = QUEUE_RANK[queueLevel(v.id)];
         return r === undefined ? 4 : r;
       }
       var activeQuery = (document.getElementById('explore-search') || {}).value || '';
@@ -4121,6 +4194,7 @@ import './style.css';
         // When searching: relevance score is primary sort key
         if (activeQuery.trim()) {
           if (kb.score !== ka.score) return kb.score - ka.score;
+          if (ka.closed !== kb.closed) return ka.closed ? 1 : -1; // lika bra träff: öppna före stängda
           if (!ka.fresh && kb.fresh) return 1;
           if (ka.fresh && !kb.fresh) return -1;
           return ka.rank - kb.rank;
@@ -4137,9 +4211,9 @@ import './style.css';
         return kb.latest - ka.latest;
       });
 
-      // “Bäst just nu” — pin best venue at top when filter is 'all'
+      // “Bäst just nu” — överst när filtret är 'all' och ingen söker: i en sökning står bara träffarna.
       var bestVenueId = null;
-      if (_exploreFilter === 'all') {
+      if (_exploreFilter === 'all' && !q.trim()) {
         var best = computeBestNow();
         if (best) {
           bestVenueId = best.venue.id;
@@ -4163,10 +4237,14 @@ import './style.css';
       }
       // Rubrik bara när båda grupperna finns och listan inte är filtrerad eller sökt; annars är en rubrik brus.
       var showSections = freshList.length && staleList.length && _exploreFilter === 'all' && !activeQuery.trim();
-      el.innerHTML = showSections
+      // Bara svaga träffar (gata, lösa bokstäver) på en felstavning: fråga efter det närmaste namnet ("brens" → Berns).
+      var weak = activeQuery.trim() && list.length && key[list[0].id].score <= 20 ? didYouMean(activeQuery, VENUES) : null;
+      if (weak && weak.text === list[0].name) weak = null;
+      el.innerHTML = (weak ? '<button class="explore-suggest" onclick="useListSuggestion(this.dataset.q)" data-q="' + escapeHtml(weak.text) + '">Menade du ' + escapeHtml(weak.text) + '?</button>' : '') +
+        (showSections
         ? '<div class="venue-group">' + rowsHtml(freshList) + '</div>' +
           '<div class="list-section">Utan färsk rapport</div><div class="venue-group">' + rowsHtml(staleList) + '</div>'
-        : '<div class="venue-group">' + rowsHtml(list) + '</div>';
+        : '<div class="venue-group">' + rowsHtml(list) + '</div>');
 
       // Intro förbrukas när listan har ritats färdigt, alltså så fort laddningen inte längre pågår. Det gäller även en
       // lista utan data: raderna har då redan visat sig, och den första rapporten fyller en rad som redan står still.
@@ -4178,7 +4256,7 @@ import './style.css';
     function updateFilterCounts() {
       var counts = { all: 0, free: 0, short: 0, long: 0 };
       VENUES.filter(venueTypeMatches).forEach(function(v) {
-        var s = computeStatus(v.id, allReports);
+        var s = queueLevel(v.id);
         counts.all++;
         if (s === 'none') counts.free++;
         if (s === 'short') counts.short++;
@@ -4207,28 +4285,27 @@ import './style.css';
 
     function _liveRowHtml(r, isSub, olderCount) {
       var liveDescriptors = { none: 'Ingen kö', free: 'Ingen kö', short: 'Kort kö', medium: 'Medellång kö', long: 'Lång kö' };
-      var qs = r.queue_status;
-      var descriptor = liveDescriptors[qs];
+      var descriptor = liveDescriptors[r.queue_status];
       if (!descriptor) return '';
-      // Hjälten är det som faktiskt rapporterades — inte appens uppskattning.
-      if (r.people_ahead != null) descriptor = r.people_ahead ? aheadBucket(r.people_ahead).label + ' före' : 'Ingen kö';
-      var color = getStatusColor(qs);
+      // Det den enskilda rapporten sa, i samma ord som listan ("25–50 i kö").
+      if (r.people_ahead != null) descriptor = r.people_ahead ? aheadBucket(r.people_ahead).label + ' i kö' : 'Ingen kö';
       var d = new Date(r.created_at);
       var clock = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      // Tidigare rapporter är historik: neutral färg. Statusfärgen hör till ställets läge nu, som i listan.
       if (isSub) {
         return '<div class="lv-old"><span class="lv-old-time">' + clock + '</span>' +
-          '<span class="lv-old-val" style="color:' + color + '">' + descriptor + '</span></div>';
+          '<span class="lv-old-val">' + descriptor + '</span></div>';
       }
       var venue = getVenueById(r.venue_id);
       var name = venue ? venue.name : escapeHtml(r.venue_name || r.venue_id);
-      var nowWait = venueWaitText(r.venue_id);
       var area = venue ? venue.area + ' · ' + venueTypeLabel(venue.type) : '';
-      // Hjälten är rapporterat antal; "framför" som enhet. Ren text (t.ex. "Kort kö") får ingen enhet.
-      var hasCount = r.people_ahead != null && r.people_ahead > 0;
-      var heroText = hasCount ? aheadBucket(r.people_ahead).label : (r.people_ahead === 0 ? 'Ingen kö' : descriptor);
-      var heroSmall = !hasCount ? ' style="color:' + color + ';font-size:calc(18 * var(--u));letter-spacing:-0.03em"' : ' style="color:' + color + '"';
-      var subParts = [timeAgo(r.created_at)];
-      if (nowWait) subParts.push('nu ' + nowWait);
+      // Hjälten är samma siffra och färg som listan, kartan och kortet (venueWaitText/computeStatus). Förut var den
+      // bara senaste rapporten, färgad efter rapportörens egen telefon, och sa emot listan för samma ställe.
+      var nowWait = venueWaitText(r.venue_id);
+      var heroText = nowWait || descriptor;
+      var color = nowWait ? getStatusColor(computeStatus(r.venue_id, allReports)) : '#85858A';
+      // Senaste rapporten bara när den säger något annat än siffran till höger.
+      var subParts = (descriptor !== heroText ? ['Senast ' + descriptor.charAt(0).toLowerCase() + descriptor.slice(1)] : []).concat(timeAgo(r.created_at));
       var olderBtn = '';
       if (olderCount) {
         var open = _liveExpanded.has(r.venue_id);
@@ -4246,8 +4323,9 @@ import './style.css';
           (area ? '<div class="lv-meta">' + area + '</div>' : '') +
           '<div class="lv-sub">' + subParts.join(' · ') + '</div>' +
         '</div>' +
-        '<div class="lv-right"><span class="lv-hero"' + heroSmall + '>' + heroText + '</span>' +
-          (hasCount ? '<span class="lv-unit">framför</span>' : '') + olderBtn + '</div></div></div>';
+        // Ren text ("Ingen kö", "Går isär") i mindre storlek, som förut: siffrorna är hjältarna.
+        '<div class="lv-right"><span class="lv-hero" style="color:' + color + (/\d/.test(heroText) ? '' : ';font-size:calc(18 * var(--u));letter-spacing:-0.03em') + '">' + waitHtml(heroText) + '</span>' +
+          olderBtn + '</div></div></div>';
     }
 
     // Senaste "Jag är inne" — verklig väntetid från en kö-session, inte en uppskattning.
@@ -4361,6 +4439,10 @@ import './style.css';
       if (wrap && sticky) wrap.addEventListener('scroll', function() { sticky.classList.toggle('scrolled', wrap.scrollTop > 4); });
     })();
     setInterval(function() { if (typeof renderLiveFeed === 'function') renderLiveFeed(); }, 30000);
+    // Listans "N min sedan" åldras som färskhetsraden ovanför. Inte med ett utfällt kort eller medan någon skriver i sökfältet.
+    setInterval(function() {
+      if (currentScreen === 'explore' && !_vcMode && document.activeElement !== document.getElementById('explore-search')) renderExploreVenues();
+    }, 60000);
 
     // ── På väg ────────────────────────────────────────────────────────────────
     // Sparas i telefonen så att den överlever en omladdning. Vid framkomst blir den en fråga
@@ -4395,11 +4477,11 @@ import './style.css';
 
     function goOnMyWay(venueId) {
       var venue = getVenueById(venueId);
-      if (!venue) return;
+      if (!venue || _touring) return; // rundturen är en övning: ingen riktig "På väg"
       // Utan position finns ingen gångtid att räkna med — en gissad siffra skulle visas som data och hamna i andras
       // "N på väg". Vägbeskrivningen har redan öppnats; mer gör vi inte.
       var walkMins = walkMinutesTo(venue);
-      if (walkMins === null) { closeVenueCard(); return; }
+      if (walkMins === null) { closeVenueCard(); showToast('Slå på platsen för att se när du är framme.'); return; }
       if (_onMyWay && _onMyWay.timerId) clearTimeout(_onMyWay.timerId);
       // Den som går till ett annat ställe står inte längre i sin gamla kö.
       if (getQueueSession()) endQueueSession();
@@ -4455,6 +4537,8 @@ import './style.css';
         return;
       }
       var venue = getVenueById(_onMyWay.venueId);
+      // Stället har stängt medan du var på väg: ingen kö att rapportera, och "Framme?" vore fel.
+      if (venue && isClosed(venue)) { showToast(venue.name + ' har stängt.'); cancelOnMyWay(); return; }
       var name = venue ? venue.name : _onMyWay.venueId;
       var minsLeft = Math.round((_onMyWay.arrivalTime - Date.now()) / 60000);
       var arrived = minsLeft <= 0;
@@ -4488,9 +4572,13 @@ import './style.css';
         + '<div class="qs-actions">' + actions + '</div>';
     }
 
+    var _qsUpdateTimer = null;
     function renderQueueSessionBanner(banner, qs) {
       var sinceLast = Date.now() - qs.lastAt;
       var canUpdate = sinceLast >= QS_MIN_GAP && qs.followups < QS_MAX_FOLLOWUPS;
+      // Knappen kommer när den får tryckas, inte vid nästa minutvisa omritning (då stod "3 min sedan" utan knapp efter 4 min).
+      clearTimeout(_qsUpdateTimer);
+      if (!canUpdate && qs.followups < QS_MAX_FOLLOWUPS) _qsUpdateTimer = setTimeout(updateOnMyWayUI, QS_MIN_GAP - sinceLast + 250);
       var inQueue = Math.max(0, Math.round((Date.now() - (qs.startedAt || qs.lastAt)) / 60000)) || 0;
       var ahead = aheadBucket(qs.lastAhead).label + (qs.lastAhead ? ' framför' : '');
       var since = timeAgo(new Date(qs.lastAt).toISOString());
@@ -4599,7 +4687,7 @@ import './style.css';
       // Långt från stället: säg det innan någon rapporterar en kö den inte ser. Rapporten tas emot, men utan "I kön".
       var far = document.getElementById('rs-far');
       if (far) {
-        far.hidden = !isFarFrom(v);
+        far.hidden = _touring || !isFarFrom(v); // övningen har ingen plats att vara långt ifrån
         if (!far.hidden) far.textContent = 'Du är ' + formatDistance(distanceKmTo(v)) + ' från ' + v.name + '. Rapportera bara en kö du ser.';
       }
       rsStep(2);
@@ -4631,25 +4719,35 @@ import './style.css';
       if (_touring) { if (_tourStep === 'practice') tourPicked(peopleAhead); return; } // övningen skickar aldrig
       if (!selectedRV || _reportSending) return;
       _reportSending = true;
+      // Stället hålls här: ett flikbyte medan rapporten skickas nollar selectedRV (showScreen), och felvägen behöver det.
+      var rv = selectedRV;
+      // "0" när du står i kön här är "inne" (submitReport): tacket ska säga det.
+      var inQueueHere = !!getQueueSession() && getQueueSession().venueId === rv.id;
       try {
-        await submitReport(selectedRV.id, selectedRV.name, peopleAhead);
-        maybeShowInstallPrompt();
+        await submitReport(rv.id, rv.name, peopleAhead);
+        document.querySelector('#rs3 .rs-thanks').textContent = peopleAhead === 0 && inQueueHere && !getQueueSession()
+          ? 'Tack, du är markerad som inne.' : 'Tack, kön är uppdaterad.';
         rsStep(3);
         var nextEl = document.querySelector('#rs3 .rs-next');
         // "Står du kvar?" bara när en kö-session faktiskt pågår — inte vid "Ingen kö", inte långt ifrån stället.
         if (nextEl) nextEl.hidden = !getQueueSession();
+        // Påminnelsen finns bara i iOS-appen; på webben är det rutan högst upp som frågar.
+        if (nextEl && !IS_NATIVE_APP) nextEl.textContent = 'Står du kvar? Tryck Uppdatera i rutan högst upp om några minuter, så mäter vi hur snabbt kön rör sig.';
         var dest = (prevScreen && prevScreen !== 'report') ? prevScreen : null;
-        var reportedId = selectedRV.id;
-        selectedRV = null;
+        if (selectedRV === rv) selectedRV = null;
         setTimeout(function() {
+          // Har användaren redan gått vidare (annan flik, nytt ställe) lämnas skärmen ifred.
+          if (currentScreen !== 'report' || selectedRV) return;
           rsStep(1);
           document.getElementById('rs-search').value = '';
           filterReportList();
           if (dest) showScreen(dest);
           // Markeringen sker först när raden syns, annars har den spelats färdigt bakom tacksidan
-          if (dest === 'explore') flashVenueRow(reportedId);
+          if (dest === 'explore') flashVenueRow(rv.id);
+          if (dest === 'home' && map) map.flyTo({ center: [rv.lng, rv.lat], zoom: Math.max(15, map.getZoom()), duration: _reduceMotion ? 0 : 800 });
+          maybeShowInstallPrompt(); // efter tacket, inte över det
         }, 2800);
-      } catch(err) { if (!holdReport(err, selectedRV.id, selectedRV.name, peopleAhead)) showToast(reportErrorText(err)); }
+      } catch(err) { if (!holdReport(err, rv.id, rv.name, peopleAhead)) showToast(reportErrorText(err)); }
       finally { _reportSending = false; }
     }
 
@@ -4713,7 +4811,10 @@ import './style.css';
       // Samma rapport igen: behåll första tiden, annars höll nya tryck en gammal mätning vid liv.
       var at = p && p.venueId === venueId && p.peopleAhead === peopleAhead ? p.at : Date.now();
       try { localStorage.setItem(PENDING_KEY, JSON.stringify({ venueId: venueId, venueName: venueName, peopleAhead: peopleAhead, at: at })); } catch(e) {}
-      showToast('Ingen täckning. Rapporten skickas när du får nät igen.');
+      // Tidsgräns: rapporten kan ha kommit fram fast svaret aldrig kom. Säg inte "ingen täckning" då.
+      showToast(/TimeoutError|AbortError/i.test((err && err.message) || '')
+        ? 'Svaret dröjer. Rapporten skickas igen om den inte kom fram.'
+        : 'Ingen täckning. Rapporten skickas när du får nät igen.');
       return true;
     }
     async function sendPendingReport() {
@@ -4732,7 +4833,11 @@ import './style.css';
         showToast('Din rapport om ' + p.venueName + ' är skickad.');
       } catch(err) {
         // Fortfarande ingen täckning: försök igen vid nästa tillfälle. Annat fel (spärren, stängt): säg det och släpp.
-        if (!isNetworkError(err)) { localStorage.removeItem(PENDING_KEY); showToast(reportErrorText(err)); }
+        // Spärren slog till: den första sändningen (som fick tidsgräns) kom alltså fram.
+        if (/rate_limited/.test((err && err.message) || '') || /^Vänta \d/.test((err && err.userText) || '')) {
+          localStorage.removeItem(PENDING_KEY);
+          showToast('Din rapport om ' + p.venueName + ' har kommit fram.');
+        } else if (!isNetworkError(err)) { localStorage.removeItem(PENDING_KEY); showToast(reportErrorText(err)); }
       } finally { _reportSending = false; }
     }
 
