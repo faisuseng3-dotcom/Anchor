@@ -549,8 +549,9 @@ Kör `node scripts/check.js` före varje commit. Alla kontroller måste passera.
   räknas bara när ingen på plats rapporterat. Låst av `tests/wait.test.js`
 - Kartans sök är en combobox: pil upp/ned väljer träff (`_mapActive`, `aria-activedescendant`), Enter öppnar den
 - `public/sw.js` cachar fortfarande ingenting, men en sidladdning utan nät får en egen sida ("Ingen internetanslutning",
-  Försök igen) i stället för webbläsarens fel (krog.html får en egen mening). Rapporter äldre än 90 dagar raderas varje
-  natt (pg_cron `qbar-gallring`); historiken och krogsidans rutnät läser 8 veckor, så gränsen får aldrig under 8 veckor.
+  Försök igen) i stället för webbläsarens fel (krog.html får en egen mening). Rapporter äldre än 90 dagar flyttas varje
+  natt till `reports_archive` utan `user_id`/`reporter` och raderas (pg_cron `qbar-gallring`); historiken och krogsidans
+  rutnät läser 8 veckor, så gränsen får aldrig under 8 veckor. Långtidsdata för krogarna: `reports` + `reports_archive`.
   Ändras gränsen: ändra `public/integritet.html` också
 - `forecastWait()` visas bara med ≥3 initial-rapporter från ≥2 personer på 30 min över ≥10 min. Trenden är lutningen
   över alla rapporter, med tak ±0,5 personer/min — inte första mot sista rapport
