@@ -7,7 +7,7 @@ Allt i detta dokument är läst ur koden. Avsnitt som inte kunnat verifieras är
 
 ## 1. Vad systemet är
 
-QueueBar är en **mobil webbapp** som visar köstatus och uppskattad väntetid för 293 barer, pubar och
+QueueBar är en **mobil webbapp** som visar köstatus och uppskattad väntetid för 288 barer, pubar och
 nattklubbar i Stockholm. Data kommer från användarnas egna rapporter — det finns ingen
 extern datakälla för kölängder.
 
@@ -120,7 +120,7 @@ delningsbar vy.** `?testdata=true` är den enda URL-parameter som läses.
 ```mermaid
 flowchart TD
     subgraph Klient["Webbläsaren"]
-        VENUES["VENUES<br/>317 objekt hårdkodade, 24 dolda<br/>src/main.js"]
+        VENUES["VENUES<br/>316 objekt hårdkodade, 28 dolda<br/>src/main.js"]
         AR["allReports<br/>global array"]
         LS["localStorage<br/>qb_user_id, qb_queue_session,<br/>qb_on_my_way, qb_testdata,<br/>qb_favorites, qb_consent"]
     end
@@ -185,7 +185,7 @@ radnummer** — en enda commit kan flytta allt nedanför sig. Kör
 | `Mapbox token` | Token sätts | — |
 | `Supabase` | Klienten skapas | nej |
 | `Feltoast` | Felvisning, återanslutning | nej |
-| `Data och hjälpfunktioner` | `VENUES` (317 ställen) + `HIDDEN_VENUES` (24 dolda) | data / ja |
+| `Data och hjälpfunktioner` | `VENUES` (316 ställen) + `HIDDEN_VENUES` (28 dolda) | data / ja |
 | **`Väntetid = kölängd ÷ köns hastighet`** | **Väntetidsmodellen** — `estimateWait`, `sessionRates`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait` | **ja** |
 | *(efter modellen)* | `escapeHtml`, `timeAgo`, toast | delvis |
 | `Dela (Share)` | `shareVenue` | nej |

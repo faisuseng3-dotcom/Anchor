@@ -202,8 +202,10 @@ Samma kölängd (37) ger 10–15 min eller 25–50 min beroende på dörren. Det
 
 ## Minst 3 personer för minuter
 
-`estimateWait` räknar ut minuterna som förut, men sätter också `est.agree`: hur många **olika personer** (`reporter`)
-som rapporterat samma intervall som siffran de senaste 45 min. `est.confirmed` är `agree >= CONFIRM_PEOPLE` (3).
+`estimateWait` räknar ut minuterna som förut, men sätter också `est.agree`: hur många **olika personer** som rapporterat
+samma intervall som siffran de senaste 45 min. En person är ett nät (`net`, servern sätter den per IP och kväll), annars
+`reporter` för rader utan nät: en telefon med påhittade id blir inte tre personer (gäster på samma wifi blir däremot en).
+`est.confirmed` är `agree >= CONFIRM_PEOPLE` (3).
 
 | Läge | Väntetidstext (`venueWaitText`) | Status (`computeStatus`) | Färg |
 |---|---|---|---|

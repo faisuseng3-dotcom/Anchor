@@ -10,9 +10,9 @@ const FIELDS = ['id', 'name', 'address', 'area', 'type', 'lat', 'lng', 'closing'
 
 describe('VENUES — struktur', () => {
   // Vakt mot trunkering: src/main.js har kapats två gånger av AI-redigeringar.
-  // 317 rader (28 handskrivna + 280 från OSM + 15 tillagda för hand − 6 stängda för gott) minus 24 dolda i HIDDEN_VENUES.
-  it('innehåller 293 synliga ställen', () => {
-    expect(VENUES).toHaveLength(293);
+  // 316 rader (28 handskrivna + 280 från OSM + 15 tillagda för hand − 7 stängda för gott) minus 28 dolda i HIDDEN_VENUES.
+  it('innehåller 288 synliga ställen', () => {
+    expect(VENUES).toHaveLength(288);
   });
 
   it('varje dolt id finns som rad och syns inte', () => {
@@ -95,6 +95,14 @@ describe('VENUES — fältvärden', () => {
   it('en okänd dag är aldrig stängd', () => {
     at('2026-10-16T23:00:00+02:00'); // fredag
     expect(isClosed({ closing: [null, null, null, null, null, '01:00', null] })).toBe(false);
+  });
+
+  it('en klubb utan känd stängningstid är stängd dagtid, men inte en bar', () => {
+    at('2026-10-14T14:00:00+02:00'); // onsdag
+    expect(isClosed({ type: 'klubb', closing: null })).toBe(true);
+    expect(isClosed({ type: 'bar', closing: null })).toBe(false);
+    at('2026-10-14T23:00:00+02:00');
+    expect(isClosed({ type: 'klubb', closing: null })).toBe(false);
   });
 
   it('koordinaterna ligger i Stockholms innerstad', () => {

@@ -2,15 +2,16 @@
 
 ## Vad projektet är
 
-Mobil webbapp som visar köstatus och uppskattad väntetid för **293 barer, pubar och nattklubbar** i
+Mobil webbapp som visar köstatus och uppskattad väntetid för **288 barer, pubar och nattklubbar** i
 Stockholm (alla som finns i OpenStreetMap, se `VENUES`). All data kommer från användarnas egna rapporter — det finns ingen extern
 datakälla för kölängder.
 
 Den svåraste uppgiften i projektet är att omvandla enstaka opålitliga människorapporter till en
 siffra som går att lita på klockan 23:00. Allt annat är underordnat det.
 
-**Namnet är Qbar.** Allt användaren ser säger Qbar. Kvar som QueueBar: domänen `queuebar.se` (e-post),
-Vercel-projektet `anchor-queuebar` (och dess gamla adress), `[QueueBar]`-prefixet i konsolloggar och mappen `QueueBar/` (Expo-projektet).
+**Namnet är Qbar.** Allt användaren ser säger Qbar. Kontakt: `qbar.info1@gmail.com` (queuebar.se är inte registrerad).
+Kvar som QueueBar: Vercel-projektet `anchor-queuebar` (och dess gamla adress), `[QueueBar]`-prefixet i konsolloggar och
+mappen `QueueBar/` (Expo-projektet).
 
 **Introt** (`#splash` + inline-skript i `index.html`, blocket "Intro" i `src/style.css`): Q:et visas stort medan
 ringen fylls som en timer (en färg i taget, röd → gul → grön, stannar på 72 % — aldrig flera färger samtidigt, då
@@ -51,7 +52,7 @@ Allt ligger i **en fil**: `src/main.js`. Dela inte upp den utan att fråga förs
 ```
 index.html  →  <script type="module" src="/src/main.js">
                ↓
-VENUES (317 hårdkodade objekt, 293 synliga)  +  allReports (från Supabase)
+VENUES (316 hårdkodade objekt, 288 synliga)  +  allReports (från Supabase)
                ↓
 estimateWait()  →  formatWait()  →  venueWaitText()
                ↓
@@ -75,7 +76,7 @@ blev felaktiga inom ett dygn när en commit tog bort 158 rader. Använd
 | Vad | Funktioner |
 |---|---|
 | **Väntetidsmodellen** | `estimateWait`, `sessionRates`, `measureQueueRates`, `setWaitRange`, `formatWait`, `waitToStatus`, `computeStatus`, `historicalRateFor`, `forecastWait`, `aheadBucket`, `median` — ett sammanhängande block mellan `PACE_RATE` och `getStatusLabel` |
-| Venue-data | `VENUES` — 317 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 15 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården, 13 klubbar 2026-11-20), minus 6 stängda för gott; 24 dolda via `HIDDEN_VENUES`. Nytt ställe: kör `node scripts/venue-names.mjs` (notisernas namn). **Inte i databasen** — ändring = deploy |
+| Venue-data | `VENUES` — 316 objekt: de 28 ursprungliga + alla bar/pub/nightclub i OpenStreetMap (`scripts/fetch-osm-venues.mjs`) + 15 tillagda för hand (John Scott’s Kungsgatan och Kungsträdgården, 13 klubbar 2026-11-20), minus 7 stängda för gott; 28 dolda via `HIDDEN_VENUES`. Nytt ställe: kör `node scripts/venue-names.mjs` (notisernas namn och `supabase/venues.sql`) och kör `venues.sql` mot databasen: `reports_guard` nekar ställen som inte finns i tabellen `venues`. Ändring = deploy + `venues.sql` |
 | Supabase-läsning | `loadReports` — alla icke-utgångna rapporter (≤45 min, tak 1000) |
 | Rapportering | `submitReport`, `submitSessionReport`, `submitQueueFollowup`, `queueSessionEntered` |
 | Historisk dörrtakt | `loadHistoricalRates`, `historicalRateFor`, `nightKey` |
