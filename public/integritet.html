@@ -23,11 +23,16 @@
 <main>
   <a class="back" href="/">← Till Qbar</a>
   <h1>Integritet och villkor</h1>
-  <p class="meta">Gäller från 18 november 2026. Frågor: <a href="mailto:support@queuebar.se">support@queuebar.se</a></p>
+  <p class="meta">Gäller från 23 november 2026. Frågor: <a href="mailto:qbar.info1@gmail.com">qbar.info1@gmail.com</a></p>
+
+  <h2>Vem som ansvarar</h2>
+  <p>Personuppgiftsansvarig för Qbar är Fais Useng, Bandhagen (privatperson). Kontakt:
+  <a href="mailto:qbar.info1@gmail.com">qbar.info1@gmail.com</a>.</p>
 
   <h2>Kort</h2>
-  <p>Qbar har inga konton. Din telefon får ett slumpat id, och det id:t är din nyckel till det du skickat. Din position
-  lämnar aldrig telefonen. Vi säljer ingen data om dig och visar ingen reklam. Ställen med avtal ser sammanställd
+  <p>Qbar har inga konton. Din telefon får ett slumpat id, och det id:t är din nyckel till det du skickat. Din exakta
+  position lämnar aldrig telefonen; med en rapport sparas bara om du var vid stället (ja/nej). Vi säljer ingen data om dig
+  och visar ingen reklam. Ställen med avtal ser sammanställd
   statistik om sin egen kö, aldrig dina rapporter eller ditt id. Allt kan raderas under Profil → Radera min data.</p>
 
   <h2>Det som sparas på servern</h2>
@@ -45,8 +50,11 @@
       beräknad ankomst, eller när du avbryter. Andra ser bara hur många som är på väg, och först från tre personer.</li>
     <li><b>Notiser, om du slår på dem:</b> telefonens notisadress, de nycklar notisen krypteras med och dina favoriter.
       Tas bort när du stänger av notiserna.</li>
-    <li><b>Skydd mot falska rapporter:</b> när du rapporterar en kö sparas en kod gjord av din IP-adress och en hemlig
-      nyckel (inte adressen själv) i en timme, så att samma nät inte kan skicka fler än 50 kömätningar i timmen.</li>
+    <li><b>Skydd mot falska rapporter:</b> när du rapporterar en kö, trycker "Jag ska dit" eller slår på notiser sparas
+      en kod gjord av din IP-adress och en hemlig nyckel (inte adressen själv) i en timme, så att samma nät inte kan göra
+      fler än 50 sådana i timmen. Med varje kö-rapport sparas också en kort nätkod, gjord av samma kod och datumet och
+      utbytt varje natt, så att flera rapporter från samma nät räknas som en person. Andra kan läsa nätkoden, men inte
+      räkna tillbaka den till din IP-adress.</li>
   </ul>
 
   <h2>Det ställen med avtal ser</h2>
@@ -58,31 +66,49 @@
 
   <h2>Det som bara finns på telefonen</h2>
   <p>Ditt id, dina favoriter (utom kopian för notiser), kartläge, en pågående kö, "på väg" och en rapport som väntar på
-  täckning (högst 3 minuter). Din position används för
-  avstånd, gångtid och för att avgöra om du är vid stället; den skickas aldrig.</p>
+  täckning (högst 3 minuter). Din exakta position används för avstånd, gångtid och för att avgöra om du är vid stället.
+  Själva positionen skickas aldrig; till servern går bara om du var vid stället (ja/nej) och, med "Jag ska dit", beräknad
+  ankomsttid.</p>
+
+  <h2>Varför vi får spara det (rättslig grund)</h2>
+  <ul>
+    <li>Rapporter, "Jag ska dit" och skyddet mot falska rapporter: berättigat intresse (GDPR art. 6.1 f), att kunna visa
+      köer som stämmer och hålla dem fria från fusk.</li>
+    <li>Notiser: ditt samtycke (art. 6.1 a). Du drar tillbaka det genom att stänga av notiserna.</li>
+  </ul>
+
+  <h2>Hur länge</h2>
+  <ul>
+    <li>Kö-rapporter: 90 dagar, eller tills du raderar dem.</li>
+    <li>"Jag ska dit": till 15 minuter efter beräknad ankomst.</li>
+    <li>Notisadress och favoriter för notiser: tills du stänger av notiserna eller raderar din data.</li>
+    <li>Koden av din IP-adress (skydd mot falska rapporter): en timme.</li>
+  </ul>
 
   <h2>Tjänster vi använder</h2>
   <ul>
     <li><b>Supabase</b> (databas, Stockholm): allt som står under "på servern".</li>
     <li><b>Vercel</b> (driften av appen): ser din IP-adress när sidan hämtas.</li>
-    <li><b>Mapbox</b> (kartan): ser din IP-adress och vilket kartområde som hämtas.</li>
-    <li><b>Fontshare och Google Fonts</b> (typsnitt): ser din IP-adress.</li>
+    <li><b>Mapbox</b> (kartan): ser din IP-adress och vilket kartområde som hämtas, och tar emot anonym statistik om
+      kartans användning (events.mapbox.com).</li>
+    <li><b>Fontshare</b> (typsnitt): ser din IP-adress.</li>
     <li><b>Google Maps</b>, bara när du trycker på Vägbeskrivning eller Jag ska dit: får ställets namn och adress som mål.</li>
     <li><b>Apple eller Google</b>, bara med notiser på: levererar notisen till telefonen.</li>
   </ul>
 
   <h2>Dina rättigheter</h2>
   <p>Radera min data under Profil tar bort dina rapporter, notiser och "på väg" från servern och allt Qbar sparat på
-  telefonen. Vill du veta vad som finns om dig, eller har frågor, skriv till
-  <a href="mailto:support@queuebar.se">support@queuebar.se</a>. Du kan också klaga hos Integritetsskyddsmyndigheten (IMY).</p>
+  telefonen. Du har också rätt att få veta vad som finns om dig, få fel rättat, invända mot behandlingen, begränsa den och
+  få ut dina uppgifter. Skriv till
+  <a href="mailto:qbar.info1@gmail.com">qbar.info1@gmail.com</a>. Du kan också klaga hos Integritetsskyddsmyndigheten (IMY).</p>
 
   <h2>Villkor</h2>
   <ul>
     <li>Köerna i Qbar kommer från andra besökares rapporter. Väntetiderna är uppskattningar, och vi kan inte lova att de
-      stämmer. Öppettider kommer från OpenStreetMap och kan vara fel.</li>
+      stämmer. Öppettider kommer från OpenStreetMap och ställenas egna sidor och kan vara fel.</li>
     <li>Rapportera bara den kö du faktiskt ser. Rapporter som uppenbart är falska kan tas bort.</li>
-    <li>Qbar är för dig som fyllt 18 år. Ställen utan avtal har ingen koppling till Qbar, och inget ställe kan påverka
-      väntetiden.</li>
+    <li>Qbar är för dig som fyllt 18 år. Ställen utan avtal har ingen koppling till Qbar, och ställen med avtal kan inte
+      påverka väntetiden.</li>
     <li>Qbar är gratis och tillhandahålls som det är. Vi ansvarar inte för väntetid, insläpp eller annat som händer vid
       dörren.</li>
   </ul>

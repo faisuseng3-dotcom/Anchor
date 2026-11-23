@@ -161,7 +161,7 @@ describe('venueSearch — svarar inte säkert på nonsens', () => {
 
   it('Stureplan är en plats: sökningen hittar klubbarna runt torget, och kartans sök erbjuder platsen', () => {
     const r = names('stureplan');
-    for (const id of ['sturehof', 'drama', 'sturecompagniet', 'hells-kitchen', 'spy-bar']) expect(r).toContain(id);
+    for (const id of ['sturehof', 'sturecompagniet', 'hells-kitchen', 'spy-bar']) expect(r).toContain(id);
     expect(r).not.toContain('berns');
     expect(areaHits('sture', VENUES).map((h) => h.area)).toContain('Stureplan');
   });
@@ -169,7 +169,7 @@ describe('venueSearch — svarar inte säkert på nonsens', () => {
 
 describe('venueSearch — vanliga sökningar som förut gav noll', () => {
   it('namn plus typ eller område', () => {
-    expect(names('berns bar')).toEqual(['berns']);
+    expect(names('berns klubb')).toEqual(['berns']);
     expect(names('tjoget hornstull')).toEqual(['tjoget']);
   });
 

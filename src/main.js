@@ -54,6 +54,9 @@ import './style.css';
     // fromHistory: anropet kommer från bakåtknappen (popstate) och ska inte lägga ett nytt steg i historiken.
     function showScreen(name, fromHistory) {
       if (name !== currentScreen && _vcMode) vcHideNow(); // kortet hör till skärmen det öppnades på
+      // Hemskärmskortet ligger fast över menyn och täckte sista raden på Profil ("Radera min data"). Det hör till
+      // skärmen där rapporten skickades; döljs utan att räknas som stängt, så det kan visas efter nästa rapport.
+      if (name !== currentScreen) { var ipCard = document.getElementById('install-prompt'); if (ipCard) ipCard.style.display = 'none'; }
       // Varje skärmbyte blir ett steg i webbläsarens historik: bakåt går till förra skärmen i stället för ut ur appen.
       if (!fromHistory && name !== currentScreen) history.pushState({ screen: name }, '');
       prevScreen = currentScreen;
@@ -64,6 +67,7 @@ import './style.css';
       });
       document.querySelectorAll('.tab').forEach(function(el) {
         el.classList.toggle('active', el.dataset.screen === name);
+        if (el.dataset.screen === name) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
       });
       if (name === 'home') setTimeout(function() { if (map) map.resize(); }, 50);
       if (name === 'profile') { loadUserHistory(); renderPushUI(); }
@@ -149,14 +153,15 @@ import './style.css';
       { id: 'sturehof', name: 'Sturehof', address: 'Stureplan 2', area: 'Östermalm', type: 'bar', lat: 59.3361, lng: 18.0733, closing: '02:00', pace: 'fast' },
       { id: 'pelikan', name: 'Pelikan', address: 'Blekingegatan 40', area: 'Södermalm', type: 'bar', lat: 59.31057, lng: 18.076172, closing: '01:00', pace: 'fast' },
       { id: 'morfar-ginko', name: 'Morfar Ginko', address: 'Swedenborgsgatan 13', area: 'Södermalm', type: 'bar', lat: 59.315791, lng: 18.064245, closing: ['01:00', '01:00', '01:00', '01:00', '01:00', '01:00', false], pace: 'fast' },
-      { id: 'spy-bar', name: 'Spy Bar', address: 'Birger Jarlsgatan 20', area: 'Östermalm', type: 'bar', lat: 59.336555, lng: 18.072138, closing: [false, false, '05:00', '05:00', '05:00', '05:00', false], pace: 'slow' },
+      { id: 'spy-bar', name: 'Spy Bar', address: 'Birger Jarlsgatan 20', area: 'Östermalm', type: 'klubb', lat: 59.336555, lng: 18.072138, closing: [false, false, false, '05:00', '05:00', '05:00', false], pace: 'slow' },
       { id: 'fasching', name: 'Fasching', address: 'Kungsgatan 63', area: 'Norrmalm', type: 'bar', lat: 59.333399, lng: 18.055761, closing: '03:00', pace: 'fast' },
-      { id: 'berns', name: 'Berns', address: 'Berzelii Park', area: 'Norrmalm', type: 'bar', lat: 59.3322, lng: 18.0739, closing: '03:00', pace: 'slow' },
+      { id: 'berns', name: 'Berns', address: 'Berzelii Park', area: 'Norrmalm', type: 'klubb', lat: 59.3322, lng: 18.0739, closing: [false, false, false, false, '04:00', '04:00', false], pace: 'slow' },
       { id: 'lounge-bar', name: 'The Lounge Bar', address: 'Sveavägen 45', area: 'Norrmalm', type: 'bar', lat: 59.339235, lng: 18.059438, closing: '01:00', pace: 'fast' },
       { id: 'niva22', name: 'Nivå 22', address: 'Fridhemsgatan 17', area: 'Kungsholmen', type: 'bar', lat: 59.332417, lng: 18.028535, closing: '01:00', pace: 'fast' },
       { id: 'cafe-opera', name: 'Café Opera', address: 'Gustav Adolfs torg 2', area: 'Kungsträdgården', type: 'klubb', lat: 59.3307, lng: 18.0715, closing: '05:00', pace: 'slow' },
-      { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3088, lng: 18.0812, closing: '05:00', pace: 'fast' },
-      { id: 'under-bron', name: 'Under Bron', address: 'Skansbron 4', area: 'Södermalm', type: 'klubb', lat: 59.3082, lng: 18.0798, closing: '05:00', pace: 'fast' },
+      { id: 'tradgarden', name: 'Trädgården', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3044996, lng: 18.0787038, closing: '05:00', pace: 'fast' },
+      // Samma entré som Trädgården (underbron.com); avrundad så att nålarna inte delar exakt punkt när båda syns.
+      { id: 'under-bron', name: 'Under Bron', address: 'Hammarby Slussväg 2', area: 'Södermalm', type: 'klubb', lat: 59.3045, lng: 18.0787, closing: [false, false, false, false, '05:00', '05:00', false], pace: 'fast' },
       // Klubbar tillagda för hand (ägaren 2026-11-20). Koordinaterna är adressens läge i OpenStreetMap (Nominatim), inte
       // listans avrundade, som låg upp till 500 m fel; stängningstid okänd (null) tills den är kontrollerad.
       { id: 'umganget', name: 'Umgänget', address: 'Birger Jarlsgatan 23', area: 'Östermalm', type: 'klubb', lat: 59.336635, lng: 18.071256, closing: null, pace: 'normal' },
@@ -173,18 +178,17 @@ import './style.css';
       { id: 'casa', name: 'CASA', address: 'Mäster Samuelsgatan 17', area: 'Norrmalm', type: 'klubb', lat: 59.334074, lng: 18.070122, closing: null, pace: 'normal' },
       { id: 'mister-french', name: 'Mister French', address: 'Skeppsbron 23', area: 'Gamla Stan', type: 'klubb', lat: 59.325917, lng: 18.075338, closing: null, pace: 'normal' },
       { id: 'sturecompagniet', name: 'Sturecompagniet', address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.3365, lng: 18.0735, closing: [false, false, false, '03:00', '03:00', '03:00', false], pace: 'slow' },
-      { id: 'kristall', name: 'Kristall', address: 'Regeringsgatan 12', area: 'Norrmalm', type: 'klubb', lat: 59.330681, lng: 18.068596, closing: '03:00', pace: 'normal' },
+      { id: 'kristall', name: 'Kristall', address: 'Kungsgatan 56', area: 'Norrmalm', type: 'klubb', lat: 59.3346308, lng: 18.0595252, closing: [false, false, false, false, '05:00', '05:00', false], pace: 'normal' },
       { id: 'golden-hits', name: 'Golden Hits', address: 'Kungsgatan 26', area: 'Norrmalm', type: 'klubb', lat: 59.335798, lng: 18.066863, closing: [false, false, '01:00', '02:00', '03:00', '03:00', false], pace: 'normal' },
-      { id: 'neu', name: 'Neu', address: 'Östgötagatan 8', area: 'Södermalm', type: 'klubb', lat: 59.3115, lng: 18.0780, closing: '05:00', pace: 'normal' },
+      { id: 'neu', name: 'Neu', address: 'Berzelii Park', area: 'Norrmalm', type: 'klubb', lat: 59.3321598, lng: 18.0737828, closing: [false, false, false, false, '05:00', '05:00', false], pace: 'normal' },
       { id: 'end-nightclub', name: 'END Nightclub', address: 'Gustav Adolfs torg 2', area: 'Norrmalm', type: 'klubb', lat: 59.329523, lng: 18.069534, closing: '05:00', pace: 'normal' },
       { id: 'nalen', name: 'Nalen', address: 'Regeringsgatan 74', area: 'Norrmalm', type: 'klubb', lat: 59.337163, lng: 18.067552, closing: '03:00', pace: 'normal' },
       { id: 'mosebacke', name: 'Mosebacke Etablissement', address: 'Mosebacke Torg 3', area: 'Södermalm', type: 'klubb', lat: 59.3184, lng: 18.0743, closing: '03:00', pace: 'normal' },
       { id: 'patricia', name: 'Patricia', address: 'Söder Mälarstrand', area: 'Södermalm', type: 'klubb', lat: 59.321397, lng: 18.052765, closing: [false, false, '00:00', '00:00', '05:00', '05:00', '05:00'], pace: 'normal' },
-      { id: 'solidaritet', name: 'Solidaritet', address: 'Långholmsgatan 3', area: 'Södermalm', type: 'klubb', lat: 59.318265, lng: 18.032598, closing: '05:00', pace: 'normal' },
       { id: 'pharmarium', name: 'Pharmarium', address: 'Stortorget 7', area: 'Gamla Stan', type: 'bar', lat: 59.3252, lng: 18.0716, closing: '01:00', pace: 'fast' },
       { id: 'tak', name: 'TAK Stockholm', address: 'Brunkebergstorg 2', area: 'Norrmalm', type: 'bar', lat: 59.330711, lng: 18.067169, closing: '02:00', pace: 'fast' },
       { id: 'drama', name: 'Drama', address: 'Stureplan 4', area: 'Östermalm', type: 'klubb', lat: 59.3363, lng: 18.0731, closing: '05:00', pace: 'slow' },
-      { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: '05:00', pace: 'normal' },
+      { id: 'hells-kitchen', name: "Hell's Kitchen", address: 'Sturegatan 4', area: 'Östermalm', type: 'klubb', lat: 59.336484, lng: 18.073468, closing: [false, false, '05:00', false, '05:00', '05:00', false], pace: 'normal' },
       { id: '20hundra5', name: '20hundra5', address: 'Sankt Eriksgatan 104', area: 'Vasastan', type: 'bar', lat: 59.344145, lng: 18.039707, closing: '00:00', pace: 'fast' },
       { id: '360', name: '360°', address: 'Tegelbacken 6', area: 'Norrmalm', type: 'bar', lat: 59.32881, lng: 18.061346, closing: null, pace: 'fast' },
       { id: 'afterglow', name: 'Afterglow', address: 'Erstagatan 17', area: 'Södermalm', type: 'bar', lat: 59.314304, lng: 18.090381, closing: [false, '00:00', '00:00', '00:00', '00:00', '00:00', null], pace: 'fast' },
@@ -490,7 +494,11 @@ import './style.css';
       'moderna-bar': 'Ingen öppen bar: hyrs bara ut för privata evenemang (modernamuseet.se, 2026-11-16)',
       'kallaren-peder-muur': 'Ingen öppen bar: festlokal för privat uthyrning (pedermuur.com, 2026-11-16)',
       'printz-olhall': 'Troligen stängt: Printz på Arenavägen 69 står som stängt på Thatsup (2026-11-16)',
-      'staybar': 'Troligen stängt: inga evenemang sedan 2017 (ra.co, 2026-11-16)'
+      'staybar': 'Troligen stängt: inga evenemang sedan 2017 (ra.co, 2026-11-16)',
+      'cafe-opera': 'Stänger vid nyår 2026/27 till 2032: Operahuset renoveras (koket.se, metromode.se, 2026-11-22)',
+      'end-nightclub': 'Stänger vid nyår 2026/27 till 2032: Operahuset renoveras (koket.se, 2026-11-22)',
+      'tradgarden': 'Sommarklubb, säsongstängd; vintertid är det Under Bron (thatsup.se, nightli.se, 2026-11-22)',
+      'drama': 'Oklart: ingen aktuell källa hittades (2026-11-22)'
     };
     for (var _hv = VENUES.length - 1; _hv >= 0; _hv--) if (HIDDEN_VENUES[VENUES[_hv].id]) VENUES.splice(_hv, 1);
     // Uppslag per id: getVenueById körs tusentals gånger per omritning, VENUES.find gick igenom ~300 ställen varje gång.
@@ -618,8 +626,10 @@ import './style.css';
       var rate = n ? (n * measuredRate + 2 * prior) / (n + 2) : prior;
 
       var est = { ahead: ahead, rate: rate, source: n ? 'live' : hist ? 'history' : 'estimate', full: false, mins: 0, low: 0, high: 0 };
+      // Per nät (net, servern sätter den), annars per telefon: en telefon med påhittade id ska inte ensam bli "3 överens".
+      // Samma räkning som qbar_estimate (supabase/migrations/20261122000000_report_hardening.sql).
       var same = {};
-      counted.forEach(function(r) { if (aheadBucket(r.people_ahead) === aheadBucket(ahead)) same[r.reporter || r.id] = true; });
+      counted.forEach(function(r) { if (aheadBucket(r.people_ahead) === aheadBucket(ahead)) same[r.net || r.reporter || r.id] = true; });
       est.agree = Object.keys(same).length;
       est.confirmed = est.agree >= CONFIRM_PEOPLE;
       if (ahead === 0) return est;
@@ -657,7 +667,7 @@ import './style.css';
       });
       if (recent.length < 3) return null;
       var people = {};
-      recent.forEach(function(r) { people[r.reporter] = true; });
+      recent.forEach(function(r) { people[r.net || r.reporter] = true; });
       if (Object.keys(people).length < 2) return null;
       var ts = recent.map(function(r) { return (new Date(r.created_at).getTime() - now) / 60000; });
       var ys = recent.map(function(r) { return r.people_ahead; });
@@ -904,7 +914,7 @@ import './style.css';
       if (!venue || venue.type !== 'klubb') return false;
       var c = closingTonight(venue), h = c ? parseInt(c, 10) : NaN;
       var now = clockMinutes();
-      return h < 6 && now >= 6 * 60 && now < 20 * 60;
+      return (c === null || h < 6) && now >= 6 * 60 && now < 20 * 60; // utan känd stängningstid: anta nattklubb
     }
 
     // Minuter kvar till stängning, eller null om tiden saknas. En enda beräkning som både listan och kortet använder,
@@ -1290,7 +1300,7 @@ import './style.css';
       document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports);
       document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type) + (km !== null ? ' · ' + formatDistance(km) : '');
       var favBtn = document.getElementById('vc-fav');
-      if (favBtn) favBtn.classList.toggle('fav', isFavorite(venue.id));
+      if (favBtn) { favBtn.classList.toggle('fav', isFavorite(venue.id)); favBtn.setAttribute('aria-pressed', isFavorite(venue.id) ? 'true' : 'false'); }
     }
 
     // Kortets knappar — activeVenue är modul-lokal, så inline-onclick går via dessa
@@ -1300,6 +1310,7 @@ import './style.css';
       if (!activeVenue) return;
       toggleFavorite(event, activeVenue.id);
       event.currentTarget.classList.toggle('fav', isFavorite(activeVenue.id));
+      event.currentTarget.setAttribute('aria-pressed', isFavorite(activeVenue.id) ? 'true' : 'false');
     }
 
     // Stänger: kapseln krymper tillbaka in i pillen (eller tonar ut om stället inte syns), raden fälls ihop.
@@ -2304,8 +2315,9 @@ import './style.css';
     function timed(query) {
       return typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? query.abortSignal(AbortSignal.timeout(15000)) : query;
     }
-    // De kolumner andra får läsa. user_id får inte läsas (det är nyckeln till din data); reporter är sha256 av det.
-    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, near_venue, created_at, expires_at, reporter';
+    // De kolumner andra får läsa. user_id får inte läsas (det är nyckeln till din data); reporter är sha256 av det och net
+    // en hash av nätet (kräver 20261122000000_report_hardening.sql i databasen, annars nekas läsningen).
+    var REPORT_COLUMNS = 'id, venue_id, venue_name, queue_status, people_ahead, report_type, queue_session, near_venue, created_at, expires_at, reporter, net';
     // Svaret ger reporter, som känner igen dina egna rapporter (spärren, historiken). Ett avbrutet svar kan ändå ha
     // sparats: läs om, så att spärren mot dubbletter ser det innan nästa tryck.
     async function insertReport(row) {
@@ -2724,10 +2736,10 @@ import './style.css';
         r('spy-bar', 4, 37),
         // under-bron — snabb dörr, uppmätt: 25–50 → 1–10 på 10 min
         r('under-bron', 14, 37, { session: 'ts-ub' }), r('under-bron', 4, 5, { session: 'ts-ub', type: 'followup' }), r('under-bron', 8, 17),
-        // drama — fullt: två sessioner står kvar nära dörren (1–10) i ~20 min
-        r('drama', 20, 5, { session: 'ts-dr1' }), r('drama', 2, 5, { session: 'ts-dr1', type: 'followup' }),
-        r('drama', 22, 5, { session: 'ts-dr2' }), r('drama', 1, 5, { session: 'ts-dr2', type: 'followup' }),
-        r('drama', 6, 37),
+        // hells-kitchen — fullt: två sessioner står kvar nära dörren (1–10) i ~20 min
+        r('hells-kitchen', 20, 5, { session: 'ts-dr1' }), r('hells-kitchen', 2, 5, { session: 'ts-dr1', type: 'followup' }),
+        r('hells-kitchen', 22, 5, { session: 'ts-dr2' }), r('hells-kitchen', 1, 5, { session: 'ts-dr2', type: 'followup' }),
+        r('hells-kitchen', 6, 37),
         // uppskattning från dörrtakt (inga sessioner). Kristall, Berns, Soap Bar, Tjoget och Morfar Ginko har tre personer
         // i samma intervall och visar minuter; övriga har färre och visar vad som rapporterats (CONFIRM_PEOPLE).
         r('kristall', 35, 37), r('kristall', 10, 60), r('kristall', 6, 60), r('kristall', 2, 60),
@@ -2743,7 +2755,7 @@ import './style.css';
         // ingen kö
         r('tjoget', 25, 0), r('tjoget', 14, 0), r('tjoget', 8, 0),
         r('morfar-ginko', 30, 0), r('morfar-ginko', 20, 0), r('morfar-ginko', 10, 0),
-        r('solidaritet', 30, 0), r('solidaritet', 10, 0),
+        r('patricia', 30, 0), r('patricia', 10, 0),
         // gammal data (25 min) — visas som "kan vara gammal"
         r('nalen', 40, 5), r('nalen', 25, 0)
       ];
@@ -3033,7 +3045,8 @@ import './style.css';
     // redan sagt ja startar den direkt; då visas ingen fråga. Nekad plats sägs vid trycket i stället för att tyst ge
     // en karta utan avstånd.
     var _geoWatch = null, _flyToMe = false;
-    var GEO_OPTS = { timeout: 20000, maximumAge: 60000 };
+    // Utan enableHighAccuracy ger Capacitor på iOS bara ~3 km noggrannhet: isAtVenue (150 m) blir fel.
+    var GEO_OPTS = { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 };
     function stopLocation(userAsked) {
       if (_geoWatch == null) return;
       if (!IS_NATIVE_APP) navigator.geolocation.clearWatch(_geoWatch);
@@ -3297,6 +3310,7 @@ import './style.css';
 
     // 'on' | 'off' | 'denied' | 'install' | 'unsupported'
     function pushState() {
+      if (IS_NATIVE_APP) return 'unsupported'; // App Store-skalet: ingen hemskärm, ingen webbpush
       if (!('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window)) {
         // iPhone tar bara emot notiser när Qbar ligger på hemskärmen; i Safari saknas PushManager helt.
         return navigator.standalone === false ? 'install' : 'unsupported';
@@ -3682,7 +3696,8 @@ import './style.css';
     // delete_my_data raderar dina rapporter och notiser på servern, med ditt id som nyckel (bara du känner till det).
     // localStorage (och därmed qb_user_id) rensas bara när servern svarat utan fel — annars kan du aldrig försöka igen.
     async function deleteAllUserData() {
-      if (!supabase) { localStorage.clear(); location.reload(); return; }
+      // Utan klient kan servern ha data kvar: rensa inte id:t, det är enda nyckeln till den.
+      if (!supabase) { showToast('Ingen kontakt med servern. Inget raderades.'); return; }
       try {
         var res = await timed(supabase.rpc('delete_my_data', { p_user_id: getUserId() }));
         if (res.error) throw res.error;
@@ -3691,6 +3706,7 @@ import './style.css';
         showToast('Kunde inte radera all data. Försök igen.');
         return;
       }
+      scheduleQueueReminder(null); // avboka påminnelsen om kön, annars kommer den efter raderingen
       localStorage.clear();
       try { sessionStorage.setItem('qb_deleted', '1'); } catch (e) {} // bekräftelsen visas efter omladdningen
       location.reload();
@@ -3724,7 +3740,7 @@ import './style.css';
       return s.replace(/[’‘`´']/g, '').replace(/[-–.&\/:!?,"()]/g, ' ').replace(/\s+/g, ' ').trim();
     }
     function _searchCompact(s, keepSwedish) { return _searchNorm(s, keepSwedish).replace(/\s/g, ''); }
-    // Typord man skriver i en sökning: "nattklubb" ska hitta klubbarna, "berns bar" ska hitta Berns.
+    // Typord man skriver i en sökning: "nattklubb" ska hitta klubbarna, "berns klubb" ska hitta Berns.
     var TYPE_WORDS = { bar: ['bar', 'barer'], klubb: ['klubb', 'klubbar', 'nattklubb', 'nattklubbar', 'club'] };
     // Platser folk söker på som inte är stadsdelar. Ställena inom radien hör dit i sökningen och kartans områdessök:
     // "Stureplan" hittade förut bara Sturehof och Drama (via adressen), inte Sturecompagniet eller Spy Bar.
@@ -3758,7 +3774,7 @@ import './style.css';
       if (ql >= 3 && namec.includes(qc))    return 60;
       if (ql >= 2 && name.includes(q))      return 50;
 
-      // Flera ord: varje ord ska hitta något — namn, område, gata eller typ ("berns bar", "tjoget hornstull").
+      // Flera ord: varje ord ska hitta något — namn, område, gata eller typ ("berns klubb", "tjoget hornstull").
       var qw = q.split(' ').filter(Boolean);
       if (qw.length > 1) {
         var hay = words.concat(area.split(' '), addr.split(' '), TYPE_WORDS[v.type] || []);
@@ -3866,6 +3882,7 @@ import './style.css';
       _exploreFilter = f;
       document.querySelectorAll('.fbtn[data-filter]').forEach(function(b) {
         b.classList.toggle('active', b.dataset.filter === f);
+        b.setAttribute('aria-pressed', b.dataset.filter === f ? 'true' : 'false');
       });
       renderExploreVenues();
     }
@@ -4739,7 +4756,7 @@ import './style.css';
       try {
         await submitReport(rv.id, rv.name, peopleAhead);
         document.querySelector('#rs3 .rs-thanks').textContent = peopleAhead === 0 && inQueueHere && !getQueueSession()
-          ? 'Tack, du är markerad som inne.' : 'Tack, kön är uppdaterad.';
+          ? 'Tack, du är markerad som inne.' : 'Tack, din rapport är skickad.';
         rsStep(3);
         var nextEl = document.querySelector('#rs3 .rs-next');
         // "Står du kvar?" bara när en kö-session faktiskt pågår — inte vid "Ingen kö", inte långt ifrån stället.

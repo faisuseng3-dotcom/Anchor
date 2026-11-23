@@ -26,29 +26,33 @@ Version 1.0, bygge 1. Laddas ett nytt bygge upp för samma version måste byggnu
 **Underrubrik** (högst 30): `Se kön innan du går dit`
 
 **Kampanjtext** (högst 170):
-Hur lång är kön just nu? Qbar visar väntetiden på 277 barer och klubbar i Stockholm, rapporterad av folk som står där. Hitta kortast kö på några sekunder.
+Hur lång är kön? Qbar visar vad andra besökare rapporterat de senaste 45 minuterna på över 280 barer, pubar och klubbar i Stockholm. Gratis, utan konto.
 
 **Beskrivning:**
 ```
-Qbar visar hur lång kön är på barer, pubar och nattklubbar i Stockholm, just nu.
+Qbar visar hur lång kön är på barer, pubar och nattklubbar i Stockholm, enligt rapporter från folk som står i dem.
 
-Köerna rapporteras av folk som står i dem. Två tryck räcker: välj stället och hur många som står framför dig. Qbar räknar om det till en väntetid och visar den för alla.
+Två tryck räcker: välj stället och hur många som står framför dig. När tre personer rapporterat samma kö räknar Qbar om det till en uppskattad väntetid. Innan dess ser du vad som rapporterats.
 
-• Karta och lista över 277 ställen, från Stureplan till Södermalm
-• Väntetid i minuter när tre personer rapporterat samma kö; innan dess ser du vad de rapporterat, i vitt
-• "Bäst nu": stället där du kommer in snabbast, räknat med promenaden dit
-• Live: de senaste rapporterna från hela stan
-• Gammal data ser gammal ut, och saknas data säger appen det
-• Stängda ställen visas som stängda
+• Karta och lista över fler än 280 ställen i Stockholm
+• Rapporter från de senaste 45 minuterna, med hur gamla de är
+• Uppskattad väntetid när tre personer är överens
+• "Bäst nu": där du troligen kommer in snabbast, räknat med promenaden dit
+• Live: de senaste rapporterna i stan
+• Stängningstider där de är kända
 • Vägbeskrivning till fots
 
-Inga konton, ingen reklam. Din position lämnar aldrig telefonen. Allt du skickat kan raderas under Profil.
+Bra att veta: köerna är uppskattningar från andra besökare och kan vara fel. Qbar lovar inte insläpp eller väntetid; vakten bestämmer alltid. Öppettider kommer från OpenStreetMap och ställenas egna sidor. Kvällar med få rapporter säger appen det.
+
+Inga konton, ingen reklam. Din exakta position lämnar aldrig telefonen; med en rapport sparas bara om du var vid stället. Allt du skickat kan raderas under Profil.
+
+Qbar är för dig som fyllt 18 år.
 ```
 
 **Nyckelord** (högst 100, inga mellanslag):
-`kö,krog,bar,nattklubb,klubb,utgång,nattliv,uteliv,stureplan,södermalm,väntetid,insläpp,vakt,fest`
+`kö,krog,bar,nattklubb,klubb,utgång,nattliv,uteliv,stureplan,södermalm,väntetid,insläpp,fest,pub`
 
-**Support-URL:** `https://qbar-app.vercel.app/integritet.html` (har kontaktadressen support@queuebar.se)
+**Support-URL:** `https://qbar-app.vercel.app/integritet.html` (har kontaktadressen qbar.info1@gmail.com)
 
 **Marknadsförings-URL:** `https://qbar-app.vercel.app`
 
@@ -56,43 +60,43 @@ Inga konton, ingen reklam. Din position lämnar aldrig telefonen. Allt du skicka
 
 **Kategori:** Mat och dryck (primär), Navigering (sekundär)
 
-**Copyright:** `2026 Qbar`
+**Copyright:** `2026 Fais Useng`
 
 ## Skärmbilder
 
 `store/screenshots/` innehåller fem bilder i 1320×2868 (6,9 tum, det format App Store kräver; mindre storlekar skalas
-från dem): karta, lista, utfällt ställe, Live, Rapportera. Tagna ur appen med dess testdata en fredag kl. 23, utan
-testlägets etikett (Playwright mot `vite preview`, 440×956 punkter, skala 3). Ta om dem när utseendet ändras.
+från dem): karta, lista, utfällt ställe, Live, Rapportera. Tagna ur appen med dess testdata (`?testdata=true`, kl. 23),
+med testlägets etikett omskriven till "Exempeldata": köerna är påhittade men ställena riktiga, och det ska synas på
+varje bild (Playwright mot `vite`, 440×956 punkter, skala 3). Ta om dem när utseendet ändras.
 
 ## Åldersgräns
 
 Svara i frågeformuläret:
-- Alkohol, tobak eller droger, referenser: **Sällan/milt** (ställena är barer och klubbar; appen visar inget drickande)
+- Alkohol, tobak eller droger, referenser: **Ofta/intensivt** (appen handlar om barer och nattklubbar)
 - Allt annat: **Nej/Ingen**
 - Obegränsad webbåtkomst: **Nej** (externa länkar öppnas i Safari eller Google Maps, inte i appen)
 - Användargenererat innehåll: kö-rapporterna är bara antal och tid, ingen fri text
 
-Vill du följa klubbarnas åldersgränser kan du välja en högre gräns än den Apple räknar fram.
+Välj sedan manuellt **18+**: villkoren i `integritet.html` säger att Qbar är för den som fyllt 18.
 
 ## Appens integritet (App Privacy)
 
-Ingen spårning (Tracking: **Nej**). Inget av det nedan är kopplat till användarens identitet: det finns inga konton,
-bara ett slumpat id per installation.
+Ingen spårning (Tracking: **Nej**). Det finns inga konton, men rapporterna bär ett beständigt slumpat id per
+installation, och Apple räknar data med ett beständigt id som kopplad till användaren.
 
 | Datatyp | Insamlas | Syfte | Kopplad till dig | Spårning |
 |---|---|---|---|---|
-| Användarinnehåll → Övrigt användarinnehåll (kö-rapporter: antal, tid, ställe) | Ja | Appens funktion | Nej | Nej |
-| Identifierare → Användar-id (slumpat id per installation, nyckeln till Radera min data) | Ja | Appens funktion | Nej | Nej |
-| Plats → Ungefärlig plats (om du var inom 300 m från stället när du rapporterade, ja/nej) | Ja | Appens funktion | Nej | Nej |
+| Användarinnehåll → Övrigt användarinnehåll (kö-rapporter: antal, tid, ställe; "Jag ska dit": ställe, ankomsttid) | Ja | Appens funktion | Ja | Nej |
+| Identifierare → Användar-id (slumpat id per installation, nyckeln till Radera min data) | Ja | Appens funktion | Ja | Nej |
+| Plats → Ungefärlig plats (om du var inom 300 m från stället när du rapporterade, ja/nej) | Ja | Appens funktion | Ja | Nej |
 | Användningsdata → Produktinteraktion (Mapbox räknar kartladdningar) | Ja | Analys (tredje part) | Nej | Nej |
 
-Exakt position skickas aldrig. "På väg" sparar ställe och beräknad ankomsttid på servern; det räknas som
-användarinnehåll ovan.
+Exakt position skickas aldrig.
 
 ## Innehållsrättigheter
 
 "Innehåller appen innehåll från tredje part?" **Ja**: kartor från Mapbox och ställen från OpenStreetMap (ODbL).
-Båda krediteras i kartan (© Mapbox © OpenStreetMap), vilket licenserna kräver.
+Båda krediteras i kartan (© Mapbox © OpenStreetMap) och OpenStreetMap även under Profil → Källor.
 
 ## Exportregler för kryptering
 
@@ -106,24 +110,21 @@ Ingen inloggning krävs. Lämna "Logga in krävs" avmarkerat.
 ## Anteckningar till granskaren (engelska)
 
 ```
-Qbar shows live queue lengths at 277 bars and nightclubs in Stockholm, Sweden. All data is reported by users standing
-in the queues; there is no account and no login.
+Qbar shows user-submitted queue reports (up to 45 minutes old) for over 280 bars and nightclubs in Stockholm,
+Sweden. Wait times are estimates and are only shown in minutes when three people agree. No account and no login.
 
-Outside Stockholm nightlife hours there may be no live reports, so most venues will show no data. To see the app with
-sample data:
-1. Tap the profile button (top right on the map) to open the "Profil" screen.
-2. Tap the heading "Profil" five times quickly (within about half a second between taps) and confirm the dialog.
-The app reloads with sample reports for 17 venues and shows the label "Testdata · stäng av: 5 snabba tryck på Profil"
-("Test data, turn off: 5 quick taps on Profil") at the bottom. Nothing is sent to the server in this mode. Tap the heading
-five times again to turn it off.
+Outside Stockholm nightlife hours (Thu-Sat 22-03) there are usually no reports. To see the app with sample data
+without sending anything: tap the profile button (top right on the map) > "Så funkar Qbar". This runs a short tour
+on sample data, clearly labelled "Exempel".
 
 Native features:
 - Location (when in use): walking distance and time to each venue, and whether you are at the venue you report.
-  The position never leaves the device.
+  The exact position never leaves the device; only a yes/no "at venue" flag is stored with a report.
 - Local notifications: after you report a queue you are standing in, the app reminds you after 5 minutes to update
-  how many people are ahead of you. This needs a real report, so it does not appear in sample-data mode.
+  how many people are ahead of you. This needs a real report, so it does not appear in the tour.
 
 Delete my data: Profil > Radera min data removes all reports and data tied to the device's random id.
+Support: qbar.info1@gmail.com
 ```
 
 ## Kända risker vid granskningen
@@ -131,4 +132,4 @@ Delete my data: Profil > Radera min data removes all reports and data tied to th
 - **Regel 4.2 (minsta funktionalitet):** Apple nekar ibland appar som mest är en webbsida i ett skal. Qbar har inbyggd
   plats och lokala påminnelser och fungerar utan inloggning, men risken finns. Nekas den: svara att appen använder
   platstjänster och lokala notiser och är byggd för att användas i kön, på plats.
-- **Tomma vyer:** granskas appen en vardag förmiddag finns inga rapporter. Därför testdatan i anteckningarna ovan.
+- **Tomma vyer:** granskas appen en vardag förmiddag finns inga rapporter. Därför rundturen i anteckningarna ovan.

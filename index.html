@@ -20,8 +20,6 @@
   <link rel="canonical" href="https://qbar-app.vercel.app/">
   <!-- Introt spelas en gång per session; körs före första målningen så att det aldrig blinkar till. -->
   <script>try { sessionStorage.getItem('qb_splash') ? document.documentElement.classList.add('no-splash') : sessionStorage.setItem('qb_splash', '1'); } catch (e) {}</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.fontshare.com">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,600,500,400&display=swap" rel="stylesheet">
   <script type="module" src="/src/main.js"></script>
@@ -125,10 +123,10 @@
         </div>
         <div class="filter-row" id="filter-row">
           <div class="chips-scroll">
-            <button class="fbtn active" data-filter="all" onclick="setExploreFilter('all')">Alla <span class="fcount" id="fc-all"></span></button>
-            <button class="fbtn" data-filter="free" onclick="setExploreFilter('free')"><span class="fdot fdot--free"></span>Ingen kö <span class="fcount" id="fc-free"></span></button>
-            <button class="fbtn" data-filter="short" onclick="setExploreFilter('short')"><span class="fdot fdot--short"></span>Kort <span class="fcount" id="fc-short"></span></button>
-            <button class="fbtn" data-filter="long" onclick="setExploreFilter('long')"><span class="fdot fdot--long"></span>Lång <span class="fcount" id="fc-long"></span></button>
+            <button class="fbtn active" data-filter="all" aria-pressed="true" onclick="setExploreFilter('all')">Alla <span class="fcount" id="fc-all"></span></button>
+            <button class="fbtn" data-filter="free" aria-pressed="false" onclick="setExploreFilter('free')"><span class="fdot fdot--free"></span>Ingen kö <span class="fcount" id="fc-free"></span></button>
+            <button class="fbtn" data-filter="short" aria-pressed="false" onclick="setExploreFilter('short')"><span class="fdot fdot--short"></span>Kort <span class="fcount" id="fc-short"></span></button>
+            <button class="fbtn" data-filter="long" aria-pressed="false" onclick="setExploreFilter('long')"><span class="fdot fdot--long"></span>Lång <span class="fcount" id="fc-long"></span></button>
             <button class="fbtn" data-type="bar" aria-pressed="false" onclick="setVenueType('bar')">Barer</button>
             <button class="fbtn" data-type="klubb" aria-pressed="false" onclick="setVenueType('klubb')">Klubbar</button>
           </div>
@@ -191,7 +189,7 @@
             <path class="rs-success-check" d="M22 33.5 L29.5 41 L43 25"/>
           </svg>
         </div>
-        <div class="rs-thanks">Tack, kön är uppdaterad.</div>
+        <div class="rs-thanks">Tack, din rapport är skickad.</div>
         <p class="rs-next">Står du kvar? Vi frågar snart hur långt du kommit. Då kan vi mäta hur snabbt kön rör sig.</p>
       </div>
     </section>
@@ -226,10 +224,11 @@
       <div class="pf-section">
         <div class="rs-label">Kontakt och data</div>
         <div class="pf-card" style="padding-top:0;padding-bottom:0">
-          <a class="pf-row" href="mailto:support@queuebar.se"><span>Skriv till oss<small>support@queuebar.se</small></span></a>
-          <a class="pf-row" href="mailto:hello@queuebar.se"><span>För krogar och klubbar<small>hello@queuebar.se</small></span></a>
+          <a class="pf-row" href="mailto:qbar.info1@gmail.com"><span>Skriv till oss<small>qbar.info1@gmail.com</small></span></a>
+          <a class="pf-row" href="mailto:qbar.info1@gmail.com?subject=Krog"><span>För krogar och klubbar<small>qbar.info1@gmail.com</small></span></a>
           <button class="pf-row" onclick="replayTour()"><span>Så funkar Qbar<small>Gör övningen igen, med exempeldata</small></span></button>
           <a class="pf-row" href="/integritet.html"><span>Integritet och villkor</span></a>
+          <a class="pf-row" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"><span>Källor<small>Ställen och öppettider: © OpenStreetMap-bidragsgivare (ODbL)</small></span></a>
           <button class="pf-row danger" onclick="confirmDelete()"><span>Radera min data</span></button>
         </div>
       </div>
@@ -248,7 +247,7 @@
     </div>
 
     <nav id="bottom-nav">
-      <button class="tab active" data-screen="home" onclick="showScreen('home')">
+      <button class="tab active" data-screen="home" aria-current="page" onclick="showScreen('home')">
         <span class="icon"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="6" x2="15" y2="22"/></svg></span>
         Karta
       </button>
@@ -298,7 +297,7 @@
         <button id="vc-act-secondary" class="vc-link"></button>
         <button id="vc-dir" class="vc-link" onclick="openDirections()">Vägbeskrivning</button>
         <button class="vc-link" onclick="vcShare()">Dela</button>
-        <button id="vc-fav" class="vc-link vc-fav" onclick="vcToggleFavorite(event)" aria-label="Favorit">
+        <button id="vc-fav" class="vc-link vc-fav" onclick="vcToggleFavorite(event)" aria-label="Favorit" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6 6.7 19.5l1.2-5.8-4.4-4L9.4 9z"/></svg>
         </button>
         <!-- Synlig bara i den utfällda kapseln: den är stor nog att se ut som ett kort, och då letar man efter stäng -->
@@ -313,7 +312,7 @@
   <div id="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
     <div class="consent-card">
       <div class="consent-title" id="consent-title">Anonymt, utan konto</div>
-      <p class="consent-text">Qbar sparar ett slumpat ID, dina kö-rapporter och, när du trycker "Jag ska dit", vart du är på väg. Din position lämnar aldrig telefonen. Allt kan raderas under Profil.</p>
+      <p class="consent-text">Qbar sparar ett slumpat ID, dina kö-rapporter (med ja/nej om du var vid stället) och, när du trycker "Jag ska dit", vart du är på väg och när du beräknas vara framme. Din exakta position lämnar aldrig telefonen. Allt kan raderas under Profil.</p>
       <a class="consent-policy" href="/integritet.html">Läs integritetspolicyn</a>
       <button class="consent-accept" onclick="acceptConsent()">Jag förstår</button>
     </div>

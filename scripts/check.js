@@ -134,7 +134,7 @@ check('Sorting: newest-report-first for venues with data', js.includes('kb.lates
 // ── Venues array ──────────────────────────────────────────────────────────────
 const testVenueIds = ['spy-bar', 'sturehof', 'soap-bar', 'tjoget', 'pelikan', 'morfar-ginko',
   'akkurat', 'berns', 'sturecompagniet', 'neu', 'under-bron', 'kristall',
-  'solidaritet', 'nalen', 'pharmarium', 'tak', 'drama'];
+  'patricia', 'nalen', 'pharmarium', 'tak', 'hells-kitchen'];
 // Ett dolt ställe (HIDDEN_VENUES) finns kvar som rad men inte i appen; testdatan kraschar på det (getVenueById).
 const missingVenues = testVenueIds.filter(id => !js.includes("id: '" + id + "'") || js.includes("\n      '" + id + "': '"));
 check('All 17 testdata venues present and visible in VENUES', missingVenues.length === 0);

@@ -159,8 +159,9 @@ $('kr-login-form').addEventListener('submit', async (e) => {
   const { error } = await sb.auth.signInWithOtp({ email: $('kr-email').value.trim(),
     // Fast adress: den måste stå under Redirect URLs i Supabase Auth, och /krog (vercel.json) är samma sida.
     options: { shouldCreateUser: false, emailRedirectTo: location.origin + '/krog.html' } });
-  $('kr-login-msg').textContent = !error ? 'Kolla mejlen och tryck på länken.'
-    : /signup|not allowed|not found/i.test(error.message) ? 'Den adressen har inget avtal med Qbar.'
+  // Samma svar oavsett om adressen har avtal: annars går det att pröva fram vilka krogar som är kunder.
+  $('kr-login-msg').textContent = !error || /signup|not allowed|not found/i.test(error.message)
+    ? 'Om adressen har ett avtal med Qbar får du en länk i mejlen.'
     : 'Gick inte att skicka: ' + error.message;
 });
 

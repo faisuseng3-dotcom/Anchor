@@ -27,7 +27,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Qbar använder din position för avstånd och gångtid och för att se om du står vid stället du rapporterar. Positionen skickas aldrig från telefonen.</string>
+	<string>Qbar använder din position för avstånd och gångtid och för att se om du står vid stället du rapporterar. Din exakta position skickas aldrig; med rapporten sparas bara om du var vid stället (ja/nej).</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -53,7 +53,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>

@@ -25,6 +25,7 @@ Nycklarna ligger i `~/Desktop/qbar-push-nycklar.txt` på datorn där de skapades
 | Ett inloggat ställe (`authenticated`) läser eller skriver aldrig `reports` direkt, bara via `venue_stats()` | `migrations/20261118010000_krog_no_direct_reports.sql` | samma, körd 2026-11-18 |
 | Auth: Site URL och Redirect URLs `https://anchor-queuebar.vercel.app/krog.html`, `http://localhost:5173/krog.html`; registrering avstängd (`disable_signup`) | Management API (`PATCH /v1/projects/…/config/auth`) | satt 2026-11-18 |
 | Arkiv: `reports_archive` (utan `user_id`/`reporter`, bara service role). `qbar-gallring` kopierar rapporter till arkivet innan de raderas efter 90 dagar | `migrations/20261120000000_reports_archive.sql` | `db query --remote=awwmfsjsrjktekmbgadx --yes -f`, **inte körd än** |
+| Spärrarna: IP med `x-forwarded-for` som reserv och `ip_required` (`qbar_ip_limit`); `venues` (okänt ställe nekas, `venue_name` därifrån); `reports.net` och "3 överens" per nät, högst 2 kömätningar per nät och ställe på 45 min; `session_taken`; "På väg" och notiser med IP-spärr; högst 50 ställen per prenumeration | `migrations/20261122000000_report_hardening.sql`, sedan `venues.sql` | `db query --remote=awwmfsjsrjktekmbgadx --yes -f`, körd 2026-11-23 (289 rader i `venues`) |
 
 `VAPID_PUBLIC_KEY` måste vara samma som `PUSH_PUBLIC_KEY` i `src/main.js`. Byts nycklarna slutar alla befintliga
 prenumerationer att fungera. Byts `WEBHOOK_SECRET` måste `webhook.sql` köras om med det nya värdet.
@@ -66,7 +67,8 @@ under Users kan logga in.
    insert into venue_accounts (email, venue_id, pace) values ('kvall@berns.se', 'berns', 'slow');
    ```
 3. Ändras `pace` i `VENUES`: `update venue_accounts set pace = '…' where venue_id = '…';`. Ändras namn eller ställen:
-   `node scripts/venue-names.mjs` (krogsidan tar namnet därifrån). Hamnar stället i `HIDDEN_VENUES` eller tas bort
+   `node scripts/venue-names.mjs` (krogsidan tar namnet därifrån) och kör `supabase/venues.sql` (rapporter tas bara emot
+   för ställena där). Hamnar stället i `HIDDEN_VENUES` eller tas bort
    ur `VENUES` säger krogsidan "Syns inte i Qbar"; säg upp avtalet eller öppna stället igen.
 
 Avtalet upphör: `delete from venue_accounts where email = '…';` (raden i `venue_notes` försvinner ur appen efter 06:00).
