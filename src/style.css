@@ -462,6 +462,7 @@
       font: 600 calc(13 * var(--u)) var(--font-base); color: var(--text-secondary);
     }
     .vc-link[hidden] { display: none; }
+    a.vc-link { display: inline-flex; align-items: center; text-decoration: none; }
     /* "Stäng" längst till höger, bara i den utfällda kapseln. I listan fälls raden ihop med ett tryck på raden. Den dolda
        tangentbordsknappen (.vc-close) behövs inte när den här syns. */
     .vc-link--close { margin-left: auto; }
