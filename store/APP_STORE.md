@@ -52,7 +52,7 @@ Qbar är för dig som fyllt 18 år.
 **Nyckelord** (högst 100, inga mellanslag):
 `kö,krog,bar,nattklubb,klubb,utgång,nattliv,uteliv,stureplan,södermalm,väntetid,insläpp,fest,pub`
 
-**Support-URL:** `https://qbar-app.vercel.app/integritet.html` (har kontaktadressen qbar.info1@gmail.com)
+**Support-URL:** `https://qbar-app.vercel.app/support.html` (vanliga frågor och kontaktadressen qbar.info1@gmail.com)
 
 **Marknadsförings-URL:** `https://qbar-app.vercel.app`
 
@@ -65,9 +65,9 @@ Qbar är för dig som fyllt 18 år.
 ## Skärmbilder
 
 `store/screenshots/` innehåller fem bilder i 1320×2868 (6,9 tum, det format App Store kräver; mindre storlekar skalas
-från dem): karta, lista, utfällt ställe, Live, Rapportera. Tagna ur appen med dess testdata (`?testdata=true`, kl. 23),
-med testlägets etikett omskriven till "Exempeldata": köerna är påhittade men ställena riktiga, och det ska synas på
-varje bild (Playwright mot `vite`, 440×956 punkter, skala 3). Ta om dem när utseendet ändras.
+från dem): karta, lista, utfällt ställe, Live, Rapportera. `npm run build && node scripts/screenshots.mjs` tar dem ur
+appens testdata (fredag 23:00, utan servern), med testdatans 17 ställen omdöpta till påhittade namn (en butiksbild får
+inte visa påhittade köer på riktiga krogar) och etiketten "Exempeldata" på varje bild. Ta om dem när utseendet ändras.
 
 ## Åldersgräns
 

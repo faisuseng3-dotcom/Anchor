@@ -3,16 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/fonts.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/fonts.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "vitest run && node scripts/check.js && vite build",
+    "verify": "vitest run && node scripts/check.js && node scripts/fonts.mjs && vite build",
     "prepare": "husky",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "ios": "vite build && cap sync ios && cap open ios"
+    "ios": "npm run build && cap sync ios && cap open ios"
   },
   "dependencies": {
     "@capacitor/core": "^8.6.2",

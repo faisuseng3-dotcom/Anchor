@@ -31,7 +31,7 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Styling | Ren CSS med custom properties | `src/style.css` |
 | Karta | `mapbox-gl` 3.x via npm, Mapbox Standard som import `basemap`; karttyp natt, ljus eller satellit (`MAP_STYLES`) | `src/main.js` |
 | Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js` |
-| Typsnitt | **Satoshi** (Fontshare CDN) för text, **Geist Mono** (Google Fonts) för siffror | `index.html:14–15` |
+| Typsnitt | **Satoshi** för text och siffror (`--font-mono` är samma), från egen domän | `public/satoshi.css`, `scripts/fonts.mjs` |
 | Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
 | Enhetstester | **Vitest** 5.x, 143 tester | `vitest.config.js`, `tests/` |
@@ -224,8 +224,7 @@ koden som kan enhetstestas utan en webbläsare. De är också de som betyder mes
 | Supabase RPC `on_my_way_counts` | "På väg"-räknare | Varning i konsolen, räknaren visas inte |
 | ~~Supabase RPC `increment_points`~~ | Anropen borttagna — funktionen fanns inte. Poäng räknas klientsidan | — |
 | Mapbox Styles/Tiles | Kartan | `showMapError()` visar ett felläge. **Verifierat fungerande.** |
-| Fontshare (Satoshi) | Hela typografin | Fallback `system-ui`. Hela utseendet byter karaktär |
-| Google Fonts (Geist Mono) | Alla siffror | Fallback `monospace` |
+| Fontshare (Satoshi), bara vid bygget | `scripts/fonts.mjs` hämtar filerna | Bygget stoppar med ett fel; användarna når aldrig Fontshare |
 
 ### Verkliga flaskhalsar
 

@@ -6,6 +6,8 @@ test-results/
 playwright-report/
 .playwright-cache/
 .DS_Store
+# Satoshi hämtas av scripts/fonts.mjs; licensen tillåter inte spridning via ett publikt repo
+public/fonts/
 
 # Supabase CLI:ns lokala länk till projektet
 supabase/.temp/
