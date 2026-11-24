@@ -1771,9 +1771,9 @@ import './style.css';
           pitchWithRotate: false,
           dragRotate: false,
           logoPosition: 'bottom-right',
-          // © Mapbox © OpenStreetMap krävs av Mapbox villkor och OSM:s licens: kontrollen läggs till nedan, kompakt. Den
-          // inbyggda stängs av, annars stod krediteringen två gånger.
-          attributionControl: false,
+          // Den inbyggda attributionControl (© Mapbox © OpenStreetMap, krävs av Mapbox villkor och OSM:s licens) står kvar:
+          // under 640 px bred karta är den kompakt, ett (i), och ligger under loggan, synlig under "Bäst nu". En egen
+          // kontroll till hamnade ovanför loggan, bakom kortet, och krediteringen stod två gånger.
           // Mapbox prestandamätningar (gljs.performance) skickas inte; kartladdningarna räknas ändå (fakturering).
           performanceMetricsCollection: false,
         });
@@ -1932,8 +1932,6 @@ import './style.css';
           if (map.hasImage(name)) map.removeImage(name);
           map.addImage(name, { width: canvas.width, height: canvas.height, data: imageData.data }, { pixelRatio: PR });
         }
-
-        map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
         var _mapStarted = false; // sätts först i load; därefter är inget Mapbox-fel skäl att stänga av kartan
         map.on('load', function() {

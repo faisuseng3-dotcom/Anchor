@@ -37,7 +37,7 @@ adress). Använd **aldrig** en Vercel-URL med slumpkod i mitten — de är fryst
 | Kod | `src/main.js` (4 586 rader), `src/style.css` (1 192 rader), `index.html` (321 rader) |
 | Karta | `mapbox-gl` 3.x **via npm**, Mapbox Standard (3D) med karttyp Natt, Ljus eller Satellit, centrum `[18.0686, 59.3293]` |
 | Data | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x |
-| Typsnitt | **Satoshi** (Fontshare) för text, **Geist Mono** för siffror |
+| Typsnitt | **Satoshi** för text och siffror, från egen domän (`public/satoshi.css`; filerna hämtas av `scripts/fonts.mjs` före dev och bygge, checkas inte in: licensen förbjuder spridning) |
 | Hosting | Vercel |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) |
 
