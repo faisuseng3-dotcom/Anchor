@@ -1289,7 +1289,10 @@ import './style.css';
       // Vägbeskrivning i länkraden bara när huvudknappen inte redan öppnar den ("Jag ska dit" gör det): vid stället och stängt.
       document.getElementById('vc-dir').hidden = !primary.hidden && primary.onclick !== goToReport;
 
-      document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports);
+      document.getElementById('vc-timeline').innerHTML = closed ? '' : queueChangeHtml(reports) + queueListHtml(reports) +
+        // Regel 1.2: rapporter och "Från stället" går att anmäla; falska tas bort för hand (villkoren i integritet.html).
+        (reports.length || noteLines.length ? '<a class="vc-link" href="mailto:qbar.info1@gmail.com?subject=' +
+          encodeURIComponent('Fel om ' + venue.name + ' (' + venue.id + ')') + '">Fel uppgift? Anmäl</a>' : '');
       document.getElementById('vc-area').textContent = venue.area + ' · ' + venueTypeLabel(venue.type) + (km !== null ? ' · ' + formatDistance(km) : '');
       var favBtn = document.getElementById('vc-fav');
       if (favBtn) { favBtn.classList.toggle('fav', isFavorite(venue.id)); favBtn.setAttribute('aria-pressed', isFavorite(venue.id) ? 'true' : 'false'); }
@@ -1768,8 +1771,11 @@ import './style.css';
           pitchWithRotate: false,
           dragRotate: false,
           logoPosition: 'bottom-right',
-          // Ingen attributionControl: false. © Mapbox © OpenStreetMap krävs av Mapbox villkor och OSM:s licens; under 640 px
-          // bred karta är rutan kompakt, ett (i) som fälls ut.
+          // © Mapbox © OpenStreetMap krävs av Mapbox villkor och OSM:s licens: kontrollen läggs till nedan, kompakt. Den
+          // inbyggda stängs av, annars stod krediteringen två gånger.
+          attributionControl: false,
+          // Mapbox prestandamätningar (gljs.performance) skickas inte; kartladdningarna räknas ändå (fakturering).
+          performanceMetricsCollection: false,
         });
         map.touchZoomRotate.disableRotation();
 
@@ -2694,10 +2700,11 @@ import './style.css';
       toggleTestData();
     });
 
-    // Fem snabba tryck på rubriken "Profil": samma växling på en telefon, som saknar Alt + 2 och adressfält (iOS-appen,
-    // App Store-granskaren). Står i granskningsanteckningarna.
+    // Fem snabba tryck på rubriken "Profil": samma växling på en telefon, som saknar Alt + 2 och adressfält. Inte i
+    // iOS-appen: en dold funktion som inte står i granskningsanteckningarna (regel 2.3.1); granskaren har rundturen.
     var _titleTaps = 0, _titleTapTimer = null;
     document.querySelector('#screen-profile h1').addEventListener('click', function() {
+      if (IS_NATIVE_APP) return;
       clearTimeout(_titleTapTimer);
       _titleTapTimer = setTimeout(function() { _titleTaps = 0; }, 600); // snabba tryck: långsamma tryck på rubriken slog på läget av misstag
       if (++_titleTaps < 5) return;
@@ -3379,7 +3386,7 @@ import './style.css';
       var el = document.getElementById('pf-push-sub'), st = pushState();
       if (el) el.textContent = st === 'on' && !favorites.length ? 'På · spara ett ställe med stjärnan' : PUSH_SUB_TEXT[st];
       // shortcut: webbpush finns inte i appskalet, så raden döljs där; visa den igen när APNs är på plats.
-      if (el && IS_NATIVE_APP) el.closest('.pf-card').style.display = 'none';
+      if (el && IS_NATIVE_APP) el.closest('.pf-section').style.display = 'none';
     }
 
     // Efter en ny favorit, tills notiserna är på eller rutan stängts med ×. false = ingen ruta, visa toasten.

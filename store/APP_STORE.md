@@ -9,9 +9,9 @@ Texterna nedan klistras in i App Store Connect som de står.
 2. Xcode → Settings → Accounts → lägg till ditt Apple-ID.
 3. `cd ~/Desktop/fm-wt && npm run ios` (bygger, synkar och öppnar Xcode).
 4. Klicka **App** i listan till vänster → **Signing & Capabilities** → välj ditt team under **Team**.
-   Bundle-id `se.queuebar.qbar` registreras automatiskt.
+   Bundle-id `se.qbar.app` (registrerat för hand under developer.apple.com → Identifiers).
 5. App Store Connect → Appar → **+** → Ny app: iOS, namn enligt nedan, primärt språk **svenska**,
-   bundle-id `se.queuebar.qbar`, SKU `qbar`.
+   bundle-id `se.qbar.app`, SKU `qbar`.
 6. I Xcode: välj **Any iOS Device (arm64)** som mål → **Product → Archive** → **Distribute App → App Store Connect**.
 7. Fyll i App Store Connect med avsnitten nedan, ladda upp bilderna i `store/screenshots/`, välj bygget och skicka in.
 8. Under **Pris och tillgänglighet**: avmarkera **Tillgänglig på Mac** (appen är byggd för iPhone i stående läge).
@@ -38,7 +38,7 @@ Två tryck räcker: välj stället och hur många som står framför dig. När t
 • Rapporter från de senaste 45 minuterna, med hur gamla de är
 • Uppskattad väntetid när tre personer är överens
 • "Bäst nu": där du troligen kommer in snabbast, räknat med promenaden dit
-• Live: de senaste rapporterna i stan
+• Flöde med de senaste rapporterna i stan
 • Stängningstider där de är kända
 • Vägbeskrivning till fots
 
@@ -75,7 +75,9 @@ Svara i frågeformuläret:
 - Alkohol, tobak eller droger, referenser: **Ofta/intensivt** (appen handlar om barer och nattklubbar)
 - Allt annat: **Nej/Ingen**
 - Obegränsad webbåtkomst: **Nej** (externa länkar öppnas i Safari eller Google Maps, inte i appen)
-- Användargenererat innehåll: kö-rapporterna är bara antal och tid, ingen fri text
+- Användargenererat innehåll: **Ja**. Kö-rapporterna är antal och tid; "Från stället" är ställets egen fri text (bara
+  ställen med avtal, inloggade på krog.html). Allt går att anmäla i appen ("Fel uppgift? Anmäl" i ställets kort, e-post till
+  qbar.info1@gmail.com), och falska rapporter tas bort för hand
 
 Välj sedan manuellt **18+**: villkoren i `integritet.html` säger att Qbar är för den som fyllt 18.
 
@@ -90,6 +92,7 @@ installation, och Apple räknar data med ett beständigt id som kopplad till anv
 | Identifierare → Användar-id (slumpat id per installation, nyckeln till Radera min data) | Ja | Appens funktion | Ja | Nej |
 | Plats → Ungefärlig plats (om du var inom 300 m från stället när du rapporterade, ja/nej) | Ja | Appens funktion | Ja | Nej |
 | Användningsdata → Produktinteraktion (Mapbox räknar kartladdningar) | Ja | Analys (tredje part) | Nej | Nej |
+| Identifierare → Enhets-id (Mapbox: slumpat id i kartans kartladdningshändelser, för Mapbox fakturering) | Ja | Analys (tredje part) | Nej | Nej |
 
 Exakt position skickas aldrig.
 
@@ -124,6 +127,8 @@ Native features:
   how many people are ahead of you. This needs a real report, so it does not appear in the tour.
 
 Delete my data: Profil > Radera min data removes all reports and data tied to the device's random id.
+Wrong or abusive information: every venue with reports has "Fel uppgift? Anmäl" (report a problem), which emails us;
+false reports are removed by hand.
 Support: qbar.info1@gmail.com
 ```
 
