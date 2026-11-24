@@ -102,7 +102,7 @@ describe('överens per nät', () => {
     await db.exec('alter table reports disable trigger user');
     for (const r of rows) {
       await db.query(`insert into reports (venue_id, venue_name, queue_status, user_id, people_ahead, report_type, near_venue,
-        reporter, net, created_at, expires_at) values ('berns', 'Berns', 'long', 'x', $1, 'initial', true, $2, $3, $4, now())`,
+        reporter, net, created_at, expires_at) values ('berns', 'Berns', 'long', 'x', $1, 'initial', true, $2, $3, $4, now() + interval '45 minutes')`,
         [r.people_ahead, r.reporter, r.net, r.created_at]);
     }
     await db.exec('alter table reports enable trigger user');
@@ -129,6 +129,34 @@ describe('överens per nät', () => {
     await db.exec('set role anon');
     try { expect((await db.query('select net from reports')).rows).toEqual([{ net: 'n1' }]); }
     finally { await db.exec('reset role'); }
+  });
+});
+
+describe('läsning och antal', () => {
+  const insert = (ahead, status, user = 'u-test-telefon-' + String(++seq).padStart(8, '0')) => db.query(
+    `insert into reports (venue_id, venue_name, queue_status, user_id, people_ahead, report_type, queue_session, expires_at)
+     values ('berns', 'x', $1, $2, $3, 'initial', 'qs-' || $2, now()) returning id`, [status, user, ahead]);
+
+  it('en kömätning utan antal nekas, och "Ingen kö" måste vara 0 framför', async () => {
+    await expect(insert(null, 'long')).rejects.toThrow(/ahead_required/);
+    await expect(insert(5, 'none')).rejects.toThrow(/status_mismatch/);
+    await expect(insert(0, 'long')).rejects.toThrow(/status_mismatch/);
+    await insert(0, 'none');
+  });
+
+  it('anon läser bara aktiva rader; historiken utan reporter, den egna bara med id:t', async () => {
+    const me = 'u-test-telefon-gammal0001';
+    await insert(17, 'short', me);
+    await db.exec("update reports set expires_at = now() - interval '1 minute'"); // utgången, som en rapport från igår
+    await db.exec('set role anon');
+    try {
+      expect((await db.query('select reporter from reports')).rows).toEqual([]);
+      const hist = (await db.query('select * from report_history()')).rows;
+      expect(hist).toHaveLength(1);
+      expect(hist[0]).not.toHaveProperty('reporter');
+      expect((await db.query('select venue_id from my_reports($1)', [me])).rows).toEqual([{ venue_id: 'berns' }]);
+      expect((await db.query("select * from my_reports('kort')")).rows).toEqual([]);
+    } finally { await db.exec('reset role'); }
   });
 });
 
