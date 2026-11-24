@@ -21,13 +21,13 @@
     "@capacitor/geolocation": "^8.2.4",
     "@capacitor/ios": "^8.6.2",
     "@capacitor/local-notifications": "^8.3.1",
-    "@frontman-ai/vite": "^2.0.1",
     "@supabase/supabase-js": "^2.45.4",
     "mapbox-gl": "^3.9.4"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.2",
     "@electric-sql/pglite": "^0.5.16",
+    "@frontman-ai/vite": "^2.0.2",
     "@playwright/test": "^1.56.1",
     "husky": "^9.1.7",
     "vite": "^6.0.0",

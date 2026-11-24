@@ -58,7 +58,7 @@ Qbar är för dig som fyllt 18 år.
 
 **Integritetspolicy-URL:** `https://qbar-app.vercel.app/integritet.html`
 
-**Kategori:** Mat och dryck (primär), Navigering (sekundär)
+**Kategori:** Mat och dryck (primär), Livsstil (sekundär). Inte Navigering: vägen öppnas i Google Maps
 
 **Copyright:** `2026 Fais Useng`
 
