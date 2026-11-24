@@ -300,8 +300,9 @@ aggregeringen eller säkerheten gör det.
 **Committa aldrig `.env`** — ligger i `.gitignore`. Just nu finns ingen `.env`: Mapbox-token,
 Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt: RLS och funktionerna i
 `supabase/migrations/` bestämmer vad anon-nyckeln når (granskat i produktionen 2026-11-11). `user_id` i `reports` är
-**hemligt**: anon läser bara `REPORT_COLUMNS`, andra ser `reporter` (sha256 av id:t), och id:t är nyckeln till
-`delete_my_data`. Läs aldrig `user_id` i klienten och lägg aldrig tillbaka `select('*')`. Se
+**hemligt**: anon läser bara `REPORT_COLUMNS` och bara aktiva rader (45 min), andra ser `reporter` (sha256 av id:t), och
+id:t är nyckeln till `delete_my_data` och `my_reports`. Äldre rader nås bara via `report_history()` (utan `reporter`/`net`)
+(`20261124000000_reports_active_only.sql`). Läs aldrig `user_id` i klienten och lägg aldrig tillbaka `select('*')`. Se
 [docs/DATA_MODEL.md](docs/DATA_MODEL.md) avsnitt 8.
 
 All text från databasen **måste** gå genom `escapeHtml()` innan den hamnar i en HTML-sträng.

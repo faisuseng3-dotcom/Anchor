@@ -40,10 +40,11 @@
     <li><b>Dina kö-rapporter:</b> ställe, hur många som stod framför dig (ett intervall, t.ex. 10–25), tiden, om du
       var vid stället när du rapporterade (ja, nej eller okänt) och, om du lämnar kön, om du kom in, inte kom in eller
       gav upp. Rapporten bär
-      ditt slumpade id. Andra kan läsa rapporten, men inte id:t; de ser bara en hash av det (en kod som inte går att räkna
-      tillbaka), så att appen kan se att två rapporter kom från samma telefon.</li>
+      ditt slumpade id. Medan rapporten syns kan andra läsa den, men inte id:t; de ser bara en hash av det (en kod som inte
+      går att räkna tillbaka), så att appen kan se att två rapporter kom från samma telefon.</li>
     <li>Rapporter syns i appen i 45 minuter. Därefter sparas de för att räkna hur snabbt köer brukar röra sig samma
-      veckodag och tid (appen använder de senaste 8 veckorna). Efter 90 dagar raderas de; kvar blir en anonym kopia utan
+      veckodag och tid (appen använder de senaste 8 veckorna); den historiken visas utan hashen, så äldre rapporter går
+      inte att koppla ihop med varandra eller med dig. Efter 90 dagar raderas de; kvar blir en anonym kopia utan
       ditt id (ställe, tid, antal i kön och om rapportören var vid stället), som inte går att koppla till dig eller din
       telefon. Radera min data tar bort dina rapporter direkt, innan någon kopia gjorts.</li>
     <li><b>"Jag ska dit":</b> vilket ställe du är på väg till och när du beräknas vara framme. Raden försvinner 15 minuter efter

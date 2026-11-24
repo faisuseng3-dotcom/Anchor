@@ -13,8 +13,8 @@ describe('computeStatus — bara färsk data', () => {
     expect(computeStatus('kristall', [report('kristall', 60, null, { status: 'long' })])).toBe('unknown');
   });
 
-  it('en färsk rapport utan antal räknas fortfarande', () => {
-    expect(computeStatus('kristall', [report('kristall', 10, null, { status: 'long' })])).toBe('long');
+  it('en rapport utan antal ger ingen status, hur färsk den än är (klienten väljer queue_status själv)', () => {
+    expect(computeStatus('kristall', [report('kristall', 10, null, { status: 'long' })])).toBe('unknown');
   });
 
   it('1–10 personer är kort kö, inte "Ingen kö"', () => {

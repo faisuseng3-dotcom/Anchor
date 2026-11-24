@@ -84,8 +84,8 @@ Den enda tabell appen både läser och skriver i stor omfattning.
 | `venue_id` | **ja** | ja | Matchar `VENUES[].id`. Hamnar i `onclick` — se XSS-noten nedan. |
 | `venue_name` | **ja** | ja (reserv) | Denormaliserat namn. Escapas vid rendering. |
 | `user_id` | **ja** | **nej** | Slumpat id från `localStorage.qb_user_id` (`getUserId`, 128 bitar). **Hemligt:** anon får inte läsa kolumnen, och id:t är nyckeln till `delete_my_data`. |
-| `reporter` | nej | ja | `sha256(user_id)`, satt av `reports_guard`. Prognosens "≥2 personer", spärren och historiken. Klienten sparar sin egen från svaret på första rapporten (`qb_reporter`). |
-| `queue_status` | **ja** | ja | `'none'`\|`'short'`\|`'medium'`\|`'long'`. Beräknas i klienten med `waitToStatus()`. |
+| `reporter` | nej | ja, bara aktiva rader | `sha256(user_id)`, satt av `reports_guard`. Prognosens "≥3 överens" och spärren. Klienten sparar sin egen från svaret på första rapporten (`qb_reporter`). Finns inte i `report_history()`. |
+| `queue_status` | **ja** | ja | `'none'`\|`'short'`\|`'medium'`\|`'long'`. Beräknas i klienten med `waitToStatus()`. Servern kräver `people_ahead` på en kömätning (`ahead_required`) och att `'none'` ⇔ 0 framför (`status_mismatch`); kartan visar aldrig en status utan antal. |
 | `people_ahead` | **ja** | ja | Heltal: knappens **mittvärde** (0, 5, 17, 37 eller 60), inte ett exakt antal. |
 | `report_type` | **ja** | ja | `'initial'` \| `'followup'` \| `'entered'` \| `'refused'` \| `'left'`. Saknas på äldre rader → behandlas som `'initial'`. |
 | `queue_session` | **ja** | ja | `'qs-<base36>-<slump>'`. Binder ihop en persons mätpunkter i samma kö. |
@@ -142,9 +142,9 @@ rapportera.
 | Funktion | Fråga | Gräns |
 |---|---|---|
 | `loadReports` | `select * where expires_at >= nu order by created_at desc` | **limit 1000** (B-05) |
-| `loadHistoricalPatterns` | `select venue_id, queue_status, created_at where created_at >= 8 v, report_type = 'initial' order by created_at desc` — "Ingen kö" räknas med, kvällen just nu (senaste 12 h) räknas bort i klienten | **limit 1000** |
-| `loadHistoricalRates` | `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
-| `loadUserHistory` | `select id, queue_session, report_type, created_at where user_id = mitt` — profilen räknar unika kö-sessioner; "–" medan den hämtar eller om den misslyckas | ingen |
+| `loadHistoricalPatterns` | `rpc('report_history')` med `select venue_id, queue_status, created_at where created_at >= 8 v, report_type = 'initial' order by created_at desc` — "Ingen kö" räknas med, kvällen just nu (senaste 12 h) räknas bort i klienten | **limit 1000** |
+| `loadHistoricalRates` | `rpc('report_history')` med `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
+| `loadUserHistory` | `rpc('my_reports', { p_user_id })`: egna rapporter, nyast först — profilen räknar unika kö-sessioner; "–" medan den hämtar eller om den misslyckas | ingen |
 
 ---
 

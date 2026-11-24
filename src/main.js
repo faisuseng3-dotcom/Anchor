@@ -794,17 +794,9 @@ import './style.css';
       if (isClosed(getVenueById(venueId))) return 'unknown';
       var est = estimateWait(venueId, reports);
       if (est) return est.confirmed ? waitToStatus(est) : 'few';
-      // Rapporter utan antal (äldre klienter): vanligaste status bland dem från de senaste 45 min. Äldre än så är ingen
-      // data — samma gräns som estimateWait och listan, annars visade kartan "30+ min" där listan sa "–".
-      var freshCutoff = Date.now() - 45 * 60 * 1000;
-      var counts = { none: 0, short: 0, medium: 0, long: 0 };
-      reports.forEach(function(r) {
-        if (r.venue_id !== venueId || !isQueueReport(r) || new Date(r.created_at).getTime() <= freshCutoff) return;
-        var s = r.queue_status === 'free' ? 'none' : r.queue_status;
-        if (counts[s] !== undefined) counts[s]++;
-      });
-      var top = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; })[0];
-      return top[1] ? top[0] : 'unknown';
+      // En kömätning utan antal tas inte emot (ahead_required, 20261124000000_reports_active_only.sql): klientens
+      // queue_status ensam får aldrig bli en status på kartan.
+      return 'unknown';
     }
 
     function getStatusLabel(status) {
@@ -3146,7 +3138,7 @@ import './style.css';
         var now = Date.now();
         var key = nightKey(now);
         var result = await supabase
-          .from('reports')
+          .rpc('report_history')
           .select('venue_id, queue_status, created_at')
           .gte('created_at', new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString())
           .eq('report_type', 'initial')
@@ -3183,7 +3175,7 @@ import './style.css';
     async function loadHistoricalRates() {
       if (!supabase) return;
       var since = new Date(Date.now() - 8 * 7 * 24 * 3600 * 1000).toISOString();
-      var res = await supabase.from('reports')
+      var res = await supabase.rpc('report_history')
         .select('venue_id, queue_session, people_ahead, report_type, created_at')
         .not('queue_session', 'is', null)
         .neq('venue_id', DEMO_VENUE_ID)
@@ -4927,10 +4919,9 @@ import './style.css';
     async function loadUserHistory() {
       try {
         if (!supabase) throw new Error('Supabase är inte tillgänglig');
-        // reporter sparas från svaret på första rapporten (insertReport); utan den finns inga egna rapporter att visa.
-        var me = localStorage.getItem('qb_reporter');
-        var result = me ? await supabase.from('reports').select('id, venue_id, venue_name, people_ahead, queue_session, report_type, created_at')
-          .eq('reporter', me).order('created_at', { ascending: false }) : { data: [] };
+        // Bara den egna telefonens id läser historiken (my_reports); andras rapporter går bara att läsa medan de är aktiva.
+        var result = await supabase.rpc('my_reports', { p_user_id: getUserId() })
+          .select('id, venue_id, venue_name, people_ahead, queue_session, report_type, created_at');
         if (result.error) throw result.error;
         userHistory = result.data || [];
         _historyState = 'ok';
