@@ -142,7 +142,7 @@ rapportera.
 | Funktion | Fråga | Gräns |
 |---|---|---|
 | `loadReports` | `select * where expires_at >= nu order by created_at desc` | **limit 1000** (B-05) |
-| `loadHistoricalPatterns` | `rpc('report_history')` med `select venue_id, queue_status, created_at where created_at >= 8 v, report_type = 'initial' order by created_at desc` — "Ingen kö" räknas med, kvällen just nu (senaste 12 h) räknas bort i klienten | **limit 1000** |
+| `loadHistoricalPatterns` | `rpc('report_history')` med `select venue_id, people_ahead, created_at where created_at >= 8 v, report_type = 'initial' order by created_at desc` — statusen räknas i klienten ur antalet och ställets `pace` (inte ur `queue_status`); "Ingen kö" räknas med, kvällen just nu (senaste 12 h) räknas bort | **limit 1000** |
 | `loadHistoricalRates` | `rpc('report_history')` med `select venue_id, queue_session, people_ahead, report_type, created_at where queue_session not null, created_at >= 8 v order by created_at desc` | **limit 1000** |
 | `loadUserHistory` | `rpc('my_reports', { p_user_id })`: egna rapporter, nyast först — profilen räknar unika kö-sessioner; "–" medan den hämtar eller om den misslyckas | ingen |
 
@@ -248,8 +248,9 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    i timmen per nät (IP-adressen hashad med hemligt salt, sparad en timme i `report_ip_log`). Ett nytt id räcker alltså
    inte för att fylla ett ställe; ett nytt nät gör det. Mer kräver inloggning eller captcha.
 3. **`expires_at` och `created_at` sätts av servern.**
-4. **`queue_status` beräknas i klienten** och skickas med. Den kan sättas till vilket känt värde som helst
-   oberoende av `people_ahead`.
+4. **`queue_status` beräknas i klienten** och skickas med. Servern kräver bara att `'none'` ⇔ 0 framför
+   (`status_mismatch`); i övrigt kan den vara vilken känd status som helst. Därför läser varken kartan, listan eller
+   "Brukar vara" den: allt räknas ur `people_ahead`.
 5. **Radera min data** är ett anrop: `delete_my_data(p_user_id)` (security definer) raderar dina rader i `reports` och
    `push_subscriptions`. Bara vid svar utan fel rensas `localStorage`. Låst fast av "5. Radera min data" i
    `e2e/app.spec.js`. Förut stoppade `stop_on_my_way` (som inte finns) och den saknade delete-policyn varje radering.
@@ -257,9 +258,9 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    och resten av kö-sessionen följer med (`supabase/migrations/20261111050000_delete_my_report.sql`).
 
 6. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
-   Supabase anon-nyckel. Båda är avsedda att vara publika — Mapbox-token är URL-begränsad och
-   anon-nyckeln skyddas av RLS (punkt 1–5 och migreringarna i `supabase/migrations/`). Ingen `.env` finns och ingen
-   `import.meta.env` läses, trots att Vite stöder det.
+   Supabase anon-nyckel. Båda är avsedda att vara publika. Anon-nyckeln skyddas av RLS (punkt 1–5 och migreringarna i
+   `supabase/migrations/`). Mapbox-token är **inte** URL-begränsad (2026-11-24: en annan Origin fick 200); begränsa den
+   i Mapbox-kontot. Ingen `.env` finns och ingen `import.meta.env` läses, trots att Vite stöder det.
 
 ### XSS
 

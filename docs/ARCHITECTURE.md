@@ -32,7 +32,7 @@ Den svåraste delen är nummer 2. Se [QUEUE_LOGIC.md](QUEUE_LOGIC.md).
 | Karta | `mapbox-gl` 3.x via npm, Mapbox Standard som import `basemap`; karttyp natt, ljus eller satellit (`MAP_STYLES`) | `src/main.js` |
 | Databas / API | Supabase (PostgREST + Realtime) via `@supabase/supabase-js` 2.x | `src/main.js` |
 | Typsnitt | **Satoshi** för text och siffror (`--font-mono` är samma), från egen domän | `public/satoshi.css`, `scripts/fonts.mjs` |
-| Hosting | Vercel, SPA-rewrite, `Cache-Control: no-store` | `vercel.json` |
+| Hosting | Vercel: `/krog` → `krog.html`, annars bara filerna (okänd adress får `404.html`), CSP och `Cache-Control: no-store` | `vercel.json` |
 | Utvecklingsverktyg | `@frontman-ai/vite` (endast dev) | `vite.config.js` |
 | Enhetstester | **Vitest** 5.x, 143 tester | `vitest.config.js`, `tests/` |
 | E2E | **Playwright** 1.56, 12 tester | `playwright.config.js`, `e2e/` |

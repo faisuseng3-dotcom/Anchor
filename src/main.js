@@ -3135,7 +3135,9 @@ import './style.css';
 
     // "Brukar vara …" (listan och På väg, bara när färsk data saknas): vanligaste köstatusen samma veckodag ±1 h
     // tidigare kvällar — samma regel som historicalRateFor, via nightKey så att 00:30 hör till kvällen innan. Kvällen
-    // just nu räknas inte; den har egen data. "Ingen kö" räknas med, annars överdrivs köerna.
+    // just nu räknas inte; den har egen data. "Ingen kö" räknas med, annars överdrivs köerna. Statusen räknas här ur
+    // antalet och ställets takt, inte ur rapportens queue_status: den väljer klienten, och en falsk rad kunde säga "lång kö"
+    // om 5 personer.
     // shortcut: de 1000 senaste initial-rapporterna på 8 veckor (PostgREST-taket); flytta till en RPC när det inte räcker.
     async function loadHistoricalPatterns() {
       if (!supabase) return;
@@ -3144,7 +3146,7 @@ import './style.css';
         var key = nightKey(now);
         var result = await supabase
           .rpc('report_history')
-          .select('venue_id, queue_status, created_at')
+          .select('venue_id, people_ahead, created_at')
           .gte('created_at', new Date(now - 8 * 7 * 24 * 3600 * 1000).toISOString())
           .eq('report_type', 'initial')
           .neq('venue_id', DEMO_VENUE_ID)
@@ -3157,7 +3159,9 @@ import './style.css';
           if (now - t < 12 * 3600 * 1000) return;
           var k = nightKey(t), dh = Math.abs(k.hour - key.hour);
           if (k.dow !== key.dow || Math.min(dh, 24 - dh) > 1) return;
-          var s = r.queue_status === 'free' ? 'none' : r.queue_status; // äldre rader skrev 'free'
+          var v = getVenueById(r.venue_id);
+          if (!v || r.people_ahead == null) return;
+          var s = waitToStatus({ ahead: r.people_ahead, mins: r.people_ahead / PACE_RATE[v.pace], full: false });
           var c = byVenue[r.venue_id] = byVenue[r.venue_id] || {};
           c[s] = (c[s] || 0) + 1;
         });
@@ -4684,6 +4688,9 @@ import './style.css';
         var km = distanceKmTo(v);
         var metaParts = [v.area + (rsTypeLbl ? ' · ' + rsTypeLbl : '')];
         if (km !== null) metaParts.push(formatDistance(km));
+        // Kön i ord bredvid pricken: färgen ensam når varken färgblinda eller VoiceOver.
+        var waitWords = fresh ? venueWaitText(v.id) : '';
+        if (waitWords) metaParts.unshift(waitWords);
         // Utan rapport: ingen text. Den ihåliga pricken säger det redan, och samma mening på 292 rader var en textvägg.
         var ago = closed ? 'stängt' : fresh ? timeAgo(new Date(latestTs[v.id]).toISOString()) : '';
         return '<button class="rs-item' + (closed ? ' rs-item--closed' : '') + '" onclick="pickRV(\'' + v.id + '\')">' +
