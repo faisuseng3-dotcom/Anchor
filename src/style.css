@@ -406,14 +406,16 @@
     /* Kartan: pillens form och statusfärg. Det man tryckte på har vuxit; inget nytt har lagts ovanpå kartan. */
     #venue-card.vc--map {
       display: block; position: absolute; left: 0; top: 0; z-index: 3; /* under sökfältet, knapparna och "Bäst nu" när kartan dras */
-      width: max-content; min-width: 220px; max-width: min(340px, calc(100% - 24px));
+      width: max-content; min-width: 220px; max-width: min(400px, calc(100% - 24px));
       padding: 8px 8px 8px 20px;
-      background: var(--surface); border: 2px solid var(--st, var(--status-unknown)); border-radius: var(--radius-full);
+      /* 30 px, inte helt rund: på en rad (64 px hög) ser den ut som pillen; går knappen ned på en egen rad blir den en
+         rundad ruta i stället för en stadionform som klipper hörnen. */
+      background: var(--surface); border: 2px solid var(--st, var(--status-unknown)); border-radius: 30px;
       transform-origin: 0 0; /* vcMorph skalar från pillens hörn */
       cursor: pointer;
     }
     /* Utfälld kapsel: samma rundade form, bara större. */
-    #venue-card.vc--map.vc--open { width: min(340px, calc(100% - 24px)); padding: 12px 16px 8px 20px; border-radius: 24px; }
+    #venue-card.vc--map.vc--open { width: min(400px, calc(100% - 24px)); padding: 12px 16px 8px 20px; border-radius: 24px; }
     .vc--map:not(.vc--open) .vc-more { display: none; }
 
     /* Listan och Live: raden som fälldes ut, inte en ruta ovanpå. Namn, område och väntetid står redan i raden. */
@@ -429,16 +431,17 @@
     .vc--inline #vc-timeline { order: 4; }
     .erow.is-open, .lv-row.is-open { background: var(--surface-raised); border-bottom-color: transparent; }
 
-    .vc-head { display: flex; align-items: center; gap: 12px; }
-    .vc-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    #vc-name { font-size: calc(15 * var(--u)); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Får namn, väntetid och knapp inte plats på en rad (lång knapptext, stor textstorlek) går knappen ned på en egen rad.
+       Förut låg väntetiden (nowrap) kvar och hamnade under knappen. */
+    .vc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    .vc-title { flex: 1 0 auto; max-width: 100%; min-width: 0; display: flex; flex-direction: column; }
     #vc-status {
       font-size: calc(24 * var(--u)); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
       font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap;
     }
     .vc--aging #vc-status { opacity: 0.75; }
     .vc-primary {
-      flex-shrink: 0; height: 44px; padding: 0 20px; border: 0; border-radius: var(--radius-full); cursor: pointer;
+      flex-shrink: 0; margin-left: auto; height: 44px; padding: 0 20px; border: 0; border-radius: var(--radius-full); cursor: pointer;
       background: var(--text-primary); color: var(--bg-primary);
       font: 700 calc(15 * var(--u)) var(--font-base); font-variant-numeric: tabular-nums; white-space: nowrap;
     }
