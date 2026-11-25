@@ -28,6 +28,8 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Qbar använder din position för avstånd och gångtid och för att se om du står vid stället du rapporterar. Din exakta position skickas aldrig; med rapporten sparas bara om du var vid stället (ja/nej).</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Qbar använder din position bara när appen är öppen, aldrig i bakgrunden: för avstånd och gångtid och för att se om du står vid stället du rapporterar. Din exakta position skickas aldrig.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
