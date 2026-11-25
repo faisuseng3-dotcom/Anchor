@@ -878,6 +878,14 @@
     .lv-empty-title { font-size: calc(17 * var(--u)); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
     .lv-empty-sub { font-size: calc(15 * var(--u)); color: var(--text-secondary); line-height: 1.45; max-width: 280px; }
     .lv-empty .empty-btn { margin-top: 16px; min-height: 44px; padding: 0 24px; border-radius: var(--radius-full); }
+    /* Rapportera och Profil rullar i en inre lista, som Lista och Live: skärmen själv (som tonas in med en animation varje
+       gång den visas) rullade inte för fingret i iOS-appen, men listorna inuti gjorde det. */
+    #screen-report, #screen-profile { overflow: hidden; padding-bottom: 0; }
+    .screen-scroll {
+      flex: 1; min-height: 0; display: flex; flex-direction: column;
+      overflow-y: auto; overflow-x: hidden; overscroll-behavior: none;
+      margin: 0 calc(-1 * var(--space-2)); padding: 0 var(--space-2) calc(var(--nav-bottom) + 64px + 16px);
+    }
     /* ── Rapportflöde ──────────────────────────────────────────────────── */
     .rp-wrap { flex-shrink: 0; margin-bottom: 4px; }
 
