@@ -257,10 +257,10 @@ som inte finns i databasen. Felet var tyst (returvärdet kontrollerades inte) oc
    **Ångra** din senaste kömätning: `delete_my_report(p_user_id, p_report_id)`, bara din egen, bara `initial` under 45 min,
    och resten av kö-sessionen följer med (`supabase/migrations/20261111050000_delete_my_report.sql`).
 
-6. **Nycklar i klartext i källkoden** (`src/main.js`): Mapbox-token, Supabase-URL och
-   Supabase anon-nyckel. Båda är avsedda att vara publika. Anon-nyckeln skyddas av RLS (punkt 1–5 och migreringarna i
-   `supabase/migrations/`). Mapbox-token är **inte** URL-begränsad (2026-11-24: en annan Origin fick 200); begränsa den
-   i Mapbox-kontot. Ingen `.env` finns och ingen `import.meta.env` läses, trots att Vite stöder det.
+6. **Nycklar i klartext i källkoden** (`src/main.js`): Supabase-URL och anon-nyckel, avsedda att vara publika och
+   skyddade av RLS (punkt 1–5 och migreringarna i `supabase/migrations/`). Mapbox-tokenen finns inte i repot:
+   `import.meta.env.VITE_MAPBOX_TOKEN`, på webben "Qbar webb" (URL-begränsad, satt i Vercel-projektet), i iOS-appen och
+   på datorn "Qbar app" ur `.env` (obegränsad: appen skickar ingen adress att begränsa på).
 
 ### XSS
 

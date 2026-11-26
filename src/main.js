@@ -92,7 +92,10 @@ import './style.css';
     var mapboxgl = null;
     var _mapboxLoad = import('mapbox-gl').then(function(m) {
       mapboxgl = m.default;
-      mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc3VzZW5nIiwiYSI6ImNtdWZocnA0YjA2cmszNHNhNGt2ZWJoeWcifQ.Pxmzf6pY69jIwHwdxsFzzg';
+      // Ingen token i repot (det är publikt). Vercel bygger webben med en token som Mapbox bara godtar från våra adresser;
+      // iOS-appen (capacitor://, skickar ingen adress) och datorn byggs med en obegränsad token ur .env, i Xcode Cloud
+      // som hemlig miljövariabel. Samma namn överallt: VITE_MAPBOX_TOKEN.
+      mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
     });
 
     // ── Supabase ──────────────────────────────────────────────────────────────
