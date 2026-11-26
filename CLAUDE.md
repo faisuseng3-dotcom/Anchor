@@ -297,8 +297,10 @@ aggregeringen eller säkerheten gör det.
 
 ## Säkerhet
 
-**Committa aldrig `.env`** — ligger i `.gitignore`. Just nu finns ingen `.env`: Mapbox-token,
-Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt: RLS och funktionerna i
+**Committa aldrig `.env`** — ligger i `.gitignore`. Den har `VITE_MAPBOX_TOKEN`, Mapbox-token "Qbar app" (obegränsad,
+för iOS-appen och `npm run dev`; mall i `.env.example`). Vercel bygger webben med "Qbar webb" (begränsad till
+qbar-app.vercel.app och anchor-queuebar.vercel.app, satt i Vercel-projektet), Xcode Cloud med "Qbar app" som hemlig
+miljövariabel. Supabase-URL och anon-nyckel ligger i klartext i `src/main.js`. Det är avsiktligt: RLS och funktionerna i
 `supabase/migrations/` bestämmer vad anon-nyckeln når (granskat i produktionen 2026-11-11). `user_id` i `reports` är
 **hemligt**: anon läser bara `REPORT_COLUMNS` och bara aktiva rader (45 min), andra ser `reporter` (sha256 av id:t), och
 id:t är nyckeln till `delete_my_data` och `my_reports`. Äldre rader nås bara via `report_history()` (utan `reporter`/`net`)
