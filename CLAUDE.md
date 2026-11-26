@@ -105,8 +105,8 @@ npm run dev + ?testdata=true   # med 52 testrapporter för 17 ställen (5 med mi
 npm run ios                # bygger, kopierar till ios/ (Capacitor) och öppnar Xcode
 ```
 
-**iOS-appen** (för App Store, **inte inskickad**: kräver Apple Developer Program; texter, skärmbilder, integritetssvar och
-granskningsanteckningar finns i `store/APP_STORE.md`) är Capacitor runt samma bygge: `capacitor.config.json` (bundle-id `se.qbar.app`) och
+**iOS-appen** (för App Store; **läget, vad som är kvar före inskick och hur man bygger och laddar upp står överst i
+`store/APP_STORE.md`**, liksom texter, skärmbilder, integritetssvar och granskningsanteckningar) är Capacitor runt samma bygge: `capacitor.config.json` (bundle-id `se.qbar.app`) och
 `ios/`. Bara iPhone, bara stående, alltid mörkt läge; platstexten står i `ios/App/App/Info.plist`. Ikonen är
 `favicon.svg` utan rundade hörn, 1024 px utan alfakanal. `IS_NATIVE_APP` i `src/main.js` döljer det som bara gäller
 webben. Platsen går i appen via `@capacitor/geolocation` (`startLocation`): WebKits `navigator.geolocation` frågade
