@@ -1,23 +1,40 @@
 # Qbar i App Store
 
-Allt som går att göra utan Apple Developer Program är klart. Kvar är bara stegen som kräver kontot (99 USD/år).
 Texterna nedan klistras in i App Store Connect som de står.
 
-## När kontot finns
+## Läge 2026-11-26
 
-1. Gå med i Apple Developer Program som privatperson (developer.apple.com/programs). Godkännandet tar ofta ett dygn.
-2. Xcode → Settings → Accounts → lägg till ditt Apple-ID.
-3. `cd ~/Desktop/fm-wt && npm run ios` (bygger, synkar och öppnar Xcode).
-4. Klicka **App** i listan till vänster → **Signing & Capabilities** → välj ditt team under **Team**.
-   Bundle-id `se.qbar.app` (registrerat för hand under developer.apple.com → Identifiers).
-5. App Store Connect → Appar → **+** → Ny app: iOS, namn enligt nedan, primärt språk **svenska**,
-   bundle-id `se.qbar.app`, SKU `qbar`.
-6. I Xcode: välj **Any iOS Device (arm64)** som mål → **Product → Archive** → **Distribute App → App Store Connect**.
-7. Fyll i App Store Connect med avsnitten nedan, ladda upp bilderna i `store/screenshots/`, välj bygget och skicka in.
-8. Under **Pris och tillgänglighet**: avmarkera **Tillgänglig på Mac** (appen är byggd för iPhone i stående läge).
+Kontot finns (team `MMV92X5HDJ`), appen finns i App Store Connect (Qbar, Apple ID `6838267075`, bundle-id `se.qbar.app`).
+Senaste bygget: **1.0 (5)**, uppladdat 2026-11-26. Interna testare: gruppen "Qbar team" i TestFlight. Inte inskickad till
+App Review. Bygge 1–4 har den gamla Mapbox-token: välj **5** eller senare.
 
-Version 1.0, bygge 1. Laddas ett nytt bygge upp för samma version måste byggnumret höjas
-(`CURRENT_PROJECT_VERSION` i Xcode, fliken General → Build).
+Kvar före inskick:
+1. Testa bygge 5 på en riktig iPhone: kartan, att Rapportera och Profil går att rulla (rättat i 3, aldrig provat på
+   telefon), kartkapseln (knappen över väntetiden, rättat i 4), Radera min data, rundturen, flygplansläge.
+2. När kartan fungerar i 5: Mapbox → Tokens → Default public token → **Refresh** (den gamla, `…Pxmzf6pY69jIwHwdxsFzzg`,
+   ligger kvar i git-historiken och är obegränsad).
+3. Xcode Cloud (arbetsflödet Default bygger vid varje push till `main`): lägg `VITE_MAPBOX_TOKEN` = token "Qbar app"
+   som **Secret** under Environment, annars stoppar `ios/App/ci_scripts/ci_post_clone.sh` bygget. Eller stäng av flödet.
+4. Fyll i App Store Connect med avsnitten nedan (texter, bilder ur `store/screenshots/`, integritet, åldersgräns 18+ och
+   användargenererat innehåll Ja, anteckningar till granskaren), välj bygget och skicka in. Pris och tillgänglighet:
+   avmarkera **Tillgänglig på Mac**.
+5. Valfritt före lansering: kraschrapportering (inget finns; kräver ett konto, t.ex. Sentry), backuper (Supabase-
+   gratisplanen har inga; Pro har dagliga).
+
+Kan vänta till 1.1: App Attest för rapporter, tak per ställe och kväll, status i ord på kartans ikoner (färg ensam).
+
+## Bygga och ladda upp
+
+Från datorn, utan Xcode-fönstret (så laddades bygge 1–5 upp). `.env` måste finnas (mall: `.env.example`).
+1. Höj `CURRENT_PROJECT_VERSION` (två ställen i `ios/App/App.xcodeproj/project.pbxproj`): App Store Connect nekar ett
+   byggnummer som redan finns.
+2. `npm run build && npx cap sync ios`
+3. `xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS'
+   -archivePath /tmp/qbar/Qbar.xcarchive archive CODE_SIGNING_ALLOWED=NO` (osignerat: teamet har inga enheter
+   registrerade, så Xcode kan inte göra en utvecklingsprofil; signeringen görs i nästa steg)
+4. `xcodebuild -exportArchive -archivePath /tmp/qbar/Qbar.xcarchive -exportPath /tmp/qbar/upload
+   -allowProvisioningUpdates -exportOptionsPlist <plist>` med `method` = `app-store-connect`, `teamID` = `MMV92X5HDJ`,
+   `signingStyle` = `automatic`, `destination` = `upload`. Ger "Upload succeeded"; Apple behandlar bygget på 5–30 min.
 
 ## Butikstexter (svenska)
 
